@@ -1,6 +1,7 @@
-// STATUS: scaffold, API frozen by architect on 2026-10-29
+// STATUS: implemented
 // API: saveGame, see docs/plan/接口冻结清单.md §2.3
 import * as cloud from 'wx-server-sdk';
+import { isNonNegativeInt, isPlainObject, readSnapshot } from './validate';
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 
@@ -21,12 +22,25 @@ interface SaveGameData {
   serverTime: number;
 }
 
+interface UserDoc {
+  revision?: number;
+  resources?: Record<string, unknown>;
+}
+
+interface HospitalStateDoc {
+  revision?: number;
+}
+
 function ok<T>(data: T): CloudResponse<T> {
   return { code: 0, msg: 'ok', data, serverTime: Date.now() };
 }
 
 function fail<T>(code: number, msg: string): CloudResponse<T> {
   return { code, msg, data: null, serverTime: Date.now() };
+}
+
+function conflict<T>(data: T): CloudResponse<T> {
+  return { code: 1004, msg: 'DUPLICATE', data, serverTime: Date.now() };
 }
 
 export async function main(event: SaveGameEvent): Promise<CloudResponse<SaveGameData>> {
@@ -36,15 +50,47 @@ export async function main(event: SaveGameEvent): Promise<CloudResponse<SaveGame
   }
 
   const revision = event.revision;
-  if (typeof revision !== 'number' || !Number.isInteger(revision) || revision < 0) {
+  if (!isNonNegativeInt(revision) || revision < 1) {
     return fail<SaveGameData>(1002, 'INVALID_PARAM');
   }
 
-  const snapshot = event.snapshot;
-  if (!snapshot || typeof snapshot !== 'object' || Array.isArray(snapshot)) {
+  if (!isPlainObject(event.snapshot)) {
     return fail<SaveGameData>(1002, 'INVALID_PARAM');
   }
 
-  // W2: 读取当前 revision，revision <= current 返回 1004 + 最新值；事务写 users/hospital_state。
-  return ok<SaveGameData>({ revision, serverTime: Date.now() });
+  const patch = readSnapshot(event.snapshot);
+  if (!patch) {
+    return fail<SaveGameData>(1002, 'INVALID_PARAM');
+  }
+
+  const now = Date.now();
+  return cloud.database().runTransaction(async (transaction) => {
+    const userRef = transaction.collection<UserDoc>('users').doc(OPENID);
+    const user = (await userRef.get()).data;
+    if (!user) {
+      return fail<SaveGameData>(1001, 'SESSION_INVALID');
+    }
+
+    const stateRef = transaction.collection<HospitalStateDoc>('hospital_state').doc(OPENID);
+    const state = (await stateRef.get()).data;
+    const current = state && typeof state.revision === 'number' ? state.revision : 0;
+    if (revision <= current) {
+      return conflict<SaveGameData>({ revision: current, serverTime: now });
+    }
+
+    const statePatch: Record<string, unknown> = { ...patch.state, openid: OPENID, revision, updatedAt: now };
+    if (state) {
+      await stateRef.update({ data: statePatch });
+    } else {
+      await stateRef.set({ data: statePatch });
+    }
+
+    const userPatch: Record<string, unknown> = { revision };
+    if (patch.resources) {
+      userPatch.resources = { ...(user.resources ?? {}), ...patch.resources, updatedAt: now };
+    }
+    await userRef.update({ data: userPatch });
+
+    return ok<SaveGameData>({ revision, serverTime: now });
+  });
 }

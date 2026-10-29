@@ -3,6 +3,11 @@
     "target": "ES2019",
     "module": "ESNext",
     "moduleResolution": "Node",
+    "baseUrl": ".",
+    "paths": {
+      "cc": ["temp/declarations/cc.d.ts"]
+    },
+    "experimentalDecorators": true,
     "strict": true,
     "noImplicitAny": true,
     "noUnusedLocals": true,

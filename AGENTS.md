@@ -57,6 +57,7 @@
 - 文件、类、函数使用英文命名；注释与文档使用中文。
 - 禁止 `console.log` 留在提交中；调试信息走 `Track` 或删除。
 - 提交前运行 `tsc --noEmit`；类型错误未清零不得提交。
+- 云函数源码改动前后必须执行 `npm run build:cloud` 生成 `index.js`，并确认 `tsc -p cloudfunctions/tsconfig.json` 与根 `tsconfig.json` 均无错误；`index.js` 首行固定为 `// GENERATED from index.ts by npm run build -- do not edit`，禁止手改产物。
 - 不硬编码密钥、appid、广告位 ID、商户号、价格；全部走配置或服务端。
 
 ## 5. 交付检查
@@ -66,6 +67,7 @@
 - [ ] 无真实支付、无真实广告、无线上部署操作。
 - [ ] 主包/分包/内存口径未被突破。
 - [ ] `tsc --noEmit` 通过。
+- [ ] 云函数改动已执行 `npm run build:cloud`，10 个 `index.js` 与 `index.ts` 同步。
 - [ ] 提交信息说明“改了什么、为什么、如何验证”。
 
 ## 6. Git 约定

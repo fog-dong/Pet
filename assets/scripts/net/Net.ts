@@ -1,23 +1,6 @@
 // STATUS: scaffold, API frozen by architect on 2026-10-29
 // API: Net.call, see docs/plan/接口冻结清单.md §1
 
-interface WxCloudCallResult {
-  result?: unknown;
-}
-
-interface WxCloudApi {
-  callFunction(options: {
-    name: string;
-    data?: Record<string, unknown>;
-  }): Promise<WxCloudCallResult>;
-}
-
-interface WxApi {
-  cloud: WxCloudApi;
-}
-
-declare const wx: WxApi;
-
 export interface NetResponse<T> {
   code: number;
   msg: string;
@@ -38,6 +21,20 @@ export const NET_ERROR = {
 } as const;
 
 export class NetworkClient {
+  private initialized = false;
+
+  init(env: string): boolean {
+    if (this.initialized) {
+      return true;
+    }
+    if (!env || env === 'ENV_PLACEHOLDER') {
+      return false;
+    }
+    wx.cloud.init({ env, traceUser: true });
+    this.initialized = true;
+    return true;
+  }
+
   async call<T>(
     name: string,
     data: Record<string, unknown> = {},

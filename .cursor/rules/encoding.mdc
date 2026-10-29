@@ -1,0 +1,47 @@
+---
+description: 宠物医院小游戏 TypeScript/Cocos 骨架编码规范
+alwaysApply: true
+---
+
+# 编码规范
+
+## 文件与状态
+
+- 新文件头部固定写：`// STATUS: scaffold, API frozen by architect on 2026-10-29`
+- 业务实现完成后改为：`// STATUS: implemented`，并注明对应冻结接口编号。
+- 单文件不超过 150 行；超过时按职责拆分，不通过压缩格式规避。
+
+## 允许的技术面
+
+- 只写 TypeScript，开启严格模式；禁止裸 `any`，平台 API 先声明最小接口。
+- 不引入第二套网络库、状态管理、配置系统或事件总线。
+- 不直接操作 `wx`：业务层只能调用 `Net`、`Ad`、`Pay`、`Res`、`Track`。
+
+## 冻结 API
+
+```ts
+Net.call<T>(name: string, data?: Record<string, unknown>, options?: NetOptions): Promise<NetResponse<T>>
+Ad.showRewarded(scene: string): Promise<AdResult>
+Pay.createOrder(sku: string): Promise<PayResult>   // W1–W4 固定返回 PAY_UNAVAILABLE
+Res.loadBundle(name: string): Promise<boolean>
+Res.release(tag: string): void
+Track.track(event: string, props?: TrackProps): void
+```
+
+- `Net.call` 默认超时 8000ms、重试 2 次；业务错误码不重试。
+- 所有写操作必须带幂等键；键名使用冻结清单中的 `caseSessionId`、`adSessionId`、`clientOrderId`、`transactionId`。
+- 云函数统一返回 `{ code, msg, data, serverTime? }`；禁止改字段名。
+
+## 禁止项
+
+- 禁止在业务层出现 `wx.cloud.callFunction`、`wx.createRewardedVideoAd`、`wx.requestMidasPayment`。
+- 禁止硬编码 appid、密钥、商户号、广告位 ID、价格。
+- 禁止在 W1–W4 调用真实虚拟支付或引导站外支付。
+- 禁止提交 `library/`、`temp/`、`build/`、`local/`、`node_modules/`、`.editor/`、`.meta-cache/`。
+- 禁止保留 `console.log`；调试信息走 `Track` 或删除。
+
+## 提交前
+
+- 运行 `tsc --noEmit`，类型错误清零。
+- 确认主包 ≤4MB、总分包 ≤30MB、内存目标 ≤200MB（低端 ≤250MB）未被突破。
+- 先写 2–3 句实现蓝图，再提交代码。

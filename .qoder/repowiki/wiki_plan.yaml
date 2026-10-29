@@ -1,0 +1,128 @@
+version: 1
+
+repowiki:
+  template: architecture
+  notes:
+    - text: "当前仓库仅有《微信小游戏赛道可行性分析报告》，尚无游戏代码；生成 Wiki 时按“开发计划与系统框架”输出，并明确区分已确定方案与待实现模块，不要编造类名、接口、文件路径或已上线数据。"
+    - text: "市场与竞品结论优先引用仓库中的《微信小游戏赛道可行性分析报告》，不要重复编造第三方数据；架构与玩法按本计划展开。"
+    - text: "项目为微信小游戏《治愈系宠物医院/救助经营》，核心循环为：接诊 → 分诊 → 诊断小游戏（3-5 分钟）→ 治疗资源分配 → 康复护理 → 领养/图鉴 → 扩建医院。"
+    - text: "变现结构为 IAA 60% + IAP 40%；MVP 团队 4-6 人，周期 3-4 个月；客户端使用 Cocos Creator，服务端优先微信云开发。"
+    - text: "美术风格固定为 2D 卡通/绘本风，治愈、温暖、明亮、柔和粉彩；禁止写实医疗、血腥、恐怖、虐待动物画面。"
+    - text: "诊断小游戏只允许点击找病灶、拖拽配药、简单连线等轻操作；不要设计三消、重度解谜或需要长教程的玩法。"
+    - text: "领养社交承担免费流量：通过分享或好友助力解锁领养位、腾出床位；目标分享率 ≥8%、助力率 ≥15%，并遵守微信分享规范。"
+    - text: "性能约束：微信小游戏内存通常需控制在 300MB 以内；方案必须覆盖包体控制、首屏加载、图集合并、Spine 骨骼复用与资源分包。"
+    - text: "所有支付与广告回调必须服务端校验；云存档必须支持版本迁移；不要把客户端返回值当作最终账务依据。"
+
+  documents:
+    - title: "项目概述与开发目标"
+      goal: "说明产品定位、目标用户、核心循环、MVP 边界、团队与周期；把市场报告中的结论转成可执行的项目目标与不做什么。"
+      parent: ""
+      hints: "当前无代码，以规划口径编写。明确 IAA 60% + IAP 40%、4-6 人、3-4 个月、Cocos Creator + 微信云开发；列出 MVP 必做与暂缓功能。"
+
+    - title: "系统架构"
+      goal: "给出客户端、服务端、数据层的总体架构与模块边界，说明各模块职责、依赖方向与关键数据流。"
+      parent: ""
+      hints: "顶层架构页；子页分别展开客户端、服务端、数据结构。用规划态描述，不要假设已有实现。"
+
+    - title: "客户端架构（Cocos Creator）"
+      goal: "拆解 UI 管理、状态机、动画控制、网络请求、本地缓存、资源加载与场景切换模块，并说明模块间通信方式。"
+      parent: "系统架构"
+      hints: "按模块写职责、关键接口建议、更新时机与常见坑；标注为规划方案，不编造具体脚本路径。"
+
+    - title: "服务端架构（微信云开发）"
+      goal: "拆解用户鉴权、云存档、排行榜/好友助力、IAA 广告回调验证、IAP 支付回调与风控。"
+      parent: "系统架构"
+      hints: "说明云函数、云数据库、云存储的职责边界；支付与广告回调必须服务端校验，不能只信客户端；列出幂等、防重放与对账要点。"
+
+    - title: "数据结构与云存档"
+      goal: "设计用户表、宠物病例表、医院经营数据表、图鉴/领养记录、广告与订单流水等核心数据结构。"
+      parent: "系统架构"
+      hints: "给出字段、类型、索引建议、读写频率与云存档版本迁移策略；说明哪些数据必须服务端权威、哪些可本地缓存。"
+
+    - title: "核心玩法系统"
+      goal: "说明单局与长线玩法的关系，覆盖诊断、治疗资源分配、康复、领养、图鉴、扩建的完整闭环。"
+      parent: ""
+      hints: "顶层玩法页；子页展开诊断、资源分配、领养社交。强调 3-5 分钟单局与轻策略，不做过重数值。"
+
+    - title: "诊断小游戏系统"
+      goal: "设计听诊、拍片、化验三类轻量操作及其判定逻辑、难度曲线、失败反馈与广告复活点。"
+      parent: "核心玩法系统"
+      hints: "用伪代码或流程图逻辑说明；操作仅限点击、拖拽、简单连线；单局 3-5 分钟；失败要给出明确反馈，避免挫败感。"
+
+    - title: "治疗资源分配系统"
+      goal: "设计药品、床位、时间三类有限资源的轻策略分配，形成取舍而非数值堆砌。"
+      parent: "核心玩法系统"
+      hints: "说明资源产出、消耗、优先级、失败惩罚与提示；避免重度 SLG 式复杂数值；资源紧张时提供广告或社交加速。"
+
+    - title: "领养、图鉴与社交裂变"
+      goal: "设计宠物好感度、领养条件、图鉴收集、好友助力、分享与医院参观机制。"
+      parent: "核心玩法系统"
+      hints: "领养条件可组合分享、看广告、消耗道具；目标分享率 ≥8%、助力率 ≥15%；分享必须是可选加速，不得强制或诱导；说明图鉴收集与长线目标。"
+
+    - title: "商业化系统"
+      goal: "给出 IAA 与 IAP 的总体接入方案、触发时机、频控、定价与商城逻辑。"
+      parent: ""
+      hints: "顶层商业化页；子页展开 IAA 与 IAP。总结构为 IAA 60% + IAP 40%；广告优先保护治愈体验，内购不得设置“不付费就无法救治”的卡点。"
+
+    - title: "IAA 广告接入"
+      goal: "设计激励视频、插屏、Banner 的触发场景、频控、失败兜底与广告回调验证。"
+      parent: "商业化系统"
+      hints: "激励视频用于加速康复、额外检查、复活、双倍爱心、免费领养位；单日 6-10 次；不要强制插屏打断病例；说明广告填充失败与用户拒绝的兜底。"
+
+    - title: "IAP 内购与定价"
+      goal: "设计月卡、装饰皮肤、专家医生、领养证书、救助基金/战令的定价与商城逻辑。"
+      parent: "商业化系统"
+      hints: "给出 6/30/68/128 元档位建议；不做付费才能救活的道德绑架；支付回调服务端校验；说明首充、复购与退款风控。"
+
+    - title: "开发计划与里程碑"
+      goal: "按 12 周给出 WBS：第 1 周基础框架，第 2-4 周诊断 Demo 与单局闭环，第 5-8 周图鉴/领养/长线数值，第 9-12 周商业化/性能/软测。"
+      parent: ""
+      hints: "列出每周交付物、负责人角色、验收标准与风险缓冲；团队 4-6 人；补充软测指标：D1≥35%、D7≥12%、D30≥5%、ARPDAU≥0.5 元、LTV/CPA≥1.2。"
+
+    - title: "性能优化与发布"
+      goal: "给出微信小游戏的包体、首屏、内存、图集、Spine、资源分包与真机测试方案。"
+      parent: ""
+      hints: "内存目标 <300MB；覆盖 iOS/Android 低端机；给出可量化指标与检查清单；说明分包加载、纹理压缩、对象池与场景释放策略。"
+
+    - title: "美术风格与资产规范"
+      goal: "定义 2D 卡通/绘本风、色彩、角色比例、UI 规范与资产交付标准，覆盖主界面、诊疗 HUD、图鉴卡、角色设定、买量素材，并附 Midjourney 提示词参考。"
+      parent: ""
+      hints: |
+        治愈、温暖、明亮、柔和粉彩；避免写实医疗与血腥；买量素材可用救治前后对比，但不得渲染虐待；统一 UI 圆角、留白、字体与图标风格。
+
+        以下 Midjourney 提示词作为美术方向参考，不直接作为最终资产；生成后需统一角色比例、色彩与 UI 组件规范。
+
+        【1. 游戏主界面 Main Menu】
+        Mobile game UI design, main menu interface for a "Healing Pet Hospital" simulation game, 2D cartoon style, cozy and warm color palette, pastel tones, cute and healing atmosphere, illustration of a cozy veterinary clinic reception area, lots of plants, soft sunlight from the window. Large "Start" button, top bar with hearts (currency) and settings icons, clean layout, vector art, UI/UX, Dribbble, Behance, high resolution, --ar 9:16 --v 6.0 --style raw
+        中文释义：治愈系宠物医院模拟游戏主菜单，2D 卡通，温馨柔和粉彩，诊所前台、绿植、窗外柔光，大号开始按钮，顶部爱心货币与设置图标，干净矢量 UI。
+
+        【2. 游戏内诊疗 HUD In-Game HUD】
+        Mobile game HUD design, veterinary diagnosis gameplay screen, portrait orientation, 2D cartoon flat design. A cute sick puppy on an examination table in the center. Left side: patient medical chart UI. Right side: action buttons (Stethoscope, X-ray, Medicine). Bottom center: semi-transparent UI panel with a timer and heart resource bar. Soft glowing UI elements, rounded corners, warm pastel colors, clean vector graphics, game UI asset, --ar 9:16 --v 6.0
+        中文释义：竖屏兽医诊断 HUD，中央检查台上的生病小狗，左侧病历，右侧听诊器/X光/药品按钮，底部半透明计时器与爱心资源条，柔和发光、圆角、暖粉彩。
+
+        【3. 宠物图鉴/领养卡片 Collection Card】
+        UI design for a mobile game collection card, showing a cute rescued kitten, 2D cartoon style, rich details, expressive eyes, surrounded by a beautiful floral frame. Text placeholder for name and bio at the bottom. Warm and healing aesthetic, soft lighting, storybook illustration style, high quality, isolated on a light warm background, --ar 3:4 --niji 6
+        中文释义：宠物图鉴/领养卡，被救助的小猫，2D 卡通，花卉边框，底部姓名与简介占位，温暖治愈、柔和光照、绘本插画风。
+
+        【4. 核心角色与宠物 Assets】
+        Character design sheet for a mobile game, a young friendly female veterinarian wearing a light green scrub suit and holding a cute chubby cat, 2D cartoon vector art style, multiple poses and expressions, clean outlines, vibrant but soft colors, transparent background, game asset, sprite, --ar 16:9 --v 6.0
+        中文释义：角色设定图，年轻友好的女兽医，浅绿色手术服，抱着胖猫，多姿势表情，2D 卡通矢量，干净轮廓，柔和鲜艳，透明背景。
+
+        【5. 买量测试素材 Ad Creatives】
+        Mobile game ad creative, split screen style, top half shows a dirty, sad stray puppy in the rain, bottom half shows the same puppy clean, happy, and playing in a warm sunny veterinary clinic. High emotional contrast, before and after, 2D cartoon style, healing aesthetic, high click-through rate design, bright colors, --ar 9:16
+        中文释义：买量素材，上下分屏，上半部雨中脏污悲伤的流浪狗，下半部同一只狗在温暖阳光的诊所干净快乐地玩耍；高情感对比、前后对比、2D 卡通、治愈美学。
+
+        使用约束：买量素材不得渲染虐待、血腥或过度悲惨；主界面与 HUD 的 UI 元素需可复用、可九宫格拉伸；角色与宠物需输出三视图/表情包，便于 Spine 动画拆件。
+
+    - title: "合规、风险与上线检查"
+      goal: "覆盖游戏类目申报、医疗/动物伦理、未成年人保护、广告与分享合规、隐私与支付风控、上线检查清单。"
+      parent: ""
+      hints: "宠物医院题材避免真实诊疗、处方、手术细节与血腥；分享不得强制诱导；IAA/IAP 回调服务端校验；按微信小游戏审核要求列检查项，并给出降级方案。"
+
+knowledgecard:
+  notes:
+    - text: "按“客户端 / 服务端 / 玩法系统 / 商业化 / 性能与发布 / 美术资产 / 合规”七个模块组织知识卡；当前无代码，卡片需标注“规划中”，不要把规划写成已实现。"
+    - text: "跨模块约定：所有支付与广告回调必须服务端校验；云存档需支持版本迁移；单局 3-5 分钟，诊断操作仅点击、拖拽、简单连线。"
+    - text: "商业化核心约束：IAA 60% + IAP 40%；广告频控优先保护治愈体验，内购不得设置“不付费就无法救治”的卡点。"
+    - text: "社交裂变必须符合微信规范：分享是领养或助力的可选加速，不得强制或诱导；目标分享率 ≥8%、助力率 ≥15%。"
+    - text: "美术与素材约束：2D 卡通/绘本风，治愈、温暖、明亮、柔和粉彩；禁止写实医疗、血腥、恐怖、虐待动物画面。"

@@ -5,6 +5,7 @@
 - 只做 W1–W2 工程骨架：目录、状态机、网络层、广告/支付占位、云函数骨架。
 - 不实现完整玩法，不接真实广告，不接真实虚拟支付，不部署线上环境。
 - 唯一口径：`docs/plan/00-项目总览与执行边界.md` 第 16 节 + 三份冻结文件。其他文档只能引用，不得复制第二套口径。
+- **工程状态（2026-10-29）**：当前仓库只有 `.ts` 骨架，**尚未被 Cocos Creator 识别**；`assets/**/*.meta`、`settings/`、根 `tsconfig.json`、根 `package.json` 待生成。安装与校验详情见 `docs/plan/环境安装报告.md`、`docs/plan/工程完整性检查.md`。
 
 ## 1. 七条硬约束
 
@@ -13,8 +14,16 @@
 3. **业务层禁止直连平台 API**：业务代码不得直接调用 `wx.cloud.callFunction`、`wx.createRewardedVideoAd`、`wx.requestMidasPayment`；必须分别走 `net/Net.ts`、`net/Ad.ts`、`net/Pay.ts`。
 4. **iOS 支付占位**：W1–W4 的 `Pay.createOrder` 与云函数 `payCallback` 只能返回 `PAY_UNAVAILABLE`；不得调用真实虚拟支付，不得引导站外支付，不得绕过平台政策。
 5. **包体与内存**：主包 ≤4MB；总分包 ≤30MB；内存目标 ≤200MB，低端机 ≤250MB。新增资源前先确认分包归属。
-6. **不提交生成物**：禁止提交 `library/`、`temp/`、`build/`、`local/`、`node_modules/`、`.editor/`、`.meta-cache/`、`*.log`、`.DS_Store`；必须保留 `assets/**/*.ts` 与 `assets/**/*.meta`。
+6. **不提交生成物**：禁止提交 `library/`、`temp/`、`build/`、`local/`、`node_modules/`、`.editor/`、`.meta-cache/`、`*.log`、`.DS_Store`；必须保留 `assets/**/*.ts`、`assets/**/*.meta`、`settings/`、根 `tsconfig.json`、根 `package.json`。
 7. **先蓝图后代码**：每个编码任务先输出 2–3 句实现蓝图（改哪些文件、依赖哪个冻结接口、如何验证），再写代码；不得跳过蓝图直接大改。
+
+## 1.1 工程完整性约束
+
+- 所有 `assets/` 下的文件必须包含对应的 `.meta` 文件，且 `.meta` 必须提交到 Git。
+- `settings/` 目录由 Cocos Creator 编辑器生成，必须提交（不含 `library/temp/build/local`）。
+- 根目录 `tsconfig.json` 必须存在且 `"types"` 包含 `"cocos"`。
+
+以上任一项不满足时，不得声称“Cocos 工程已就绪”；repo-integrator 的最终验证只能输出“等待 `.meta` 后二次验证”。不得手工编造 `.meta` UUID。
 
 ## 2. 目录约定
 

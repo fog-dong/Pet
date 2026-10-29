@@ -1,12 +1,12 @@
-# Cocos Creator generated / local
-library/
-temp/
-build/
-local/
-packages/
-.editor/
-.meta-cache/
-node_modules/
+# Cocos Creator generated / local (root only)
+/library/
+/temp/
+/build/
+/local/
+/packages/
+/.editor/
+/.meta-cache/
+/node_modules/
 
 # Logs and OS files
 *.log

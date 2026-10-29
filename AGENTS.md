@@ -5,7 +5,7 @@
 - 只做 W1–W2 工程骨架：目录、状态机、网络层、广告/支付占位、云函数骨架。
 - 不实现完整玩法，不接真实广告，不接真实虚拟支付，不部署线上环境。
 - 唯一口径：`docs/plan/00-项目总览与执行边界.md` 第 16 节 + 三份冻结文件。其他文档只能引用，不得复制第二套口径。
-- **工程状态（2026-10-29）**：当前仓库只有 `.ts` 骨架，**尚未被 Cocos Creator 识别**；`assets/**/*.meta`、`settings/`、根 `tsconfig.json`、根 `package.json` 待生成。安装与校验详情见 `docs/plan/环境安装报告.md`、`docs/plan/工程完整性检查.md`。
+- **工程状态（2026-10-29）**：Cocos Creator 3.8 工程脚手架（`settings/`、根 `tsconfig.json`、根 `package.json`、`.creator/`）已并入根目录；`assets/**/*.meta` 与 `temp/` 尚未生成，首次在开发机打开工程时由 Creator 自动生成。安装与校验详情见 `docs/plan/环境安装报告.md`、`docs/plan/工程完整性检查.md`。
 
 ## 1. 七条硬约束
 

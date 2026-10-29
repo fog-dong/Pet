@@ -3,6 +3,8 @@
 /temp/
 /build/
 /local/
+/profiles/
+/native/
 /packages/
 /.editor/
 /.meta-cache/

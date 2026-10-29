@@ -10,6 +10,9 @@
 /.meta-cache/
 /node_modules/
 
+# 云函数本地依赖：由各函数 package.json 声明，云端安装，不入库
+/cloudfunctions/*/node_modules/
+
 # Logs and OS files
 *.log
 .DS_Store

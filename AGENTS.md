@@ -21,7 +21,7 @@
 
 - 所有 `assets/` 下的文件必须包含对应的 `.meta` 文件，且 `.meta` 必须提交到 Git。
 - `settings/` 目录由 Cocos Creator 编辑器生成，必须提交（不含 `library/temp/build/local`）。
-- 根目录 `tsconfig.json` 必须存在且 `"types"` 包含 `"cocos"`。
+- 根目录 `tsconfig.json` 必须存在；Cocos 类型由编辑器生成的 `temp/tsconfig.cocos.json`（`types` 指向 `temp/declarations/*`）提供，不使用字面量 `"cocos"`（3.8 无该类型包，写入会触发 `TS2688`）。
 
 以上任一项不满足时，不得声称“Cocos 工程已就绪”；repo-integrator 的最终验证只能输出“等待 `.meta` 后二次验证”。不得手工编造 `.meta` UUID。
 

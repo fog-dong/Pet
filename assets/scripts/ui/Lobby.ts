@@ -35,6 +35,7 @@ export class Lobby extends Component {
     Save.load();
     this.refreshStats();
     void Profile.refresh();
+    void Track.flush();
     addButton(this.node, 'CodexButton', '图 鉴', 120, () => this.onCodexClick(), PALETTE.secondary, 260, 76, 470);
     addButton(this.node, 'LeaderboardButton', '排 行 榜', 210, () => this.onLeaderboardClick(), PALETTE.secondary, 260, 76, 470);
     void Res.loadBundle(CONFIG_BUNDLE)

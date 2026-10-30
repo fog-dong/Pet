@@ -35,6 +35,7 @@ export class Boot extends Component {
   private started = false;
 
   protected start(): void {
+    Track.start();
     addLabel(this.node, 'BootLoading', '正在准备诊疗室…', 0, { size: 32, color: PALETTE.panel });
     this.mountDebugPanel();
     void this.bootstrap();

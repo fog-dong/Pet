@@ -17,7 +17,7 @@ export class SyncBadge {
   private label: Label | null = null;
 
   mount(parent: Node): void {
-    this.label = addLabel(parent, 'SyncBadge', '', -352, { size: 20, color: PALETTE.sub, width: 680 });
+    this.label = addLabel(parent, 'SyncBadge', '', -390, { size: 20, color: PALETTE.sub, width: 680 });
     this.refresh();
   }
 

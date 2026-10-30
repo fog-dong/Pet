@@ -14,7 +14,7 @@ export function panelH(): number {
 }
 
 /** 按钮统一 76 高、宽随面板收；高于 44×44 的最小可点热区。 */
-export const BUTTON_Y = -220;
+export const BUTTON_Y = -250;
 
 /** 两枚按钮并排：宽度取面板半幅减 50，720 帧下 280，1280 帧下仍是 320。 */
 export function dialogButtonW(): number {
@@ -26,7 +26,8 @@ export function buttonX(): number {
   return dialogButtonW() / 2 + 30;
 }
 
-const SCROLL_H = 270;
+/** 正文滚动区：加高到 300 后首屏能多显示两行，避免刚打开就被裁断。 */
+const SCROLL_H = 300;
 const CHARS_PER_LINE = 36;
 const LINE_H = 32;
 

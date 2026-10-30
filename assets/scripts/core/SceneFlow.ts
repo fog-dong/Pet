@@ -2,6 +2,7 @@
 import { director } from 'cc';
 import { GameState, gameFSM } from './GameFSM';
 import { Res } from './Res';
+import { paintSceneBackground } from '../ui/ScreenTheme';
 import { Track } from '../track/Track';
 
 export async function goState(next: GameState, sceneName: string): Promise<boolean> {
@@ -22,6 +23,8 @@ export async function goState(next: GameState, sceneName: string): Promise<boole
         resolve(false);
         return;
       }
+      // 每个场景自带相机，默认清屏色是黑的，进页第一件事就把底色刷成暖米色。
+      paintSceneBackground();
       resolve(true);
     });
     if (!launched) {

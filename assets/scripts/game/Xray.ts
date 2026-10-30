@@ -35,14 +35,14 @@ export class Xray extends Component {
   private timeLeft = TOTAL_MS;
   private finished = false;
 
-  startWith(item: CaseConfigItem, onFinish: AuscultationFinish): void {
+  startWith(item: CaseConfigItem, onFinish: AuscultationFinish, setHint?: (text: string) => void): void {
     this.item = item;
     this.onFinish = onFinish;
     const plan = resolveLesions(item);
     this.lesions = plan.lesions;
     this.tolerance = plan.tolerance;
     const root = this.node;
-    this.hud = new DiagnosisHud(root, 'Xray', '拖动标记框，对准片子上的病灶');
+    this.hud = new DiagnosisHud(root, 'Xray', setHint ?? (() => undefined));
     this.board = buildFilm(root);
     this.marker = buildMarker(this.board);
     bindXrayDrag(this.marker, {

@@ -16,15 +16,16 @@ export function spawnDiagnosis(
   kind: DiagnosisKind,
   item: CaseConfigItem,
   onFinish: (result: AuscultationResult) => void,
+  setHint: (text: string) => void,
 ): Hintable {
   if (kind === 'xray') {
     const game = root.addComponent(Xray);
-    game.startWith(item, onFinish);
+    game.startWith(item, onFinish, setHint);
     return game;
   }
   if (kind === 'lab') {
     const game = root.addComponent(Lab);
-    game.startWith(item, onFinish);
+    game.startWith(item, onFinish, setHint);
     return game;
   }
   const game = root.addComponent(Auscultation);

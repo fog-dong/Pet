@@ -15,6 +15,7 @@ import { AGE_RATING_TEXT, GAME_NAME, HEALTH_GAME_NOTICE_TEXT, LEGAL_VERSION, leg
 import { openPrivacyDialog } from '../ui/PrivacyDialog';
 import { addLabel, createNode, PALETTE } from '../ui/SceneUI';
 import { alignBottom, alignTop, attachSafeArea } from '../ui/SafeLayout';
+import { paintSceneBackground } from '../ui/ScreenTheme';
 import { fitWidth, screenHeight, screenWidth } from '../ui/ScreenMetrics';
 import { Track } from '../track/Track';
 
@@ -24,8 +25,9 @@ const LOBBY_SCENE = 'Lobby';
 /** 合规两行距安全区底边：忠告 48、适龄 88；两行都必须常驻 ≥ SPLASH_MIN_MS 才允许进大厅。 */
 const SPLASH_MIN_MS = 3000;
 const SPLASH_NAME_TOP = 48;
-const LEGAL_NOTICE_BOTTOM = 48;
-const LEGAL_AGE_BOTTOM = 88;
+// 忠告全文在 720 宽下折成两行，底部对齐后节点会向上长高，适龄行必须再抬高一行。
+const LEGAL_NOTICE_BOTTOM = 40;
+const LEGAL_AGE_BOTTOM = 132;
 
 /** 分包加载最多等这么久，超时就用内置病例兜底，避免低端机首屏黑屏。 */
 function withTimeout<T>(task: Promise<T>, ms: number): Promise<T | null> {
@@ -45,9 +47,10 @@ export class Boot extends Component {
   private readonly splashAt = Date.now();
 
   protected start(): void {
+    paintSceneBackground();
     Track.start();
     WxPrivacy.register();
-    addLabel(this.node, 'BootLoading', '正在准备诊疗室…', 0, { size: 32, color: PALETTE.panel });
+    addLabel(this.node, 'BootLoading', '正在准备救助站…', 0, { size: 32, color: PALETTE.text });
     this.addSplashLegal();
     // 调试浮层只用引擎自带 profiler：脚本层不留自定义面板，避免未使用的类被打进发布包。
     if (DEBUG) { profiler.showStats(); }
@@ -89,11 +92,11 @@ export class Boot extends Component {
   private addSplashLegal(): void {
     const root = createNode(this.node.parent ?? this.node, 'BootSplashLegal', 0, screenWidth(), screenHeight());
     attachSafeArea(root);
-    const name = addLabel(root, 'BootSplashName', GAME_NAME, 0, { size: 40, color: PALETTE.panel, width: fitWidth(1100, 90) });
+    const name = addLabel(root, 'BootSplashName', GAME_NAME, 0, { size: 44, color: PALETTE.text, width: fitWidth(1100, 90) });
     alignTop(name.node, SPLASH_NAME_TOP);
-    const notice = addLabel(root, 'BootSplashNotice', HEALTH_GAME_NOTICE_TEXT, 0, { size: 18, color: PALETTE.accent, width: fitWidth(1100, 90) });
+    const notice = addLabel(root, 'BootSplashNotice', HEALTH_GAME_NOTICE_TEXT, 0, { size: 18, color: PALETTE.sub, width: fitWidth(1100, 90) });
     alignBottom(notice.node, LEGAL_NOTICE_BOTTOM);
-    const age = addLabel(root, 'BootSplashAge', AGE_RATING_TEXT, 0, { size: 22, color: PALETTE.accent, width: fitWidth(1100, 90) });
+    const age = addLabel(root, 'BootSplashAge', AGE_RATING_TEXT, 0, { size: 22, color: PALETTE.sub, width: fitWidth(1100, 90) });
     alignBottom(age.node, LEGAL_AGE_BOTTOM);
   }
 

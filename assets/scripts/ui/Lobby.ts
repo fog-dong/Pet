@@ -1,9 +1,9 @@
-// STATUS: implemented, W11-2 大厅（场景资源标签改挂 Widget，右侧按钮列按可视宽度贴边，隐私入口与大屏共用一套授权流程）
+// STATUS: implemented, W16-1 大厅中轴布局 + 中文资源位（原右侧贴边按钮列与英文 Coins/Hearts 未过审视图检）
 import { _decorator, Button, Component, Label } from 'cc';
 import { CaseConfig } from '../config/CaseConfig';
 import { CharacterConfig } from '../config/CharacterConfig';
 import { CONFIG_BUNDLE } from '../config/ConfigLoader';
-import { PRIVACY_GUEST_TEXT } from '../config/LegalConfig';
+import { GAME_NAME, PRIVACY_GUEST_TEXT } from '../config/LegalConfig';
 import { CaseSession } from '../game/CaseSession';
 import { CharacterView } from '../game/CharacterView';
 import { Save } from '../cache/Save';
@@ -15,15 +15,25 @@ import { Codex } from './CodexPanel';
 import { LeaderboardPanel } from './LeaderboardPanel';
 import { openAboutPanel } from './AboutPanel';
 import { openPrivacyEntry } from './PrivacyDialog';
+import { buildLobbyMenu, styleStartButton } from './LobbyChrome';
 import { Profile } from '../net/Profile';
 import { refreshQuality } from '../core/BootCloud';
-import { addButton, addLabel, PALETTE } from '../ui/SceneUI';
-import { rightEdgeX } from '../ui/ScreenMetrics';
+import { addLabel, PALETTE } from '../ui/SceneUI';
 import { pinTopLeft } from '../ui/SafeLayout';
 import { SyncBadge } from './SyncBadge';
 import { Track } from '../track/Track';
 
 const { ccclass, property } = _decorator;
+
+const TITLE_Y = 470;
+const START_Y = 300;
+const HINT_Y = -470;
+const MENU_TRACK: Record<string, string> = {
+  CodexButton: 'lobby_codex_click',
+  LeaderboardButton: 'lobby_leaderboard_click',
+  PrivacyButton: 'lobby_privacy_click',
+  AboutButton: 'lobby_about_click',
+};
 
 @ccclass('Lobby')
 export class Lobby extends Component {
@@ -39,6 +49,9 @@ export class Lobby extends Component {
     Save.load();
     // 场景里的两枚资源标签仍是 1280 时代的绝对坐标（x=-440），竖屏下改挂 Widget 贴左上角。
     pinTopLeft([this.coinsLabel?.node ?? null, this.heartsLabel?.node ?? null], 24, 24);
+    addLabel(this.node, 'LobbyTitle', GAME_NAME, TITLE_Y, { size: 44, color: PALETTE.text });
+    if (this.startButton) { styleStartButton(this.startButton, 0, START_Y, '开始接诊'); }
+    buildLobbyMenu(this.node, (name) => this.onMenuClick(name));
     this.refreshStats();
     if (PrivacyState.isGuest()) {
       // 游客：不拉云资料、不碰排行榜，本地单局照常。
@@ -52,18 +65,12 @@ export class Lobby extends Component {
       void this.syncBadge.drain();
     }
     void Track.flush();
-    const sideX = rightEdgeX(130);
-    addButton(this.node, 'CodexButton', '图 鉴', 120, () => this.onCodexClick(), PALETTE.secondary, 260, 76, sideX);
-    addButton(this.node, 'LeaderboardButton', '排 行 榜', 210, () => this.onLeaderboardClick(), PALETTE.secondary, 260, 76, sideX);
-    addButton(this.node, 'PrivacyButton', '隐私与协议', 300, () => this.onPrivacyClick(), PALETTE.secondary, 260, 76, sideX);
-    addButton(this.node, 'AboutButton', '关 于', 30, () => openAboutPanel(this.node), PALETTE.secondary, 260, 76, sideX);
     void Res.loadBundle(CONFIG_BUNDLE)
       .then(() => CharacterConfig.load())
       .then(() => {
-        if (!this.isValid) {
-          return;
+        if (this.isValid) {
+          CharacterView.mount(this.node, 0, 90).showDoctor('doc_director');
         }
-        CharacterView.mount(this.node, sideX, -160).showDoctor('doc_director');
       });
   }
 
@@ -71,34 +78,32 @@ export class Lobby extends Component {
     Res.release(CONFIG_BUNDLE);
   }
 
-  private onCodexClick(): void {
-    Track.track('lobby_codex_click');
-    if (CharacterConfig.ready) {
-      Codex.open(this.node);
+  private onMenuClick(name: string): void {
+    Track.track(MENU_TRACK[name] ?? 'lobby_menu_click');
+    if (name === 'CodexButton') {
+      void CharacterConfig.load().then(() => {
+        if (this.isValid && CharacterConfig.ready) {
+          Codex.open(this.node);
+        }
+      });
       return;
     }
-    void CharacterConfig.load().then(() => {
-      if (this.isValid) {
-        Codex.open(this.node);
+    if (name === 'LeaderboardButton') {
+      if (PrivacyState.isGuest()) {
+        this.showHint('游客模式下排行榜暂不可用，在「隐私与协议」中同意后即可开启。');
+        return;
       }
-    });
-  }
-
-  private onLeaderboardClick(): void {
-    Track.track('lobby_leaderboard_click');
-    if (PrivacyState.isGuest()) {
-      this.showHint('游客模式下排行榜暂不可用，在「隐私与协议」中同意后即可开启。');
+      this.leaderboard.open(this.node);
       return;
     }
-    this.leaderboard.open(this.node);
-  }
-
-  /** 常驻入口：同意过只读正文；游客在此补同意，登录成功后当场补发本地结算。 */
-  private onPrivacyClick(): void {
-    Track.track('lobby_privacy_click');
-    openPrivacyEntry(this.node, (cloud) => {
-      this.syncBadge.finishUpgrade(this.node, cloud, (text) => this.showHint(text));
-    });
+    // 常驻入口：同意过只读正文；游客在此补同意，登录成功后当场补发本地结算。
+    if (name === 'PrivacyButton') {
+      openPrivacyEntry(this.node, (cloud) => {
+        this.syncBadge.finishUpgrade(this.node, cloud, (text) => this.showHint(text));
+      });
+      return;
+    }
+    openAboutPanel(this.node);
   }
 
   protected onEnable(): void {
@@ -111,10 +116,12 @@ export class Lobby extends Component {
 
   private refreshStats(): void {
     if (this.coinsLabel) {
-      this.coinsLabel.string = `Coins: ${Save.coins}`;
+      this.coinsLabel.string = `金币 ${Save.coins}`;
+      this.coinsLabel.color = PALETTE.text;
     }
     if (this.heartsLabel) {
-      this.heartsLabel.string = `Hearts: ${Save.hearts}`;
+      this.heartsLabel.string = `爱心 ${Save.hearts}`;
+      this.heartsLabel.color = PALETTE.text;
     }
   }
 
@@ -131,10 +138,10 @@ export class Lobby extends Component {
 
   private showHint(text: string): void {
     if (!this.hint) {
-      this.hint = addLabel(this.node, 'LobbyHint', text, -300, {
+      this.hint = addLabel(this.node, 'LobbyHint', text, HINT_Y, {
         size: 24,
         color: PALETTE.sub,
-        width: 900,
+        width: 620,
       });
       return;
     }

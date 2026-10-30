@@ -8,7 +8,8 @@ import { CharacterView } from './CharacterView';
 import { GameState } from '../core/GameFSM';
 import { goState } from '../core/SceneFlow';
 import { addButton, addLabel, PALETTE } from '../ui/SceneUI';
-import { leftEdgeX, rightEdgeX } from '../ui/ScreenMetrics';
+import { fitWidth, rightEdgeX } from '../ui/ScreenMetrics';
+import { paintSceneBackground } from '../ui/ScreenTheme';
 
 const { ccclass } = _decorator;
 
@@ -21,6 +22,8 @@ const SEVERITY_TEXT: Record<string, string> = {
 @ccclass('CaseIntro')
 export class CaseIntro extends Component {
   protected start(): void {
+    // 「换一例」直接用 loadScene 重进本场景，不经过 SceneFlow，这里补一次底色。
+    paintSceneBackground();
     const item = CaseSession.current;
     if (!item) {
       void goState(GameState.Lobby, 'Lobby');
@@ -43,20 +46,20 @@ export class CaseIntro extends Component {
       x: -80,
     });
     // 医疗虚构免责固定句：每个病例都会经过这一屏，文案只在 LegalConfig 维护。
-    addLabel(root, 'MedicalNotice', MEDICAL_DISCLAIMER_TEXT, -200, {
+    // 位置必须在三枚按钮之下——原先贴在左下角会与「换一例」按钮重叠。
+    addLabel(root, 'MedicalNotice', MEDICAL_DISCLAIMER_TEXT, -392, {
       size: 18,
       color: PALETTE.sub,
-      width: 440,
-      x: leftEdgeX(220),
+      width: fitWidth(600, 60),
     });
-    addButton(root, 'AcceptButton', '开始诊断', -120, () => {
+    addButton(root, 'AcceptButton', '开始诊断', -95, () => {
       void goState(GameState.Diagnosis, 'Diagnosis');
-    });
+    }, PALETTE.primary, 420, 84);
     addButton(
       root,
       'SwapButton',
       '换一例',
-      -205,
+      -200,
       () => {
         const next = CaseConfig.random(item.caseId);
         if (!next) {
@@ -66,16 +69,20 @@ export class CaseIntro extends Component {
         director.loadScene('CaseIntro');
       },
       PALETTE.secondary,
+      420,
+      84,
     );
     addButton(
       root,
       'BackButton',
       '返回大厅',
-      -290,
+      -305,
       () => {
         void goState(GameState.Lobby, 'Lobby');
       },
       PALETTE.secondary,
+      420,
+      84,
     );
     this.mountPet(item.petId);
   }

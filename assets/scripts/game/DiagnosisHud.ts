@@ -1,20 +1,19 @@
-// STATUS: implemented, W7 诊断小游戏共用倒计时与提示行（计时移到左上，避开微信胶囊）
+// STATUS: implemented, W16-2 诊断小游戏共用计时行（计时贴右、提示统一交给页面 Hint，避免两行文字叠在同一水线）
 import { Label, Node } from 'cc';
 import { addLabel, PALETTE } from '../ui/SceneUI';
-import { leftEdgeX } from '../ui/ScreenMetrics';
+import { rightEdgeX } from '../ui/ScreenMetrics';
+import { DIAGNOSIS_HUD_Y } from './DiagnosisLayout';
 
 export class DiagnosisHud {
   private readonly timer: Label;
-  private readonly hint: Label;
 
-  constructor(root: Node, prefix: string, hintText: string) {
-    this.timer = addLabel(root, `${prefix}Timer`, '', 330, {
+  constructor(root: Node, prefix: string, private readonly onHint: (text: string) => void) {
+    this.timer = addLabel(root, `${prefix}Timer`, '', DIAGNOSIS_HUD_Y, {
       size: 26,
       color: PALETTE.primary,
       width: 300,
-      x: leftEdgeX(150),
+      x: rightEdgeX(150),
     });
-    this.hint = addLabel(root, `${prefix}Hint`, hintText, -262, { size: 22, color: PALETTE.sub, width: 900 });
   }
 
   paint(msLeft: number): void {
@@ -22,6 +21,6 @@ export class DiagnosisHud {
   }
 
   setHint(text: string): void {
-    this.hint.string = text;
+    this.onHint(text);
   }
 }

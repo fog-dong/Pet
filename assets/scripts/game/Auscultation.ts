@@ -7,6 +7,7 @@ import { Quality } from '../config/Quality';
 import { addLabel, hexToColor, PALETTE } from '../ui/SceneUI';
 import { rightEdgeX } from '../ui/ScreenMetrics';
 import { AuscultationView, SpotView } from './AuscultationView';
+import { DIAGNOSIS_HUD_Y } from './DiagnosisLayout';
 import { AuscultationFinish, judgeStars } from './AuscultationScore';
 import { Track } from '../track/Track';
 
@@ -54,7 +55,7 @@ export class Auscultation extends Component {
     const pet = CharacterConfig.petById(item.petId);
     const bodyColor = pet ? hexToColor(pet.colors.sick, FALLBACK_BODY) : FALLBACK_BODY;
     this.view = new AuscultationView(this.node, bodyColor, layout, (spot) => this.onTap(spot));
-    this.timerLabel = addLabel(this.node, 'TimerLabel', '', 330, {
+    this.timerLabel = addLabel(this.node, 'TimerLabel', '', DIAGNOSIS_HUD_Y, {
       size: 28,
       color: PALETTE.primary,
       x: rightEdgeX(150),

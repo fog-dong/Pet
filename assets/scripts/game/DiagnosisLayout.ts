@@ -21,16 +21,23 @@ export interface DiagnosisLayout {
   step: Label;
 }
 
+/** 顶部三行各占一条独立水线，标题不再与小游戏计时/步骤挤在同一行。 */
+export const DIAGNOSIS_TITLE_Y = 450;
+export const DIAGNOSIS_PET_Y = 392;
+export const DIAGNOSIS_HUD_Y = 344;
+/** 提示行在小游戏棋盘（-230）之下、额外检查按钮（-350）之上。 */
+export const DIAGNOSIS_HINT_Y = -282;
+
 export function buildDiagnosisLayout(root: Node, petName: string, breed: string): DiagnosisLayout {
-  addLabel(root, 'PageTitle', '诊 断', 330, { size: 40 });
-  addLabel(root, 'PetName', `${petName} · ${breed}`, 288, {
-    size: 24, color: PALETTE.sub,
+  addLabel(root, 'PageTitle', '诊 断', DIAGNOSIS_TITLE_Y, { size: 40 });
+  addLabel(root, 'PetName', `${petName} · ${breed}`, DIAGNOSIS_PET_Y, {
+    size: 24, color: PALETTE.sub, width: 400,
   });
-  const step = addLabel(root, 'DiagnosisStep', '', 288, {
+  const step = addLabel(root, 'DiagnosisStep', '', DIAGNOSIS_HUD_Y, {
     size: 24, color: PALETTE.primary, width: 300, x: leftEdgeX(150),
   });
-  const hint = addLabel(root, 'Hint', '', -262, {
-    size: 24, color: PALETTE.sub, width: 900,
+  const hint = addLabel(root, 'Hint', '', DIAGNOSIS_HINT_Y, {
+    size: 24, color: PALETTE.sub, width: 620,
   });
   return { hint, step };
 }

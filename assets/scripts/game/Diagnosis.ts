@@ -72,7 +72,13 @@ export class Diagnosis extends Component {
     this.gameRoot = root;
     this.index = index;
     const kind = this.kinds[index];
-    this.game = spawnDiagnosis(root, kind, item, (result) => this.onGameFinished(index, result));
+    this.game = spawnDiagnosis(
+      root,
+      kind,
+      item,
+      (result) => this.onGameFinished(index, result),
+      (text) => this.setHint(text),
+    );
     this.paintStep();
     this.setHint(`${DIAGNOSIS_NAME[kind]}：${DIAGNOSIS_HINT[kind]}`);
   }

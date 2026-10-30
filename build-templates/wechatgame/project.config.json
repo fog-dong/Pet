@@ -1,7 +1,6 @@
 {
   "description": "项目配置文件。",
   "miniprogramRoot": "./",
-  "cloudfunctionRoot": "cloudfunctions/",
   "setting": {
     "urlCheck": true,
     "postcss": true,
@@ -19,5 +18,9 @@
     "conversation": { "current": -1, "list": [] },
     "game": { "currentL": -1, "list": [], "current": -1 },
     "miniprogram": { "current": -1, "list": [] }
+  },
+  "packOptions": {
+    "ignore": [{ "type": "folder", "value": "cloudfunctions" }],
+    "include": []
   }
 }

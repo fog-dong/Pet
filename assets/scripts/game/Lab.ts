@@ -36,13 +36,13 @@ export class Lab extends Component {
   private finished = false;
   private drag: LabDrag | null = null;
 
-  startWith(item: CaseConfigItem, onFinish: AuscultationFinish): void {
+  startWith(item: CaseConfigItem, onFinish: AuscultationFinish, setHint?: (text: string) => void): void {
     this.item = item;
     this.onFinish = onFinish;
     const plan = resolveLab(item);
     this.pairs = plan.pairs;
     const root = this.node;
-    this.hud = new DiagnosisHud(root, 'Lab', '拖动左侧样本，连到右侧正确的试剂');
+    this.hud = new DiagnosisHud(root, 'Lab', setHint ?? (() => undefined));
     this.dragLayer = buildDragLayer(root);
     this.reagents = buildColumn(root, plan.reagents, LAB_COL_RIGHT, PALETTE.accent, 'Reagent');
     this.samples = buildColumn(

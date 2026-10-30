@@ -33,10 +33,14 @@ export class NetworkClient {
     if (this.initialized) {
       return true;
     }
-    if (!isCloudEnabled() || !env) {
+    if (!isCloudEnabled() || !env || typeof wx === 'undefined' || !wx.cloud) {
       return false;
     }
-    wx.cloud.init({ env, traceUser: true });
+    try {
+      wx.cloud.init({ env, traceUser: true });
+    } catch {
+      return false;
+    }
     this.initialized = true;
     return true;
   }
@@ -48,6 +52,10 @@ export class NetworkClient {
   ): Promise<NetResponse<T>> {
     if (!name) {
       return this.failure<T>(NET_ERROR.BAD_RESPONSE, 'EMPTY_FUNCTION_NAME');
+    }
+    // 未 init 就 callFunction 会被微信 SDK 抛 SystemError（Cloud API isn't enabled），这里按断网处理。
+    if (!this.initialized) {
+      return this.failure<T>(NET_ERROR.NETWORK, 'NET_NOT_READY');
     }
 
     const timeoutMs = options.timeoutMs ?? 8000;
@@ -126,13 +134,9 @@ export class NetworkClient {
     return { code, msg, data, serverTime };
   }
 
-  private isRetryable(code: number): boolean {
-    return code < 0;
-  }
+  private isRetryable(code: number): boolean { return code < 0; }
 
-  private failure<T>(code: number, msg: string): NetResponse<T> {
-    return { code, msg, data: null };
-  }
+  private failure<T>(code: number, msg: string): NetResponse<T> { return { code, msg, data: null }; }
 
   private delay(attempt: number): Promise<void> {
     return new Promise((resolve) => {

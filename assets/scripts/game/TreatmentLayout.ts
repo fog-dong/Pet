@@ -31,12 +31,12 @@ export function buildTreatmentLayout(
   item: CaseConfigItem,
   handlers: TreatmentHandlers,
 ): TreatmentLayout {
-  addLabel(root, 'PageTitle', '治 疗', 330, { size: 42 });
-  addLabel(root, 'PetName', `${item.petName} · ${item.breed}`, 292, {
+  addLabel(root, 'PageTitle', '治 疗', 440, { size: 42 });
+  addLabel(root, 'PetName', `${item.petName} · ${item.breed}`, 388, {
     size: 26,
     color: PALETTE.sub,
   });
-  addLabel(root, 'StockLabel', '药品看按钮角标；床位不足可改门诊或免费腾床', 252, {
+  addLabel(root, 'StockLabel', '药品看按钮角标；床位不足可改门诊或免费腾床', 344, {
     size: 21,
     color: PALETTE.sub,
   });

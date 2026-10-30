@@ -24,7 +24,6 @@ interface SaveGameData {
 
 interface UserDoc {
   revision?: number;
-  resources?: Record<string, unknown>;
 }
 
 interface HospitalStateDoc {
@@ -85,11 +84,9 @@ export async function main(event: SaveGameEvent): Promise<CloudResponse<SaveGame
       await stateRef.set({ data: statePatch });
     }
 
-    const userPatch: Record<string, unknown> = { revision };
-    if (patch.resources) {
-      userPatch.resources = { ...(user.resources ?? {}), ...patch.resources, updatedAt: now };
-    }
-    await userRef.update({ data: userPatch });
+    // W15-1：users.resources 只由 syncCaseResult 在事务内按服务端配置入账。
+    // 客户端快照里的 resources 一律忽略：否则改本地存档即可直接改云端金币/爱心（W12-B 同源）。
+    await userRef.update({ data: { revision } });
 
     return ok<SaveGameData>({ revision, serverTime: now });
   });

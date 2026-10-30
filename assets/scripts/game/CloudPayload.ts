@@ -38,17 +38,15 @@ export function buildCaseSync(input: CaseSnapshot): CaseSyncInput {
   };
 }
 
-/** 只提交 saveGame 白名单字段（03 validate.ts），其余字段服务端保持原值。 */
+/**
+ * 只提交 saveGame 白名单字段（03 validate.ts），其余字段服务端保持原值。
+ * W15-1 起不再提交 resources：金币/爱心/道具的云端账本只由 syncCaseResult 写入，
+ * 客户端本地数值仅用于离线展示，不能作为服务端发放依据。
+ */
 export function buildSaveSnapshot(save: Readonly<SaveData>): Record<string, unknown> {
   return {
     level: 1,
     beds: save.bedsOwned,
     adoptionSlots: ADOPTION_BASE_SLOTS + save.slotBonus,
-    resources: {
-      coins: save.coins,
-      hearts: save.hearts,
-      beds: save.bedsOwned,
-      medicine: { ...save.medicines },
-    },
   };
 }

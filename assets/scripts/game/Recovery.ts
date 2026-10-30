@@ -69,15 +69,18 @@ export class Recovery extends Component {
   }
 
   private mountPet(petId: string): void {
-    void CharacterConfig.load().then(() => {
-      if (!this.isValid) {
-        return;
-      }
-      const view = CharacterView.mount(this.node, rightEdgeX(72), -30);
-      view.node.setScale(0.6, 0.6, 1);
-      view.showPet(petId, 'sick');
-      this.petView = view;
-    });
+    const view = CharacterView.mount(this.node, rightEdgeX(72), -30);
+    view.node.setScale(0.6, 0.6, 1);
+    view.showPet(petId, 'sick');
+    this.petView = view;
+    // 配置没就绪时先画兜底色块，加载完再重绘，别让进页有一段时间没有宠物。
+    if (!CharacterConfig.ready) {
+      void CharacterConfig.load().then(() => {
+        if (this.isValid) {
+          view.showPet(petId, 'sick');
+        }
+      });
+    }
   }
 
   protected update(deltaTime: number): void {

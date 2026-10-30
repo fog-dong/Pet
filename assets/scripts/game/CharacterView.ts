@@ -3,7 +3,7 @@ import { _decorator, Color, Component, Graphics, Label, Node, tween, Tween, UITr
 import { CharacterConfig } from '../config/CharacterConfig';
 import { Quality } from '../config/Quality';
 import { addLabel, hexToColor } from '../ui/SceneUI';
-import { BODY_SIZE, drawBody, FALLBACK_COLOR, mixColor, MOOD_ICON } from './CharacterLook';
+import { BODY_SIZE, drawAvatar, FALLBACK_COLOR, mixColor, MOOD_ICON } from './CharacterLook';
 import type { CharacterMood, CharacterShape } from './CharacterLook';
 import { warmArtBundle } from './ArtBundle';
 
@@ -142,7 +142,7 @@ export class CharacterView extends Component {
 
   private draw(color: Color, shape: CharacterShape): void {
     if (this.graphics) {
-      drawBody(this.graphics, color, shape);
+      drawAvatar(this.graphics, color, shape, BODY_SIZE);
     }
   }
 }

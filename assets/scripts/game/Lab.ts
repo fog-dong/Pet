@@ -2,7 +2,7 @@
 import { _decorator, Component, Graphics } from 'cc';
 import type { CaseConfigItem, CaseLabPair } from '../config/CaseConfig';
 import type { AuscultationFinish } from './AuscultationScore';
-import { judgeStars } from './AuscultationScore';
+import { buildResult } from './AuscultationScore';
 import {
   buildColumn,
   buildDragLayer,
@@ -14,6 +14,7 @@ import {
 } from './LabView';
 import { LabDrag } from './LabDrag';
 import { DiagnosisHud } from './DiagnosisHud';
+import { mountPetAvatar } from './PetPortrait';
 import { PALETTE } from '../ui/SceneUI';
 import { Track } from '../track/Track';
 
@@ -43,6 +44,8 @@ export class Lab extends Component {
     this.pairs = plan.pairs;
     const root = this.node;
     this.hud = new DiagnosisHud(root, 'Lab', setHint ?? (() => undefined));
+    // 左右两列卡片各贴边 200 宽，中间 260 宽的通道始终空着：宠物放这里，不挡拖拽判定。
+    mountPetAvatar(root, item.petId, 0, -20, 150);
     this.dragLayer = buildDragLayer(root);
     this.reagents = buildColumn(root, plan.reagents, LAB_COL_RIGHT, PALETTE.accent, 'Reagent');
     this.samples = buildColumn(
@@ -130,17 +133,9 @@ export class Lab extends Component {
       return;
     }
     this.finished = true;
-    const timeUsedMs = Math.round(TOTAL_MS - this.timeLeft);
-    const stars = completed ? judgeStars(this.mistakes, timeUsedMs, TOTAL_MS) : 0;
     this.hud?.setHint(completed ? '匹配上了，指标很清楚。' : '别急，可以重试或看广告获得提示。');
-    this.onFinish?.({
-      completed,
-      stars,
-      found: this.samples.filter((card) => card.matched).length,
-      total: this.samples.length,
-      mistakes: this.mistakes,
-      timeUsedMs,
-      totalMs: TOTAL_MS,
-    });
+    const found = this.samples.filter((card) => card.matched).length;
+    const timeUsedMs = Math.round(TOTAL_MS - this.timeLeft);
+    this.onFinish?.(buildResult(completed, found, this.samples.length, this.mistakes, timeUsedMs, TOTAL_MS));
   }
 }

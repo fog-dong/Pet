@@ -22,3 +22,22 @@ export function judgeStars(mistakes: number, timeUsedMs: number, totalMs: number
   }
   return 1;
 }
+
+export function buildResult(
+  completed: boolean,
+  found: number,
+  total: number,
+  mistakes: number,
+  timeUsedMs: number,
+  totalMs: number,
+): AuscultationResult {
+  return {
+    completed,
+    stars: completed ? judgeStars(mistakes, timeUsedMs, totalMs) : 0,
+    found,
+    total,
+    mistakes,
+    timeUsedMs,
+    totalMs,
+  };
+}

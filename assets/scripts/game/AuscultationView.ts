@@ -3,11 +3,13 @@ import { Color, Graphics, Label, Node, Tween, tween, Vec3 } from 'cc';
 import type { AuscultationLayout, AuscultationSpotDef } from '../config/AuscultationConfig';
 import { Quality } from '../config/Quality';
 import { addLabel, addRect, createNode, PALETTE } from '../ui/SceneUI';
+import { drawAvatar } from './CharacterLook';
+import type { CharacterShape } from './CharacterLook';
 
 const BOARD_W = 560;
 const BOARD_H = 460;
-const BODY_W = 320;
-const BODY_H = 380;
+/** 身体要盖住所有热区（最远 ±160），四周再留一点边，所以取 360。 */
+const BODY_SIZE = 360;
 const SPOT_RADIUS = 34;
 const SPOT_IDLE = new Color(255, 255, 255, 70);
 const SPOT_FOUND = new Color(127, 183, 126, 255);
@@ -29,15 +31,13 @@ export class AuscultationView {
   constructor(
     parent: Node,
     bodyColor: Color,
+    bodyShape: CharacterShape,
     layout: AuscultationLayout,
     onTap: (spot: SpotView) => void,
   ) {
     const board = addRect(parent, 'AuscultationBoard', 0, BOARD_W, BOARD_H, new Color(250, 246, 239, 255));
-    const body = createNode(board, 'Body', 10, BODY_W, BODY_H);
-    const graphics = body.addComponent(Graphics);
-    graphics.fillColor = bodyColor;
-    graphics.ellipse(0, 0, BODY_W / 2, BODY_H / 2);
-    graphics.fill();
+    const body = createNode(board, 'Body', 10, BODY_SIZE, BODY_SIZE);
+    drawAvatar(body.addComponent(Graphics), bodyColor, bodyShape, BODY_SIZE);
     layout.abnormal.forEach((def) => this.spots.push(this.build(body, def, true, onTap)));
     layout.distractors.forEach((def) => this.spots.push(this.build(body, def, false, onTap)));
     this.progress = addLabel(board, 'Progress', '', -BOARD_H / 2 + 30, {

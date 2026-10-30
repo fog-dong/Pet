@@ -8,7 +8,7 @@ import { addLabel, hexToColor, PALETTE } from '../ui/SceneUI';
 import { rightEdgeX } from '../ui/ScreenMetrics';
 import { AuscultationView, SpotView } from './AuscultationView';
 import { DIAGNOSIS_HUD_Y } from './DiagnosisLayout';
-import { AuscultationFinish, judgeStars } from './AuscultationScore';
+import { AuscultationFinish, buildResult } from './AuscultationScore';
 import { Track } from '../track/Track';
 
 const { ccclass } = _decorator;
@@ -53,8 +53,9 @@ export class Auscultation extends Component {
     this.audio = this.node.getComponent(AudioSource) ?? this.node.addComponent(AudioSource);
 
     const pet = CharacterConfig.petById(item.petId);
-    const bodyColor = pet ? hexToColor(pet.colors.sick, FALLBACK_BODY) : FALLBACK_BODY;
-    this.view = new AuscultationView(this.node, bodyColor, layout, (spot) => this.onTap(spot));
+    const bodyColor = pet ? hexToColor(pet.baseLook.color, FALLBACK_BODY) : FALLBACK_BODY;
+    const shape = pet ? pet.baseLook.shape : 'circle';
+    this.view = new AuscultationView(this.node, bodyColor, shape, layout, (spot) => this.onTap(spot));
     this.timerLabel = addLabel(this.node, 'TimerLabel', '', DIAGNOSIS_HUD_Y, {
       size: 28,
       color: PALETTE.primary,
@@ -62,11 +63,7 @@ export class Auscultation extends Component {
     });
     this.paintTimer(Math.ceil(this.timeLeft / 1000));
     this.paintProgress();
-    Track.track('diagnosis_start', {
-      caseId: item.caseId,
-      type: 'auscultation',
-      difficulty: item.diagnosisDifficulty,
-    });
+    Track.track('diagnosis_start', { caseId: item.caseId, type: 'auscultation', difficulty: item.diagnosisDifficulty });
   }
 
   /** 广告线索：点亮一个还没找到的异常点。 */
@@ -130,16 +127,7 @@ export class Auscultation extends Component {
       return;
     }
     const timeUsedMs = Math.round(layout.totalMs - this.timeLeft);
-    const stars = completed ? judgeStars(this.mistakes, timeUsedMs, layout.totalMs) : 0;
-    this.onFinish?.({
-      completed,
-      stars,
-      found: this.found,
-      total: layout.abnormal.length,
-      mistakes: this.mistakes,
-      timeUsedMs,
-      totalMs: layout.totalMs,
-    });
+    this.onFinish?.(buildResult(completed, this.found, layout.abnormal.length, this.mistakes, timeUsedMs, layout.totalMs));
   }
 
   private paintTimer(seconds: number): void {

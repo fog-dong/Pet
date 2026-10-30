@@ -1,3 +1,4 @@
+// GENERATED from validate.ts by npm run build -- do not edit
 "use strict";
 // STATUS: implemented
 // saveGame 快照校验：只接受白名单字段，数值必须为非负整数。

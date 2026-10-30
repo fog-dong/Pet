@@ -1,6 +1,8 @@
-// STATUS: implemented, W9-6 云开发数据库本地替身（主键冲突 / _.inc / 唯一索引冲突）
+// STATUS: implemented, W9-6 云开发数据库本地替身（主键冲突 / _.inc / 唯一索引冲突 / 事务串行）
 // API: createSdk(), sdk.resetState(), sdk.setOpenid() — 只服务 scripts/verify-idempotency.js
 'use strict';
+
+const { createRunTransaction } = require('./mock-cloud-transaction');
 
 const INC = Symbol('inc');
 
@@ -102,9 +104,14 @@ class MockCollection {
 function createSdk() {
   const store = new Map();
   const context = { OPENID: '' };
+  const runTransaction = createRunTransaction(store, {
+    clone: (value) => JSON.parse(JSON.stringify(value)),
+    applyPatch,
+  });
   const database = () => ({
     collection: (name) => new MockCollection(store, name),
     command: { inc: (n) => ({ [INC]: n }) },
+    runTransaction,
   });
   return {
     DYNAMIC_CURRENT_ENV: 'MOCK_ENV',
@@ -120,11 +127,7 @@ function createSdk() {
     },
     dump: () => [...store.entries()].map(([name, rows]) => `${name}=${rows.size}`),
     count: (name) => (store.get(name) ? store.get(name).size : 0),
-    firstFieldOf: (name, field) => {
-      const rows = store.get(name);
-      const first = rows ? rows.values().next().value : undefined;
-      return first ? first[field] : undefined;
-    },
+    rows: (name) => (store.get(name) ? [...store.get(name).values()] : []),
     fieldOf: (name, id, field) => {
       const row = store.get(name) ? store.get(name).get(id) : undefined;
       return row ? row[field] : undefined;

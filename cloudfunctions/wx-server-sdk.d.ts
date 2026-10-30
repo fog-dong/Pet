@@ -46,7 +46,7 @@ declare module 'wx-server-sdk' {
 
   export interface TransactionDocumentRef<T> {
     get(): Promise<{ data: T | null }>;
-    set(options: { data: Record<string, unknown> }): Promise<void>;
+    set(options: { data: T | Record<string, unknown> }): Promise<void>;
     update(options: { data: Record<string, unknown> }): Promise<void>;
   }
 

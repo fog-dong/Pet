@@ -7,10 +7,18 @@ export interface SaveData {
   bestStars: Record<string, number>;
   casesDone: number;
   items: Record<string, number>;
+  medicines: Record<string, number>;
+  bedsOwned: number;
+  bedsOccupied: number;
+  affection: Record<string, number>;
+  slotBonus: number;
 }
 
 /** 新档默认道具：听诊器电池 1 个，保证失败后有一条免费跳过路径。 */
 export const DEFAULT_ITEMS: Record<string, number> = { battery: 1 };
+
+/** 初始床位：2 张（05-治疗资源分配系统 §9）。 */
+export const DEFAULT_BEDS = 2;
 
 export function emptySave(): SaveData {
   return {
@@ -21,6 +29,11 @@ export function emptySave(): SaveData {
     bestStars: {},
     casesDone: 0,
     items: { ...DEFAULT_ITEMS },
+    medicines: {},
+    bedsOwned: DEFAULT_BEDS,
+    bedsOccupied: 0,
+    affection: {},
+    slotBonus: 0,
   };
 }
 
@@ -64,6 +77,11 @@ export function decodeSave(raw: string | null): SaveData {
       bestStars: toNumberMap(parsed.bestStars),
       casesDone: toNumber(parsed.casesDone, 0),
       items: parsed.items ? toNumberMap(parsed.items) : { ...DEFAULT_ITEMS },
+      medicines: toNumberMap(parsed.medicines),
+      bedsOwned: Math.max(1, toNumber(parsed.bedsOwned, DEFAULT_BEDS)),
+      bedsOccupied: Math.max(0, toNumber(parsed.bedsOccupied, 0)),
+      affection: toNumberMap(parsed.affection),
+      slotBonus: Math.max(0, toNumber(parsed.slotBonus, 0)),
     };
   } catch {
     return emptySave();

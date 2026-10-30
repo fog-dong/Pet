@@ -1,7 +1,7 @@
 // STATUS: implemented, W3 启动流程（云不可用时走本地 fallback，不阻塞进厅）
 // 流程：加载病例配置 → 初始化云环境 → login → getConfig → Login → Lobby
 import { _decorator, Component, director } from 'cc';
-import { GameState, gameFSM } from './GameFSM';
+import { GameState, chainAllowed, gameFSM } from './GameFSM';
 import { Net } from '../net/Net';
 import { CaseConfig } from '../config/CaseConfig';
 import { CharacterConfig } from '../config/CharacterConfig';
@@ -43,6 +43,7 @@ export class Boot extends Component {
     if (!casesReady) {
       Track.track('boot_cases_missing');
     }
+    Track.track('fsm_chain_check', { ok: chainAllowed() });
 
     if (!Net.init(CLOUD_ENV)) {
       // ENV_PLACEHOLDER：W3 不部署云函数，直接走本地模式。

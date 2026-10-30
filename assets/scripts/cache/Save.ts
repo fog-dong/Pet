@@ -32,6 +32,17 @@ export class SaveStore {
     return this.data.items;
   }
 
+  /** 只读快照：医院资源等域模块读库存用。 */
+  snapshot(): Readonly<SaveData> {
+    return this.data;
+  }
+
+  /** 写入一次并落盘：域模块（药品/床位/好感度/领养位）统一走这里。 */
+  mutate(apply: (data: SaveData) => void): void {
+    apply(this.data);
+    this.persist();
+  }
+
   addCoins(amount: number): void {
     this.data.coins = Math.max(0, this.data.coins + Math.round(amount));
     this.persist();

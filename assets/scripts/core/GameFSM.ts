@@ -33,6 +33,28 @@ export const FSM_WHITELIST: Readonly<Record<GameState, readonly GameState[]>> = 
   [GameState.Fatal]: [],
 };
 
+/** 单局完整链路：Boot→…→Result→Lobby，供白名单自检。 */
+export const CASE_CHAIN: readonly GameState[] = [
+  GameState.Boot,
+  GameState.Login,
+  GameState.Lobby,
+  GameState.CaseIntro,
+  GameState.Diagnosis,
+  GameState.Treatment,
+  GameState.Recovery,
+  GameState.Adoption,
+  GameState.Result,
+  GameState.Lobby,
+];
+
+/** 任一段不在白名单即返回 false；非法跳转由 transition 直接拦截并埋点。 */
+export function chainAllowed(chain: readonly GameState[] = CASE_CHAIN): boolean {
+  return chain.every(
+    (state, index) => index === 0 || FSM_WHITELIST[chain[index - 1]].includes(state),
+  );
+}
+
+
 export class GameFSM {
   private current: GameState = GameState.Boot;
   private switching = false;

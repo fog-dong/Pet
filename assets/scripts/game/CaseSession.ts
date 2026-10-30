@@ -1,73 +1,59 @@
-// STATUS: implemented, W3 单局会话（病例上下文 + 结算）
+// STATUS: implemented, W3 单局会话（病例上下文 + 评分收集 + 结算委托）
 import type { CaseConfigItem } from '../config/CaseConfig';
 import { Save } from '../cache/Save';
+import { Hospital } from './Hospital';
 import { Track } from '../track/Track';
-
-export interface DiagnosisResult {
-  stars: number;
-  mistakes: number;
-  durationMs: number;
-  retryCount: number;
-}
-
-export interface TreatmentResult {
-  medicine: string;
-  bed: string;
-  time: string;
-  score: number;
-  success: boolean;
-}
-
-export interface CaseReward {
-  stars: number;
-  coins: number;
-  hearts: number;
-  affection: number;
-  firstClear: boolean;
-  durationMs: number;
-}
-
-const STAR_RATE = [0, 0.5, 0.8, 1];
-
-function newSessionId(): string {
-  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
-}
+import { affectionGain, recoverySeconds, recoveryStars, treatmentStars } from './CaseScore';
+import {
+  CaseReward,
+  DiagnosisResult,
+  RecoveryResult,
+  TreatmentResult,
+  emptyReward,
+  settleCase,
+  trackCaseComplete,
+} from './CaseSettle';
 
 export class CaseSessionStore {
   private item: CaseConfigItem | null = null;
-  private sessionId = '';
   private startedAt = 0;
   private diagnosisStartedAt = 0;
   private diagnosis: DiagnosisResult | null = null;
   private treatment: TreatmentResult | null = null;
+  private recovery: RecoveryResult | null = null;
   private reward: CaseReward | null = null;
   private retryCount = 0;
+  private affection = 0;
   adopted = false;
 
   get current(): CaseConfigItem | null {
     return this.item;
   }
 
-  get caseSessionId(): string {
-    return this.sessionId;
-  }
-
   get diagnosisDurationMs(): number {
     return this.diagnosisStartedAt > 0 ? Date.now() - this.diagnosisStartedAt : 0;
   }
 
+  /** 康复时长由治疗阶段的时间选择决定（正常 14 秒 / 加速 9 秒）。 */
+  get plannedRecoverySeconds(): number {
+    return this.treatment ? recoverySeconds(this.treatment.time) : recoverySeconds('正常');
+  }
+
   start(item: CaseConfigItem): void {
     this.item = item;
-    this.sessionId = newSessionId();
     this.startedAt = Date.now();
     this.diagnosisStartedAt = 0;
     this.diagnosis = null;
     this.treatment = null;
+    this.recovery = null;
     this.reward = null;
     this.retryCount = 0;
+    this.affection = 0;
     this.adopted = false;
     Save.load();
     Save.markSeen(item.petId);
+    Hospital.seedMedicines(item.treatment.medicine);
+    Hospital.resetBeds();
     Track.track('case_start', {
       caseId: item.caseId,
       petId: item.petId,
@@ -87,9 +73,8 @@ export class CaseSessionStore {
   finishDiagnosis(stars: number, mistakes: number, timeUsedMs = 0): void {
     const durationMs = timeUsedMs > 0 ? timeUsedMs : this.diagnosisDurationMs;
     this.diagnosis = { stars, mistakes, durationMs, retryCount: this.retryCount };
-    const item = this.item;
     Track.track('diagnosis_result', {
-      caseId: item ? item.caseId : '',
+      caseId: this.item ? this.item.caseId : '',
       stars,
       mistakes,
       timeUsed: durationMs,
@@ -99,14 +84,33 @@ export class CaseSessionStore {
   }
 
   finishTreatment(medicine: string, bed: string, time: string, score: number): void {
-    const success = score >= 2;
+    const success = treatmentStars(score) > 0;
     this.treatment = { medicine, bed, time, score, success };
-    const item = this.item;
     Track.track('treatment_result', {
-      caseId: item ? item.caseId : '',
+      caseId: this.item ? this.item.caseId : '',
       success,
       score,
-      duration: this.startedAt > 0 ? Date.now() - this.startedAt : 0,
+      bed,
+      medicine,
+    });
+  }
+
+  /** 康复结束即结算好感度，领养页据此判断门槛。 */
+  finishRecovery(elapsedMs: number, totalMs: number): void {
+    const stars = recoveryStars(elapsedMs, totalMs);
+    this.recovery = { elapsedMs, totalMs, stars };
+    const item = this.item;
+    if (!item) {
+      return;
+    }
+    const score = this.treatment ? this.treatment.score : 0;
+    this.affection = affectionGain(item.baseRewards.affection, score, stars);
+    Hospital.addAffection(item.petId, this.affection);
+    Track.track('recovery_result', {
+      caseId: item.caseId,
+      stars,
+      elapsed: elapsedMs,
+      total: totalMs,
     });
   }
 
@@ -115,52 +119,24 @@ export class CaseSessionStore {
     if (this.reward) {
       return this.reward;
     }
+    const durationMs = this.startedAt > 0 ? Date.now() - this.startedAt : 0;
     const item = this.item;
-    const empty: CaseReward = {
-      stars: 0,
-      coins: 0,
-      hearts: 0,
-      affection: 0,
-      firstClear: false,
-      durationMs: this.startedAt > 0 ? Date.now() - this.startedAt : 0,
-    };
-    if (!item || !this.treatment || !this.treatment.success) {
-      this.reward = empty;
-      this.trackResult(item ? item.caseId : '', empty);
-      return this.reward;
+    const treatment = this.treatment;
+    if (!item || !treatment || !treatment.success) {
+      this.reward = emptyReward(this.adopted, durationMs);
+    } else {
+      this.reward = settleCase({
+        item,
+        diagnosis: this.diagnosis,
+        treatment,
+        recovery: this.recovery,
+        affection: this.affection,
+        adopted: this.adopted,
+        durationMs,
+      });
     }
-
-    const diagnosisStars = this.diagnosis ? this.diagnosis.stars : 0;
-    const treatmentStars = this.treatment.score >= 3 ? 3 : 2;
-    const stars = Math.max(1, Math.min(diagnosisStars, treatmentStars));
-    const rate = STAR_RATE[stars] ?? 0.5;
-    const base = item.baseRewards;
-    const firstClear = Save.recordStars(item.caseId, stars);
-    const coins = Math.round(base.coins * rate * (firstClear ? 1.5 : 1));
-    const hearts = Math.round(base.hearts * rate);
-    Save.addCoins(coins);
-    Save.addHearts(hearts);
-
-    this.reward = {
-      stars,
-      coins,
-      hearts,
-      affection: base.affection,
-      firstClear,
-      durationMs: empty.durationMs,
-    };
-    this.trackResult(item.caseId, this.reward);
+    trackCaseComplete(item, this.reward);
     return this.reward;
-  }
-
-  private trackResult(caseId: string, reward: CaseReward): void {
-    Track.track('case_result', {
-      caseId,
-      stars: reward.stars,
-      coins: reward.coins,
-      hearts: reward.hearts,
-      duration: reward.durationMs,
-    });
   }
 }
 

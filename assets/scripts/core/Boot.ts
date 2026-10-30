@@ -1,5 +1,5 @@
 // STATUS: implemented, W8-5 启动流程（首帧后先要隐私同意，再拉配置与云端同步，同意后才进厅）
-import { _decorator, Component, director, Node } from 'cc';
+import { _decorator, Component, profiler } from 'cc';
 import { DEBUG } from 'cc/env';
 import { GameState, chainAllowed, gameFSM } from './GameFSM';
 import { goState } from './SceneFlow';
@@ -14,7 +14,6 @@ import { CONFIG_BUNDLE } from '../config/ConfigLoader';
 import { BUNDLE_TIMEOUT_MS } from '../config/BundleConfig';
 import { CLOUD_ENV } from '../config/EnvConfig';
 import { LEGAL_VERSION } from '../config/LegalConfig';
-import { DebugPanel } from '../ui/DebugPanel';
 import { openPrivacyDialog } from '../ui/PrivacyDialog';
 import { addLabel, PALETTE } from '../ui/SceneUI';
 import { Track } from '../track/Track';
@@ -42,19 +41,11 @@ export class Boot extends Component {
     Track.start();
     WxPrivacy.register();
     addLabel(this.node, 'BootLoading', '正在准备诊疗室…', 0, { size: 32, color: PALETTE.panel });
-    this.mountDebugPanel();
-    void this.bootstrap();
-  }
-
-  /** 只在 DEBUG 构建挂载性能面板；release 构建整段不执行。 */
-  private mountDebugPanel(): void {
-    if (!DEBUG) {
-      return;
+    // 调试浮层只用引擎自带 profiler：脚本层不留自定义面板，避免未使用的类被打进发布包。
+    if (DEBUG) {
+      profiler.showStats();
     }
-    const node = new Node('DebugPanel');
-    director.getScene()?.addChild(node);
-    director.addPersistRootNode(node);
-    node.addComponent(DebugPanel);
+    void this.bootstrap();
   }
 
   private async bootstrap(): Promise<void> {

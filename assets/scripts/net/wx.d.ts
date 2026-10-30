@@ -19,14 +19,6 @@ interface WxShareOptions {
   query?: string;
 }
 
-interface WxPerformanceMemory {
-  usedJSHeapSize?: number;
-}
-
-interface WxPerformance {
-  memory?: WxPerformanceMemory;
-}
-
 interface WxRewardedVideoAdCloseResult {
   isEnded?: boolean;
 }
@@ -62,7 +54,6 @@ interface WxPrivacyApiOptions {
 interface WxApi {
   cloud: WxCloudApi;
   shareAppMessage(options: WxShareOptions): void;
-  getPerformance?(): WxPerformance;
   createRewardedVideoAd?(options: { adUnitId: string }): WxRewardedVideoAd;
   requirePrivacyAuthorize?(options: WxPrivacyApiOptions): void;
   onNeedPrivacyAuthorization?(callback: (resolve: WxPrivacyResolve, eventInfo?: unknown) => void): void;

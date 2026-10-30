@@ -77,8 +77,14 @@ export const PRIVACY_SYNCING_TEXT = '正在同步本地结算…';
 export const MEDICAL_DISCLAIMER_TEXT =
   '本游戏为虚构的宠物医院模拟玩法，所有诊断、用药与治疗均为游戏设定，不构成任何医疗或兽医建议。';
 
+/**
+ * 适龄等级唯一数据源：必须与微信公众平台「适龄提示」设置同一数值。
+ * 自绘行只复用此常量、不模仿平台图标样式，避免两个不同样式的标识造成混淆。
+ */
+export const AGE_RATING = '8+';
+
 /** 适龄提示 + 健康游戏忠告全文：启动页底部常驻，提审口径按平台要求整体展示。 */
-export const AGE_RATING_TEXT = '适龄提示：8+';
+export const AGE_RATING_TEXT = `适龄提示：${AGE_RATING}`;
 export const HEALTH_GAME_NOTICE_TEXT =
   '抵制不良游戏，拒绝盗版游戏。注意自我保护，谨防受骗上当。适度游戏益脑，沉迷游戏伤身。合理安排时间，享受健康生活。';
 

@@ -1,9 +1,12 @@
-// STATUS: implemented, W3 启动流程（云不可用时走本地 fallback，不阻塞进厅）
-// 流程：加载病例配置 → 初始化云环境 → login → getConfig → Login → Lobby
+// STATUS: implemented, W5 启动流程（云不可用时走本地 fallback，不阻塞进厅；登录后补发队列）
+// 流程：加载病例配置 → 初始化云环境 → login → getConfig → 补发待同步 → Login → Lobby
 import { _decorator, Component, director } from 'cc';
 import { GameState, chainAllowed, gameFSM } from './GameFSM';
 import { Res } from './Res';
 import { Net } from '../net/Net';
+import { Session } from '../net/Session';
+import { flushPending } from '../net/SyncCaseResult';
+import { retryPendingSave } from '../net/CloudSave';
 import { CaseConfig } from '../config/CaseConfig';
 import { CharacterConfig } from '../config/CharacterConfig';
 import { CONFIG_BUNDLE } from '../config/ConfigLoader';
@@ -72,6 +75,9 @@ export class Boot extends Component {
     if (config.code !== 0) {
       Track.track('boot_config_failed', { code: config.code });
     }
+    Session.set(login.data.token);
+    void flushPending();
+    void retryPendingSave();
     await this.enterLobby();
   }
 

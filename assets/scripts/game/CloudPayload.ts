@@ -1,0 +1,54 @@
+// STATUS: implemented, W5 上报入参组装（病例结果 + 存档快照，字段取自冻结清单 §2.3/§2.4）
+import type { CaseConfigItem } from '../config/CaseConfig';
+import type { SaveData } from '../cache/SaveCodec';
+import type { CaseSyncInput } from '../net/SyncCaseResult';
+import type { DiagnosisResult, TreatmentResult } from './CaseSettle';
+import { ADOPTION_BASE_SLOTS } from './Hospital';
+
+export interface CaseSnapshot {
+  sessionId: string;
+  item: CaseConfigItem;
+  diagnosis: DiagnosisResult | null;
+  treatment: TreatmentResult;
+  durationMs: number;
+}
+
+function toDiagnosisType(raw: string): 'auscultation' | 'xray' | 'lab' {
+  return raw === 'xray' || raw === 'lab' ? raw : 'auscultation';
+}
+
+export function buildCaseSync(input: CaseSnapshot): CaseSyncInput {
+  const { item, diagnosis, treatment } = input;
+  return {
+    caseSessionId: input.sessionId,
+    caseId: item.caseId,
+    diagnosis: {
+      type: toDiagnosisType(item.diagnosisTypes?.[0] ?? item.diagnosisType),
+      stars: diagnosis ? diagnosis.stars : 0,
+      mistakes: diagnosis ? diagnosis.mistakes : 0,
+      durationMs: diagnosis ? diagnosis.durationMs : 0,
+    },
+    treatment: {
+      result: treatment.success ? (treatment.score >= 3 ? 'success' : 'partial') : 'fail',
+      medicineUsed: treatment.medicine ? [treatment.medicine] : [],
+      bedUsed: treatment.bed === '住院',
+      healing: treatment.score,
+    },
+    durationMs: input.durationMs,
+  };
+}
+
+/** 只提交 saveGame 白名单字段（03 validate.ts），其余字段服务端保持原值。 */
+export function buildSaveSnapshot(save: Readonly<SaveData>): Record<string, unknown> {
+  return {
+    level: 1,
+    beds: save.bedsOwned,
+    adoptionSlots: ADOPTION_BASE_SLOTS + save.slotBonus,
+    resources: {
+      coins: save.coins,
+      hearts: save.hearts,
+      beds: save.bedsOwned,
+      medicine: { ...save.medicines },
+    },
+  };
+}

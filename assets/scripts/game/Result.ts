@@ -5,9 +5,12 @@ import type { CaseReward } from './CaseSettle';
 import { Save } from '../cache/Save';
 import { AdQuota, adButtonText } from '../cache/AdQuota';
 import { showAd } from '../net/AdGateway';
+import { pushHint, pushSave } from '../net/CloudSave';
+import { syncCaseResult } from '../net/SyncCaseResult';
 import { GameState } from '../core/GameFSM';
 import { goState } from '../core/SceneFlow';
 import { addButton, addLabel, PALETTE, setButtonState } from '../ui/SceneUI';
+import { buildSaveSnapshot } from './CloudPayload';
 
 const { ccclass } = _decorator;
 
@@ -26,6 +29,7 @@ export class Result extends Component {
   private rewardLabel: Label | null = null;
   private totalLabel: Label | null = null;
   private doubleButton: Button | null = null;
+  private syncHint: Label | null = null;
   private doubled = false;
 
   protected start(): void {
@@ -92,6 +96,19 @@ export class Result extends Component {
     addButton(root, 'LobbyButton', '下一例', -300, () => {
       void goState(GameState.Lobby, 'Lobby');
     });
+    this.syncHint = addLabel(root, 'SyncHint', '', -238, { size: 18, color: PALETTE.sub });
+    void this.sync(reward);
+  }
+
+  private async sync(reward: CaseReward): Promise<void> {
+    const input = CaseSession.report(reward.durationMs);
+    if (input) {
+      await syncCaseResult(input);
+    }
+    const pushed = await pushSave(buildSaveSnapshot(Save.snapshot()));
+    if (this.isValid && this.syncHint) {
+      this.syncHint.string = pushHint(pushed);
+    }
   }
 
   private refreshDouble(): void {

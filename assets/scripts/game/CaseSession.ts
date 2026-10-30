@@ -1,8 +1,11 @@
-// STATUS: implemented, W3 单局会话（病例上下文 + 评分收集 + 结算委托）
+// STATUS: implemented, W5 单局会话（病例上下文 + 评分收集 + 上报快照）
 import type { CaseConfigItem } from '../config/CaseConfig';
+import type { CaseSyncInput } from '../net/SyncCaseResult';
 import { Save } from '../cache/Save';
 import { Hospital } from './Hospital';
 import { Track } from '../track/Track';
+import { buildCaseSync } from './CloudPayload';
+import { trackDiagnosis, trackRecovery, trackTreatment } from './CaseTrack';
 import { affectionGain, recoverySeconds, recoveryStars, treatmentStars } from './CaseScore';
 import {
   CaseReward,
@@ -24,6 +27,7 @@ export class CaseSessionStore {
   private reward: CaseReward | null = null;
   private retryCount = 0;
   private affection = 0;
+  private sid = '';
   adopted = false;
 
   get current(): CaseConfigItem | null {
@@ -41,6 +45,7 @@ export class CaseSessionStore {
 
   start(item: CaseConfigItem): void {
     this.item = item;
+    this.sid = `${item.caseId}_${Date.now().toString(36)}`;
     this.startedAt = Date.now();
     this.diagnosisStartedAt = 0;
     this.diagnosis = null;
@@ -73,26 +78,13 @@ export class CaseSessionStore {
   finishDiagnosis(stars: number, mistakes: number, timeUsedMs = 0): void {
     const durationMs = timeUsedMs > 0 ? timeUsedMs : this.diagnosisDurationMs;
     this.diagnosis = { stars, mistakes, durationMs, retryCount: this.retryCount };
-    Track.track('diagnosis_result', {
-      caseId: this.item ? this.item.caseId : '',
-      stars,
-      mistakes,
-      timeUsed: durationMs,
-      duration: durationMs,
-      retryCount: this.retryCount,
-    });
+    trackDiagnosis(this.item ? this.item.caseId : '', this.diagnosis);
   }
 
   finishTreatment(medicine: string, bed: string, time: string, score: number): void {
     const success = treatmentStars(score) > 0;
     this.treatment = { medicine, bed, time, score, success };
-    Track.track('treatment_result', {
-      caseId: this.item ? this.item.caseId : '',
-      success,
-      score,
-      bed,
-      medicine,
-    });
+    trackTreatment(this.item ? this.item.caseId : '', this.treatment);
   }
 
   /** 康复结束即结算好感度，领养页据此判断门槛。 */
@@ -106,12 +98,18 @@ export class CaseSessionStore {
     const score = this.treatment ? this.treatment.score : 0;
     this.affection = affectionGain(item.baseRewards.affection, score, stars);
     Hospital.addAffection(item.petId, this.affection);
-    Track.track('recovery_result', {
-      caseId: item.caseId,
-      stars,
-      elapsed: elapsedMs,
-      total: totalMs,
-    });
+    trackRecovery(item.caseId, this.recovery);
+  }
+
+  /** Result 结算后调用：服务端会按 diagnosis/treatment 重算星级与奖励。 */
+  report(durationMs: number): CaseSyncInput | null {
+    const item = this.item;
+    const treatment = this.treatment;
+    if (!item || !treatment) {
+      return null;
+    }
+    const { diagnosis } = this;
+    return buildCaseSync({ sessionId: this.sid, item, diagnosis, treatment, durationMs });
   }
 
   /** 进入 Result 前调用一次，重复调用返回同一份结算，保证幂等。 */

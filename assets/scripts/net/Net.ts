@@ -1,4 +1,4 @@
-// STATUS: scaffold, API frozen by architect on 2026-10-29
+// STATUS: implemented, W5 真实云函数调用（8s 超时 + 2 次重试 + 失败返回错误码不抛错）
 // API: Net.call, see docs/plan/接口冻结清单.md §1
 
 export interface NetResponse<T> {
@@ -22,6 +22,11 @@ export const NET_ERROR = {
 
 export class NetworkClient {
   private initialized = false;
+
+  /** 云端可用时才允许补发队列，避免本地模式下反复失败。 */
+  get ready(): boolean {
+    return this.initialized;
+  }
 
   init(env: string): boolean {
     if (this.initialized) {

@@ -35,3 +35,6 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
+
+# 图像生成中间产物（本地草稿，不入库）
+vibe_images/

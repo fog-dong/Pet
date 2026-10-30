@@ -1,5 +1,5 @@
-// STATUS: implemented, W9-6 云函数幂等本地回归（不连真实云环境）；W11-1 拆成 runner + 用例模块；W12-1 加事务重试用例
-// API: npm run verify:idempotency — 顺序 [1]-[3] + 并发 [4]-[7] + 事务重试 [8]-[12]，输出实际返回值与判定
+// STATUS: implemented, W9-6 云函数幂等本地回归（不连真实云环境）；W11-1 拆成 runner + 用例模块；W12-1 加事务重试用例；W12-3 加服务端结算用例
+// API: npm run verify:idempotency — 顺序 [1]-[3] + 并发 [4]-[7] + 事务重试 [8]-[12] + 结算 [13]-[14]，输出实际返回值与判定
 'use strict';
 
 const path = require('path');
@@ -8,6 +8,7 @@ const { createSdk } = require('./mock-cloud-db');
 const { createSequentialCases } = require('./verify-cases');
 const { createRaceCases } = require('./verify-cases-race');
 const { createTransactionCases } = require('./verify-cases-transaction');
+const { createSettleCases } = require('./verify-cases-settle');
 
 const sdk = createSdk();
 const originalLoad = Module._load;
@@ -46,7 +47,12 @@ function show(label, response) {
 async function main() {
   results.push('幂等回归（本地 mock db，未连接任何云环境）');
   const ctx = { sdk, loadFunction, shanghaiDate, check, show, results };
-  const cases = [...createSequentialCases(ctx), ...createRaceCases(ctx), ...createTransactionCases(ctx)];
+  const cases = [
+    ...createSequentialCases(ctx),
+    ...createRaceCases(ctx),
+    ...createTransactionCases(ctx),
+    ...createSettleCases(ctx),
+  ];
   for (const item of cases) {
     results.push(item.title);
     await item.run();

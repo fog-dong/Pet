@@ -1,6 +1,8 @@
-// STATUS: implemented, W9-6 顺序重试用例（W11-1 从 verify-idempotency.js 拆出，断言不变）
+// STATUS: implemented, W9-6 顺序重试用例（W11-1 从 verify-idempotency.js 拆出；W12-3 改为服务端结算断言）
 // API: createSequentialCases(ctx) → [{ title, run }]
 'use strict';
+
+const { seedCaseFixture, CASE_ID, SESSION_ONE } = require('./verify-cases-settle');
 
 function createSequentialCases(ctx) {
   const { sdk, loadFunction, shanghaiDate, check, show, results } = ctx;
@@ -8,12 +10,13 @@ function createSequentialCases(ctx) {
   async function syncCaseResult() {
     sdk.resetState();
     sdk.setOpenid('user_case');
+    await seedCaseFixture(sdk, 'user_case');
     const fn = loadFunction('syncCaseResult');
     const event = {
-      caseSessionId: 'session-fixed-0001',
-      caseId: 'case_cat_cold',
-      diagnosis: { disease: 'cold', correct: true },
-      treatment: { steps: 3, correct: true },
+      caseSessionId: SESSION_ONE,
+      caseId: CASE_ID,
+      diagnosis: { type: 'auscultation', stars: 3, mistakes: 0, durationMs: 18000 },
+      treatment: { result: 'success', medicineUsed: ['健胃药'], bedUsed: false, healing: 3 },
       durationMs: 42000,
     };
     const calls = [];
@@ -23,9 +26,16 @@ function createSequentialCases(ctx) {
       show(`第 ${i + 1} 次`, response);
     }
     const same = calls.every((r) => JSON.stringify(r.data) === JSON.stringify(calls[0].data) && r.code === calls[0].code);
-    check('三次返回一致', same);
-    check('未产生任何写入（结算尚未实现，返回空结构）', sdk.dump().join(',') === '', sdk.dump().join(',') || '写入 0 个文档');
-    results.push('    注：syncCaseResult 仍是校验骨架，不发奖、不写库；金币结算落地后本用例改为断言“只第一次发奖”。');
+    check('三次都 code=0 且返回一致', same && calls[0].code === 0, `code=${calls.map((r) => r.code).join(',')}`);
+    check('第 1 次发奖：firstClear=true、2 星、72 金币 / 2 爱心',
+      calls[0].data.result.firstClear === true && calls[0].data.result.stars === 2
+      && calls[0].data.rewards.coins === 72 && calls[0].data.rewards.hearts === 2,
+    `firstClear=${calls[0].data.result.firstClear} stars=${calls[0].data.result.stars}`);
+    check('只第一次发奖：金币 100+72=172、爱心 5+2=7',
+      calls[2].data.resources.coins === 172 && calls[2].data.resources.hearts === 7,
+    `coins=${calls[2].data.resources.coins} hearts=${calls[2].data.resources.hearts}`);
+    check('只写 1 条 pets_cases（重复上报不落第二行）', sdk.count('pets_cases') === 1, `实际 ${sdk.count('pets_cases')} 条`);
+    results.push('    注：结算已在服务端完成（W12-3），重放命中 pets_cases 现有文档，回放历史结果且不再入账。');
   }
 
   async function assist() {

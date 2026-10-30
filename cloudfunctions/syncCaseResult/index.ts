@@ -1,6 +1,11 @@
-// STATUS: scaffold, API frozen by architect on 2026-10-29
+// STATUS: implemented, W12-3 服务端结算（配置驱动重算 + 事务幂等发奖）
 // API: syncCaseResult, see docs/plan/接口冻结清单.md §2.4
 import * as cloud from 'wx-server-sdk';
+import { readCaseCatalog } from './cases';
+import { isInt } from './guard';
+import { settleCaseResult } from './settle';
+import type { CaseConfigItem, CaseRewards, CaseResultSummary } from './types';
+import { readDiagnosis, readTreatment } from './validate';
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 
@@ -20,10 +25,23 @@ interface SyncCaseResultEvent {
 }
 
 interface SyncCaseResultData {
-  result: null;
-  rewards: null;
-  resources: null;
+  result: CaseResultSummary;
+  rewards: CaseRewards;
+  resources: Record<string, unknown>;
 }
+
+interface ConfigDoc {
+  configKey?: string;
+  version?: number;
+  payload?: unknown;
+}
+
+const MAX_ID_LENGTH = 64;
+const MAX_DURATION_MS = 24 * 3600 * 1000;
+const MAX_CONFIG_DOCS = 100;
+/** 事务冲突重试耗尽：可安全重试，客户端按补发队列下次再发。 */
+const RETRY_EXHAUSTED_CODE = 1006;
+const INVALID_STATE_CODE = 2002;
 
 function ok<T>(data: T): CloudResponse<T> {
   return { code: 0, msg: 'ok', data, serverTime: Date.now() };
@@ -33,38 +51,87 @@ function fail<T>(code: number, msg: string): CloudResponse<T> {
   return { code, msg, data: null, serverTime: Date.now() };
 }
 
-export async function main(
-  event: SyncCaseResultEvent,
-): Promise<CloudResponse<SyncCaseResultData>> {
+/**
+ * SDK 只对事务冲突自动重试（默认 3 次），耗尽后抛出的仍是冲突类错误。
+ * 其余异常（权限、网络）不上报 1006，原样上抛交给平台日志与客户端重试。
+ */
+function isTransactionConflict(error: unknown): boolean {
+  const source = error as { errCode?: unknown; code?: unknown; message?: unknown };
+  const markers = [source.errCode, source.code, source.message]
+    .filter((value): value is string => typeof value === 'string')
+    .join(' ')
+    .toUpperCase();
+  return markers.includes('CONFLICT') || markers.includes('TRANSACTION');
+}
+
+/** 与 getConfig 同口径：`config` 集合取 `configKey='cases'` 的最高 active 版本。 */
+async function loadCaseCatalog(): Promise<Map<string, CaseConfigItem> | null> {
+  const result = await cloud
+    .database()
+    .collection<ConfigDoc>('config')
+    .where({ status: 'active' })
+    .limit(MAX_CONFIG_DOCS)
+    .get();
+  let latest: ConfigDoc | null = null;
+  for (const doc of result.data) {
+    if (doc.configKey !== 'cases') {
+      continue;
+    }
+    if (!latest || (doc.version ?? -1) > (latest.version ?? -1)) {
+      latest = doc;
+    }
+  }
+  return latest ? readCaseCatalog(latest.payload) : null;
+}
+
+export async function main(event: SyncCaseResultEvent): Promise<CloudResponse<SyncCaseResultData>> {
   const { OPENID } = cloud.getWXContext();
   if (!OPENID) {
     return fail<SyncCaseResultData>(1001, 'SESSION_INVALID');
   }
 
-  const caseSessionId = event.caseSessionId;
-  const caseId = event.caseId;
-  if (typeof caseSessionId !== 'string' || caseSessionId.length === 0) {
+  const { caseSessionId, caseId, durationMs } = event;
+  if (typeof caseSessionId !== 'string' || caseSessionId.length === 0 || caseSessionId.length > MAX_ID_LENGTH) {
     return fail<SyncCaseResultData>(1002, 'INVALID_PARAM');
   }
-  if (typeof caseId !== 'string' || caseId.length === 0) {
+  if (typeof caseId !== 'string' || caseId.length === 0 || caseId.length > MAX_ID_LENGTH) {
     return fail<SyncCaseResultData>(1002, 'INVALID_PARAM');
   }
-
-  const diagnosis = event.diagnosis;
-  const treatment = event.treatment;
-  if (!diagnosis || typeof diagnosis !== 'object' || Array.isArray(diagnosis)) {
-    return fail<SyncCaseResultData>(1002, 'INVALID_PARAM');
-  }
-  if (!treatment || typeof treatment !== 'object' || Array.isArray(treatment)) {
+  const diagnosis = readDiagnosis(event.diagnosis);
+  const treatment = readTreatment(event.treatment);
+  if (!diagnosis || !treatment || !isInt(durationMs, 0, MAX_DURATION_MS)) {
     return fail<SyncCaseResultData>(1002, 'INVALID_PARAM');
   }
 
-  const durationMs = event.durationMs;
-  if (typeof durationMs !== 'number' || durationMs < 0) {
-    return fail<SyncCaseResultData>(1002, 'INVALID_PARAM');
+  const item = (await loadCaseCatalog())?.get(caseId);
+  if (!item) {
+    // 配置未发布或病例不存在：不按客户端数值兜底发奖。
+    return fail<SyncCaseResultData>(INVALID_STATE_CODE, 'INVALID_STATE');
   }
 
-  // W2 幂等占位：按 pets_cases.caseSessionId 唯一索引先查历史；已存在直接返回历史结果，
-  // 不重复计算奖励。W1 不做结算、不写库，返回空结构。
-  return ok<SyncCaseResultData>({ result: null, rewards: null, resources: null });
+  try {
+    const outcome = await settleCaseResult({
+      openid: OPENID,
+      caseSessionId,
+      caseId,
+      diagnosis,
+      treatment,
+      durationMs,
+      item,
+      now: Date.now(),
+    });
+    if (!outcome) {
+      return fail<SyncCaseResultData>(1001, 'SESSION_INVALID');
+    }
+    return ok<SyncCaseResultData>({
+      result: outcome.result,
+      rewards: outcome.rewards,
+      resources: outcome.resources,
+    });
+  } catch (error) {
+    if (isTransactionConflict(error)) {
+      return fail<SyncCaseResultData>(RETRY_EXHAUSTED_CODE, 'TRANSACTION_RETRY_EXHAUSTED');
+    }
+    throw error;
+  }
 }

@@ -2,7 +2,8 @@
 import { BlockInputEvents, Color, Mask, Node, ScrollView, UITransform } from 'cc';
 import { CharacterConfig } from '../config/CharacterConfig';
 import { Save } from '../cache/Save';
-import { addButton, addLabel, addRect, createNode, hexToColor, PALETTE } from './SceneUI';
+import { PetVisual } from '../game/PetVisual';
+import { addButton, addLabel, addRect, createNode, PALETTE } from './SceneUI';
 import { fitWidth, screenHeight, screenWidth } from './ScreenMetrics';
 
 const PANEL_H = 600;
@@ -34,6 +35,7 @@ export class CodexPanel {
 
     const overlay = addRect(parent, 'CodexOverlay', 0, screenWidth(), screenHeight(), new Color(0, 0, 0, 140));
     overlay.addComponent(BlockInputEvents);
+    overlay.setSiblingIndex(parent.children.length - 1);
     this.overlay = overlay;
 
     const panelW = codexPanelW();
@@ -77,8 +79,11 @@ export class CodexPanel {
       const adopted = Save.isAdopted(pet.petId);
       const y = -(index * CARD_H) - CARD_H / 2;
       const card = addRect(content, `Card_${pet.petId}`, y, cardW, CARD_H - 12, adopted ? CARD_BG_ADOPTED : CARD_BG);
-      addRect(card, 'Swatch', 0, 64, 64, hexToColor(pet.baseLook.color, PALETTE.sub), -cardW / 2 + 70);
-      addLabel(card, 'Name', `${pet.name} · ${pet.breed}`, 0, { size: 28, width: cardW / 2, x: -cardW / 2 + 230 });
+      // 用真实立绘缩略图；分包未就绪时 PetVisual 自己显示占位块，不留空。
+      const visual = PetVisual.mount(card, 72, false);
+      visual.node.setPosition(-cardW / 2 + 76, 0, 0);
+      visual.apply(pet.petId);
+      addLabel(card, 'Name', `${pet.name} · ${pet.breed}`, 0, { size: 28, width: cardW / 2, x: -cardW / 2 + 240 });
       const date = Save.adoptionDate(pet.petId);
       const status = adopted ? `已领养 · ${date}` : Save.snapshot().petsSeen.includes(pet.petId) ? '已救助 ♥' : '未救助';
       addLabel(card, 'Status', status, 0, {

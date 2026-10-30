@@ -29,9 +29,8 @@ export class Adoption extends Component {
       return;
     }
     this.petId = item.petId;
-    addLabel(this.node, 'PageTitle', '领 养', 300, { size: 44 });
-    addLabel(this.node, 'PetName', `${item.petName} 抬头看着你。`, 245, { size: 30 });
-    this.hint = addLabel(this.node, 'Hint', '', 95, { size: 22, color: PALETTE.sub, width: 1000 });
+    addLabel(this.node, 'PageTitle', '领 养', 500, { size: 44 });
+    this.hint = addLabel(this.node, 'Hint', '', 120, { size: 22, color: PALETTE.sub, width: 1000 });
     this.render();
   }
 
@@ -40,6 +39,7 @@ export class Adoption extends Component {
     this.body = renderAdoptionBody(
       this.node,
       {
+        petId: this.petId,
         affection: Hospital.affection(this.petId),
         threshold: AFFECTION_THRESHOLD,
         slots: Hospital.slots,

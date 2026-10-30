@@ -1,5 +1,5 @@
 // STATUS: implemented, W16 宠物立绘（Sprite 贴图 + 地面阴影 + 缺图兜底占位）
-import { _decorator, Color, Component, Graphics, Node, Sprite, SpriteFrame, Tween, tween, UITransform, Vec3 } from 'cc';
+import { _decorator, Color, Component, Graphics, Label, Node, Sprite, SpriteFrame, Tween, tween, UITransform, Vec3 } from 'cc';
 import { Quality } from '../config/Quality';
 import { addLabel, PALETTE } from '../ui/SceneUI';
 import { loadPetFrame } from './PetAssetManager';
@@ -17,6 +17,7 @@ export class PetVisual extends Component {
   private shadow: Node | null = null;
   private art: Sprite | null = null;
   private placeholder: Node | null = null;
+  private placeholderLabel: Label | null = null;
   private tint: Color = CLEAN_TINT;
   private token = 0;
 
@@ -37,9 +38,19 @@ export class PetVisual extends Component {
   /** 先显示占位，贴图到位后原地替换；连续调用以最后一次为准。 */
   apply(petId: string): void {
     const token = ++this.token;
+    if (this.placeholderLabel) {
+      this.placeholderLabel.string = '加载中…';
+    }
     void loadPetFrame(petId).then((frame) => {
-      if (token === this.token && this.isValid && frame) {
+      if (token !== this.token || !this.isValid) {
+        return;
+      }
+      if (frame) {
         this.showFrame(frame);
+        return;
+      }
+      if (this.placeholderLabel) {
+        this.placeholderLabel.string = '待补图';
       }
     });
   }
@@ -95,7 +106,7 @@ export class PetVisual extends Component {
       .start();
   }
 
-  /** 缺图兜底：两层圆角矩形叠出柔和过渡，中间写「暂缺图片」。 */
+  /** 缺图兜底：两层圆角矩形叠出柔和过渡；小尺寸缩略图只画色块，不塞文字。 */
   private buildPlaceholder(artSize: number): void {
     const node = new Node('Placeholder');
     node.parent = this.content;
@@ -110,18 +121,20 @@ export class PetVisual extends Component {
     graphics.fillColor = new Color(240, 236, 229, 255);
     graphics.roundRect(-width / 2 + 6, -height / 2 + height * 0.44, width - 12, height * 0.46, radius * 0.7);
     graphics.fill();
-    addLabel(node, 'PlaceholderText', '暂缺图片', -height * 0.06, {
-      size: 20,
+    this.placeholder = node;
+    // 图鉴缩略图只有 72 见方，字号跟着缩到 14 仍然可读；大立绘用 20。
+    this.placeholderLabel = addLabel(node, 'PlaceholderText', '加载中…', -height * 0.06, {
+      size: artSize < 120 ? 14 : 20,
       color: PALETTE.sub,
       width,
     });
-    this.placeholder = node;
   }
 
   private showFrame(frame: SpriteFrame): void {
     if (this.placeholder) {
       this.placeholder.destroy();
       this.placeholder = null;
+      this.placeholderLabel = null;
     }
     if (this.art) {
       this.art.spriteFrame = frame;

@@ -1,11 +1,16 @@
-// STATUS: implemented, W5 领养页布局（好感度门槛 / 三种腾位路径 / 领养按钮）
+// STATUS: implemented, W16 领养页布局（头部宠物卡 + 暖粉好感度条 + 三种腾位路径）
 import { Node, UITransform } from 'cc';
-import { screenHeight, screenWidth } from './ScreenMetrics';
 import { adButtonText } from '../cache/AdQuota';
+import { CharacterConfig } from '../config/CharacterConfig';
 import { canOfferAd } from '../net/AdGateway';
-import { addButton, addLabel, addProgressBar, PALETTE, setButtonState } from './SceneUI';
+import { PetVisual } from '../game/PetVisual';
+import { addButton, addLabel, PALETTE, setButtonState } from './SceneUI';
+import { addCard } from './PanelKit';
+import { addGradientBar } from './GradientBar';
+import { screenHeight, screenWidth } from './ScreenMetrics';
 
 export interface AdoptionState {
+  petId: string;
   affection: number;
   threshold: number;
   slots: number;
@@ -23,8 +28,36 @@ export interface AdoptionHandlers {
   leave(): void;
 }
 
+const CARD_W = 660;
+const CARD_Y = 330;
+
 function waitText(waiting: number): string {
   return waiting > 0 ? `等待中 ${waiting}s` : '等 10 秒自然恢复一位（免费）';
+}
+
+/** 头部卡：左侧立绘、右侧名字与好感度，进度条压在卡片底部的内边距里。 */
+function buildHeader(body: Node, state: AdoptionState): void {
+  const card = addCard(body, 'AdoptionHeader', CARD_Y, CARD_W, 280);
+  const pet = CharacterConfig.petById(state.petId);
+  const visual = PetVisual.mount(card, 180, false);
+  visual.node.setPosition(-CARD_W / 2 + 120, 10, 0);
+  visual.apply(state.petId);
+  addLabel(card, 'PetName', pet ? pet.name : '待领养', 80, { size: 34, width: 320, x: 96 });
+  addLabel(card, 'PetBreed', pet ? `${pet.breed} · 已救助` : '已救助', 34, {
+    size: 22,
+    color: PALETTE.sub,
+    width: 320,
+    x: 96,
+  });
+  // 好感度可以靠分享求助超过门槛，但展示按门槛封顶，避免出现「8/4」这种看着像 bug 的数字。
+  const shown = Math.min(state.affection, state.threshold);
+  addLabel(card, 'AffectionLabel', `好感度 ${shown}/${state.threshold}`, -22, {
+    size: 24,
+    width: 300,
+    x: 96,
+  });
+  const redraw = addGradientBar(card, 'AffectionBar', -82, 360, 24, 96);
+  redraw(Math.min(1, shown / Math.max(1, state.threshold)));
 }
 
 export function renderAdoptionBody(
@@ -35,36 +68,34 @@ export function renderAdoptionBody(
   const body = new Node('AdoptionBody');
   body.parent = parent;
   body.addComponent(UITransform).setContentSize(screenWidth(), screenHeight());
-  addLabel(body, 'AffectionLabel', `好感度 ${state.affection}/${state.threshold}`, 195, { size: 26 });
-  const redraw = addProgressBar(body, 'AffectionBar', 150, 620, 36);
-  redraw(Math.min(1, state.affection / Math.max(1, state.threshold)));
+  buildHeader(body, state);
 
   if (state.affection < state.threshold) {
-    addLabel(body, 'LockHint', '好感度还不够；也可以分享求助，让好友来搭把手', 40, {
+    addLabel(body, 'LockHint', '好感度还不够；也可以分享求助，让好友来搭把手', 20, {
       size: 22,
       color: PALETTE.sub,
-      width: 900,
+      width: 620,
     });
-    addButton(body, 'ShareAffection', '分享求助 +1 好感', -60, handlers.shareAssist, PALETTE.secondary, 560);
-    addButton(body, 'LaterButton', '稍后再说', -170, handlers.leave, PALETTE.secondary, 360);
+    addButton(body, 'ShareAffection', '分享求助 +1 好感', -70, handlers.shareAssist, PALETTE.secondary, 520, 84);
+    addButton(body, 'LaterButton', '稍后再说', -170, handlers.leave, PALETTE.secondary, 340, 80);
     return body;
   }
 
-  addLabel(body, 'SlotLabel', `领养位 ${state.adoptedCount}/${state.slots}`, 40, {
+  addLabel(body, 'SlotLabel', `领养位 ${state.adoptedCount}/${state.slots}`, 20, {
     size: 24,
     color: PALETTE.sub,
   });
 
   if (!state.slotFree) {
-    addButton(body, 'ShareSlot', '分享求助腾位', -35, handlers.shareSlot, PALETTE.secondary, 480);
-    const adButton = addButton(body, 'AdSlot', '', -115, handlers.adSlot, PALETTE.accent, 480);
+    addButton(body, 'ShareSlot', '分享求助腾位', -60, handlers.shareSlot, PALETTE.secondary, 480, 82);
+    const adButton = addButton(body, 'AdSlot', '', -145, handlers.adSlot, PALETTE.accent, 480, 82);
     setButtonState(adButton, canOfferAd('free_slot'), adButtonText('free_slot', '看广告腾位'), PALETTE.accent);
-    addButton(body, 'WaitSlot', waitText(state.waiting), -195, handlers.startWait, PALETTE.secondary, 480);
-    addButton(body, 'LaterSlot', '稍后再说', -275, handlers.leave, PALETTE.secondary, 300);
+    addButton(body, 'WaitSlot', waitText(state.waiting), -230, handlers.startWait, PALETTE.secondary, 480, 82);
+    addButton(body, 'LaterSlot', '稍后再说', -315, handlers.leave, PALETTE.secondary, 300, 76);
     return body;
   }
 
-  addButton(body, 'AdoptButton', '领养它', -60, handlers.adopt, PALETTE.primary);
-  addButton(body, 'LaterButton', '稍后再说', -170, handlers.leave, PALETTE.secondary);
+  addButton(body, 'AdoptButton', '领养它', -70, handlers.adopt, PALETTE.primary, 420, 88);
+  addButton(body, 'LaterButton', '稍后再说', -180, handlers.leave, PALETTE.secondary, 340, 80);
   return body;
 }

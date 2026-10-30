@@ -11,6 +11,7 @@ import { Res } from '../core/Res';
 import { goState } from '../core/SceneFlow';
 import { Codex } from './CodexPanel';
 import { LeaderboardPanel } from './LeaderboardPanel';
+import { openPrivacyDialog } from './PrivacyDialog';
 import { Profile } from '../net/Profile';
 import { addButton, addLabel, PALETTE } from '../ui/SceneUI';
 import { Track } from '../track/Track';
@@ -38,6 +39,7 @@ export class Lobby extends Component {
     void Track.flush();
     addButton(this.node, 'CodexButton', '图 鉴', 120, () => this.onCodexClick(), PALETTE.secondary, 260, 76, 470);
     addButton(this.node, 'LeaderboardButton', '排 行 榜', 210, () => this.onLeaderboardClick(), PALETTE.secondary, 260, 76, 470);
+    addButton(this.node, 'PrivacyButton', '隐私与协议', 300, () => this.onPrivacyClick(), PALETTE.secondary, 260, 76, 470);
     void Res.loadBundle(CONFIG_BUNDLE)
       .then(() => CharacterConfig.load())
       .then(() => {
@@ -68,6 +70,12 @@ export class Lobby extends Component {
   private onLeaderboardClick(): void {
     Track.track('lobby_leaderboard_click');
     this.leaderboard.open(this.node);
+  }
+
+  /** 常驻入口：同意过也要能随时重看协议与未成年人说明。 */
+  private onPrivacyClick(): void {
+    Track.track('lobby_privacy_click');
+    openPrivacyDialog(this.node, { mode: 'read' });
   }
 
   protected onEnable(): void {

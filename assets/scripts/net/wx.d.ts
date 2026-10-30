@@ -47,11 +47,26 @@ interface WxRewardedVideoAd {
   destroy?(): void;
 }
 
+interface WxPrivacyResolveResult {
+  event: 'agree' | 'disagree';
+}
+
+/** 平台隐私授权回调：resolve 决定本次敏感接口调用是否放行。 */
+type WxPrivacyResolve = (result: WxPrivacyResolveResult) => void;
+
+interface WxPrivacyApiOptions {
+  success?: () => void;
+  fail?: (error: unknown) => void;
+}
+
 interface WxApi {
   cloud: WxCloudApi;
   shareAppMessage(options: WxShareOptions): void;
   getPerformance?(): WxPerformance;
   createRewardedVideoAd?(options: { adUnitId: string }): WxRewardedVideoAd;
+  requirePrivacyAuthorize?(options: WxPrivacyApiOptions): void;
+  onNeedPrivacyAuthorization?(callback: (resolve: WxPrivacyResolve, eventInfo?: unknown) => void): void;
+  openPrivacyContract?(options: WxPrivacyApiOptions): void;
 }
 
 declare const wx: WxApi;

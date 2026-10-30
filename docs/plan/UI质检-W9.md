@@ -15,7 +15,7 @@
 |---|---|
 | ① 热区 ≥44×44 | 通过（0 项） |
 | ② 小屏无裁切 / 正文可滚 | 2 项警告 |
-| ③ 安全区不被遮 | 1 项阻塞 + 1 项警告 |
+| ③ 安全区不被遮 | 1 项阻塞 + 1 项警告（阻塞已收口，见 §五；结论修订亦见 §五） |
 | ④ 客服空态说明 | 通过（0 项） |
 | ⑤ 同屏文本块不重叠 | 2 项警告 + 1 项提示 |
 
@@ -127,9 +127,9 @@
 - 所有 `addLabel` 均为 `Overflow.RESIZE_HEIGHT`（`ui/SceneUI.ts:84`），长文案自动换行增高，因此**没有硬裁切**；代价是垂直余量被吃掉，见拒绝页与关于面板两项警告。
 - 拒绝页与关于面板的正文不可滚动，是本次唯一两处「小屏只能靠换行」的面板。
 
-### 规则③ 安全区不被遮 — 1 项阻塞 + 1 项警告
+### 规则③ 安全区不被遮 — 1 项阻塞 + 1 项警告（收口后修订，见 §五）
 
-- 隐私弹窗面板、关于面板均挂引擎 `SafeArea` 并 `updateArea()`（`ui/PrivacyDialog.ts:96`、`ui/AboutPanel.ts:32`）——面板内的标题与按钮行会随安全区收缩。
+- ~~隐私弹窗面板、关于面板均挂引擎 `SafeArea` 并 `updateArea()`，标题与按钮会随安全区收缩~~ — **该结论有误**：引擎 `cocos/ui/safe-area.ts:59` 标注 `@requireComponent(Widget)`，`:83-87` 在同节点取不到 `Widget` 时直接 `return`。原写法 `panel.addComponent(SafeArea).updateArea()` 只有 SafeArea、没有 Widget，运行时是**空操作**，两处面板此前完全没有安全区避让。
 - Boot 的合规行与 CaseIntro 的免责句是**根节点上的裸 Label**，没有 SafeArea/Widget，且分别距设计边界 27.5px / 20px；这两处都是提审必须可见的内容，故列为阻塞（Boot 行）与警告（CaseIntro 句）。
 - 上游背景：`game.json` 为 `deviceOrientation: "portrait"` 而所有面板按 1280×720 横屏坐标排布，即《架构质检-W8》W13；本项在真机复核前无法给出最终结论，但结构上缺少避让这一点已经成立。
 
@@ -143,7 +143,21 @@
 
 ## 四、需要人工在真机确认（本单不修复）
 
-1. 竖屏（portrait）下 `BootSplashLegal`、`MedicalNotice` 是否被底部指示条/圆角裁掉——对应阻塞项的定级确认。
+1. 竖屏（portrait）下 `BootSplashAge` / `BootSplashNotice`（原单行 `BootSplashLegal`，已按 §五 改造）、`MedicalNotice` 是否被底部指示条/圆角裁掉——对应阻塞项的定级确认。
 2. iPhone SE（640pt 级小屏）与刘海机上，隐私弹窗「同意 / 暂不同意」两个按钮与勾选行是否完整可点。
 3. 拒绝页四行说明在小屏上的实际换行结果（当前仅按 1em 字宽估算）。
 4. 客服 URL 填入真实值后，`wx.openCustomerServiceChat` 在低版本基础库上的失败表现与兜底文案可见性。
+
+## 五、收口记录（2026-10-30，W9-9）
+
+本单口径是「只列问题不修复」，修复在紧随其后的 W9-9 模块完成，记录如下（详见《架构质检-W9》§八）：
+
+| 问题 | 状态 | 落点 |
+|---|---|---|
+| 规则③ 阻塞：启动页合规行裸 Label 距下沿 27.5px，无安全区避让 | 已修 | `core/Boot.ts:92-107` 改为挂在 Canvas 下的全屏安全区容器 + 两行贴底（适龄 88px、忠告 48px），节点名 `BootSplashAge` / `BootSplashNotice` |
+| 规则③ 结论本身有误：面板 `SafeArea` 无 `Widget` 时是空操作 | 已修 | 新增 `ui/SafeLayout.ts`（`attachSafeArea` = 四边 `Widget` + `SafeArea`），`ui/PrivacyDialog.ts:97`、`ui/AboutPanel.ts:33` 改走它 |
+| 规则③ 警告：`game/CaseIntro.ts:44` 免责句距左边界 20px | 未修 | 警告级，按「警告可延后」挂账 |
+| 规则② 警告：拒绝页与关于面板正文不可滚动 | 未修 | 同上 |
+| 规则⑤ 警告/提示：拒绝页 0.5px 间隙、CaseIntro 按钮间距 85px < 按钮高 86px | 未修 | 同上，需与真机复测一并定级 |
+
+真机复核项（§四）不因代码侧修复而减少：安全区避让这次才**真正生效**，刘海/指示条机型的实际位移量需要在预览里确认标题、按钮与两行合规文案都完整可见。

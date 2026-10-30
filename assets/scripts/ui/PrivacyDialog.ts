@@ -1,9 +1,10 @@
-// STATUS: implemented, W9-4 隐私与协议弹窗（勾选才同意；不同意走游客模式，不退出游戏）
-import { BlockInputEvents, Button, Color, Node, SafeArea } from 'cc';
+// STATUS: implemented, W9-9 隐私与协议弹窗（勾选才同意；不同意走游客模式，不退出游戏；面板走安全区避让）
+import { BlockInputEvents, Button, Color, Node } from 'cc';
 import { PRIVACY_CHECK_TEXT, PRIVACY_DECLINE_TEXT, PRIVACY_DECLINE_TITLE, PRIVACY_GUEST_TEXT } from '../config/LegalConfig';
 import { WxPrivacy } from '../net/Privacy';
 import { addLabel, addRect, createNode, PALETTE, setButtonState } from './SceneUI';
 import { addDialogButton, buildDocScroll, paintCheckBox, PANEL_H, PANEL_W } from './PrivacyDialogKit';
+import { attachSafeArea } from './SafeLayout';
 
 export interface PrivacyDialogOptions {
   readonly mode: 'gate' | 'read';
@@ -91,9 +92,9 @@ export function openPrivacyDialog(parent: Node, next: PrivacyDialogOptions): voi
   checked = false;
   overlay = addRect(parent, 'PrivacyOverlay', 0, 1280, 720, new Color(0, 0, 0, 170));
   overlay.addComponent(BlockInputEvents);
-  // 引擎 SafeArea 组件负责把面板收进安全区，避免标题与按钮被刘海或指示条遮挡。
+  // 面板必须四边 Widget + SafeArea 才会被收进安全区，只挂 SafeArea 时引擎静默跳过。
   const panel = addRect(overlay, 'PrivacyPanel', 0, PANEL_W, PANEL_H, PALETTE.panel);
-  panel.addComponent(SafeArea).updateArea();
+  attachSafeArea(panel);
   addLabel(panel, 'PrivacyTitle', '隐私保护与用户协议', 250, { size: 34 });
   if (next.mode === 'gate') {
     renderGate(panel);

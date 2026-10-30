@@ -43,11 +43,6 @@ export function startCloudSync(): void {
   Track.track('boot_cloud_offline_fallback');
 }
 
-/** 云端功能开关：游客模式（未同意当前协议）或云端未初始化时，一律不开启云端玩法。 */
-export function cloudFeaturesAllowed(): boolean {
-  return Net.ready && PrivacyState.accepted();
-}
-
 /**
  * 进厅后跑：登录拿 token → 补发离线队列 → 拉云资料 → 拉远端配置。
  * 全程不 await 场景加载，网络慢时玩家仍能进大厅看本地内容；只在同意隐私后被调用。

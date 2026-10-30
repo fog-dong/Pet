@@ -1,4 +1,4 @@
-// STATUS: implemented, W9-5 启动流程（合规文案常驻启动页 ≥3s；隐私门在云端初始化之前，不同意走游客模式）
+// STATUS: implemented, W9-9 启动流程（合规两行走安全区贴底、常驻 ≥3s；隐私门在云端初始化之前，不同意走游客模式）
 import { _decorator, Component, profiler } from 'cc';
 import { DEBUG } from 'cc/env';
 import { GameState, chainAllowed, gameFSM } from './GameFSM';
@@ -13,7 +13,8 @@ import { CONFIG_BUNDLE } from '../config/ConfigLoader';
 import { BUNDLE_TIMEOUT_MS } from '../config/BundleConfig';
 import { AGE_RATING_TEXT, HEALTH_GAME_NOTICE_TEXT, LEGAL_VERSION } from '../config/LegalConfig';
 import { openPrivacyDialog } from '../ui/PrivacyDialog';
-import { addLabel, PALETTE } from '../ui/SceneUI';
+import { addLabel, createNode, PALETTE } from '../ui/SceneUI';
+import { alignBottom, attachSafeArea } from '../ui/SafeLayout';
 import { Track } from '../track/Track';
 
 const { ccclass } = _decorator;
@@ -21,6 +22,9 @@ const LOBBY_SCENE = 'Lobby';
 
 /** 适龄提示与健康游戏忠告必须在启动页常驻这么久才允许进大厅。 */
 const SPLASH_MIN_MS = 3000;
+/** 合规两行距安全区底边的余量：忠告行 48，适龄行抬到忠告行之上。 */
+const LEGAL_NOTICE_BOTTOM = 48;
+const LEGAL_AGE_BOTTOM = 88;
 
 /** 分包加载最多等这么久，超时就用内置病例兜底，避免低端机首屏黑屏。 */
 function withTimeout<T>(task: Promise<T>, ms: number): Promise<T | null> {
@@ -43,12 +47,7 @@ export class Boot extends Component {
     Track.start();
     WxPrivacy.register();
     addLabel(this.node, 'BootLoading', '正在准备诊疗室…', 0, { size: 32, color: PALETTE.panel });
-    // 合规文案常驻启动页底部，内容全部来自 LegalConfig，进大厅前至少展示满 3 秒。
-    addLabel(this.node, 'BootSplashLegal', `${AGE_RATING_TEXT}　${HEALTH_GAME_NOTICE_TEXT}`, -320, {
-      size: 18,
-      color: PALETTE.accent,
-      width: 1200,
-    });
+    this.addSplashLegal();
     // 调试浮层只用引擎自带 profiler：脚本层不留自定义面板，避免未使用的类被打进发布包。
     if (DEBUG) {
       profiler.showStats();
@@ -87,6 +86,24 @@ export class Boot extends Component {
     // 云端是否就绪都不影响这里：只保证底部合规文案在启动页至少驻留 3 秒。
     await this.waitSplash();
     await this.enterLobby();
+  }
+
+  /** 合规两行挂到 Canvas 下才能安全区对齐：BootNode 没有 UITransform，Widget 拿不到父级尺寸。 */
+  private addSplashLegal(): void {
+    const root = createNode(this.node.parent ?? this.node, 'BootSplashLegal', 0, 1280, 720);
+    attachSafeArea(root);
+    const notice = addLabel(root, 'BootSplashNotice', HEALTH_GAME_NOTICE_TEXT, 0, {
+      size: 18,
+      color: PALETTE.accent,
+      width: 1100,
+    });
+    alignBottom(notice.node, LEGAL_NOTICE_BOTTOM);
+    const age = addLabel(root, 'BootSplashAge', AGE_RATING_TEXT, 0, {
+      size: 22,
+      color: PALETTE.accent,
+      width: 1100,
+    });
+    alignBottom(age.node, LEGAL_AGE_BOTTOM);
   }
 
   /** 启动页驻留：玩家在协议页读得久了不再叠加等待，只补足 3 秒的缺口。 */

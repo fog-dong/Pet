@@ -1,5 +1,5 @@
-// STATUS: implemented, W9-5 关于面板（医疗虚构免责 + 适龄提示 + 健康游戏忠告 + 联系客服，文案全取自 LegalConfig）
-import { BlockInputEvents, Color, Node, SafeArea } from 'cc';
+// STATUS: implemented, W9-9 关于面板（医疗虚构免责 + 适龄 + 忠告 + 联系客服，文案全取自 LegalConfig；面板走安全区避让）
+import { BlockInputEvents, Color, Node } from 'cc';
 import {
   AGE_RATING_TEXT,
   CUSTOMER_SERVICE,
@@ -10,6 +10,7 @@ import { openCustomerService, supportFallback } from '../net/Support';
 import { Track } from '../track/Track';
 import { addLabel, addRect, PALETTE } from './SceneUI';
 import { addDialogButton, PANEL_H, PANEL_W } from './PrivacyDialogKit';
+import { attachSafeArea } from './SafeLayout';
 
 let overlay: Node | null = null;
 
@@ -29,7 +30,7 @@ export function openAboutPanel(parent: Node): void {
   overlay = addRect(parent, 'AboutOverlay', 0, 1280, 720, new Color(0, 0, 0, 170));
   overlay.addComponent(BlockInputEvents);
   const panel = addRect(overlay, 'AboutPanel', 0, PANEL_W, PANEL_H, PALETTE.panel);
-  panel.addComponent(SafeArea).updateArea();
+  attachSafeArea(panel);
   addLabel(panel, 'AboutTitle', '关 于', 235, { size: 34 });
   addLabel(panel, 'AboutAge', AGE_RATING_TEXT, 170, { size: 26 });
   addLabel(panel, 'AboutMedical', MEDICAL_DISCLAIMER_TEXT, 100, { size: 22, width: 860 });

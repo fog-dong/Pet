@@ -13,8 +13,15 @@ interface WxCloudApi {
   }): Promise<WxCloudCallResult>;
 }
 
+interface WxShareOptions {
+  title: string;
+  imageUrl?: string;
+  query?: string;
+}
+
 interface WxApi {
   cloud: WxCloudApi;
+  shareAppMessage(options: WxShareOptions): void;
 }
 
 declare const wx: WxApi;

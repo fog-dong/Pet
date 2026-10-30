@@ -1,5 +1,6 @@
 // STATUS: implemented, W3 激励视频频控（本地存档，按自然日重置）
 import { Save } from './Save';
+import { todayKey } from './DayKey';
 
 /** 每日上限：双倍奖励 5 次、免费领养位 3 次（11 文档），其余按点位给保守上限。 */
 export const AD_DAILY_LIMIT: Readonly<Record<string, number>> = {
@@ -13,8 +14,7 @@ export const AD_DAILY_LIMIT: Readonly<Record<string, number>> = {
 };
 
 function today(): string {
-  const date = new Date();
-  return `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
+  return todayKey();
 }
 
 export class AdQuotaStore {

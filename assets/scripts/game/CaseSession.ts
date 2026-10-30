@@ -7,15 +7,7 @@ import { Track } from '../track/Track';
 import { buildCaseSync } from './CloudPayload';
 import { trackDiagnosis, trackRecovery, trackTreatment } from './CaseTrack';
 import { affectionGain, recoverySeconds, recoveryStars, treatmentStars } from './CaseScore';
-import {
-  CaseReward,
-  DiagnosisResult,
-  RecoveryResult,
-  TreatmentResult,
-  emptyReward,
-  settleCase,
-  trackCaseComplete,
-} from './CaseSettle';
+import { CaseReward, DiagnosisResult, RecoveryResult, TreatmentResult, emptyReward, settleCase, trackCaseComplete } from './CaseSettle';
 
 export class CaseSessionStore {
   private item: CaseConfigItem | null = null;
@@ -99,6 +91,16 @@ export class CaseSessionStore {
     this.affection = affectionGain(item.baseRewards.affection, score, stars);
     Hospital.addAffection(item.petId, this.affection);
     trackRecovery(item.caseId, this.recovery);
+  }
+
+  /** 领养成功：本地图鉴落库并记录领养日期，结算时按已领养处理。 */
+  markAdopted(petId: string): void {
+    this.adopted = true;
+    Save.markAdopted(petId);
+    Track.track('adoption_complete', {
+      caseId: this.item ? this.item.caseId : '',
+      petId,
+    });
   }
 
   /** Result 结算后调用：服务端会按 diagnosis/treatment 重算星级与奖励。 */

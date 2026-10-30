@@ -4,6 +4,8 @@ export interface SaveData {
   hearts: number;
   petsSeen: string[];
   petsAdopted: string[];
+  /** 领养日期 yyyy-M-d，图鉴展示用。 */
+  adoptedAt: Record<string, string>;
   bestStars: Record<string, number>;
   casesDone: number;
   items: Record<string, number>;
@@ -28,6 +30,7 @@ export function emptySave(): SaveData {
     hearts: 0,
     petsSeen: [],
     petsAdopted: [],
+    adoptedAt: {},
     bestStars: {},
     casesDone: 0,
     items: { ...DEFAULT_ITEMS },
@@ -67,6 +70,20 @@ function toNumberMap(value: unknown): Record<string, number> {
   return result;
 }
 
+function toStringMap(value: unknown): Record<string, string> {
+  const result: Record<string, string> = {};
+  if (!value || typeof value !== 'object') {
+    return result;
+  }
+  const source = value as Record<string, unknown>;
+  for (const key in source) {
+    if (Object.prototype.hasOwnProperty.call(source, key) && typeof source[key] === 'string') {
+      result[key] = source[key] as string;
+    }
+  }
+  return result;
+}
+
 export function decodeSave(raw: string | null): SaveData {
   if (!raw) {
     return emptySave();
@@ -78,6 +95,7 @@ export function decodeSave(raw: string | null): SaveData {
       hearts: toNumber(parsed.hearts, 0),
       petsSeen: toStringArray(parsed.petsSeen),
       petsAdopted: toStringArray(parsed.petsAdopted),
+      adoptedAt: toStringMap(parsed.adoptedAt),
       bestStars: toNumberMap(parsed.bestStars),
       casesDone: toNumber(parsed.casesDone, 0),
       items: parsed.items ? toNumberMap(parsed.items) : { ...DEFAULT_ITEMS },

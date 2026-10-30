@@ -1,6 +1,7 @@
 // STATUS: implemented, W3 本地存档（金币/爱心/图鉴/道具/最好星级）
 import { sys } from 'cc';
 import { decodeSave, emptySave, SaveData } from './SaveCodec';
+import { todayKey } from './DayKey';
 
 const STORAGE_KEY = 'pet_save_v1';
 
@@ -102,7 +103,14 @@ export class SaveStore {
     if (!this.data.petsAdopted.includes(petKey)) {
       this.data.petsAdopted.push(petKey);
     }
+    if (!this.data.adoptedAt[petKey]) {
+      this.data.adoptedAt[petKey] = todayKey();
+    }
     this.persist();
+  }
+
+  adoptionDate(petKey: string): string {
+    return this.data.adoptedAt[petKey] ?? '';
   }
 
   isAdopted(petKey: string): boolean {

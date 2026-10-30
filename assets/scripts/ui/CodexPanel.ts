@@ -34,9 +34,9 @@ export class CodexPanel {
     this.overlay = overlay;
 
     const panel = addRect(overlay, 'CodexPanel', 0, PANEL_W, PANEL_H, PALETTE.panel);
-    addLabel(panel, 'CodexTitle', `图 鉴　已救助 ${adopted}/${pets.length}`, 250, { size: 36 });
+    addLabel(panel, 'CodexTitle', `图 鉴　已领养 ${adopted}/${pets.length}`, 250, { size: 36 });
     if (pets.length === 0) {
-      addLabel(panel, 'CodexEmpty', '角色配置未加载，检查 assets/resources/config/pets.json', 0, {
+      addLabel(panel, 'CodexEmpty', '角色配置未加载，检查 assets/bundles/cases/config/pets.json', 0, {
         size: 26,
         color: PALETTE.sub,
         width: 900,
@@ -73,11 +73,13 @@ export class CodexPanel {
       const card = addRect(content, `Card_${pet.petId}`, y, CARD_W, CARD_H - 12, adopted ? CARD_BG_ADOPTED : CARD_BG);
       addRect(card, 'Swatch', 0, 64, 64, hexToColor(pet.baseLook.color, PALETTE.sub), -390);
       addLabel(card, 'Name', `${pet.name} · ${pet.breed}`, 0, { size: 28, width: 460, x: -230 });
-      addLabel(card, 'Status', adopted ? '已救助 ♥' : '未救助', 0, {
-        size: 26,
+      const date = Save.adoptionDate(pet.petId);
+      const status = adopted ? `已领养 · ${date}` : Save.snapshot().petsSeen.includes(pet.petId) ? '已救助 ♥' : '未救助';
+      addLabel(card, 'Status', status, 0, {
+        size: adopted ? 22 : 26,
         color: adopted ? PALETTE.primary : PALETTE.sub,
-        width: 260,
-        x: 320,
+        width: 320,
+        x: 300,
       });
     });
 

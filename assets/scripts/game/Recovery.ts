@@ -1,13 +1,14 @@
 // STATUS: implemented, W3 康复页（进度 + 广告加速 + 好感度结算）
-import { _decorator, Component, Label } from 'cc';
+import { _decorator, Button, Component, Label } from 'cc';
 import { CaseSession } from './CaseSession';
 import { RECOVERY_REFERENCE_MS } from './CaseScore';
 import { CharacterView } from './CharacterView';
 import { CharacterConfig } from '../config/CharacterConfig';
 import { GameState } from '../core/GameFSM';
 import { goState } from '../core/SceneFlow';
-import { Ad } from '../net/Ad';
-import { addButton, addLabel, addProgressBar, PALETTE } from '../ui/SceneUI';
+import { AdQuota, adButtonText } from '../cache/AdQuota';
+import { showAd } from '../net/AdGateway';
+import { addButton, addLabel, addProgressBar, PALETTE, setButtonState } from '../ui/SceneUI';
 
 const { ccclass } = _decorator;
 
@@ -16,10 +17,12 @@ export class Recovery extends Component {
   private redraw: ((ratio: number) => void) | null = null;
   private petView: CharacterView | null = null;
   private hint: Label | null = null;
+  private speedButton: Button | null = null;
   private seconds = 14;
   private elapsed = 0;
   private startedAt = 0;
   private done = false;
+  private boosted = false;
 
   protected start(): void {
     const item = CaseSession.current;
@@ -41,17 +44,26 @@ export class Recovery extends Component {
       size: 24,
       color: PALETTE.sub,
     });
-    addButton(
-      root,
-      'AdSpeedButton',
-      '看广告加速 50%（占位）',
-      -70,
-      () => void this.speedUp(),
-      PALETTE.accent,
-      480,
-    );
+    this.speedButton = addButton(root, 'AdSpeedButton', '', -70, () => void this.speedUp(), PALETTE.accent, 480);
+    this.refreshSpeed();
     addButton(root, 'AdoptButton', '进入领养', -190, () => void this.finish(), PALETTE.primary);
     this.mountPet(item.petId);
+  }
+
+  private refreshSpeed(): void {
+    if (!this.speedButton) {
+      return;
+    }
+    if (this.boosted || this.done) {
+      setButtonState(this.speedButton, false, this.boosted ? '本局已加速 50%' : '已康复完成');
+      return;
+    }
+    setButtonState(
+      this.speedButton,
+      AdQuota.canShow('accelerate'),
+      adButtonText('accelerate', '看广告加速 50%'),
+      PALETTE.accent,
+    );
   }
 
   private mountPet(petId: string): void {
@@ -86,6 +98,7 @@ export class Recovery extends Component {
     this.petView?.playRecovered();
     this.setHint('康复完成，可以进入领养');
     CaseSession.finishRecovery(Date.now() - this.startedAt, RECOVERY_REFERENCE_MS);
+    this.refreshSpeed();
   }
 
   private async speedUp(): Promise<void> {
@@ -93,14 +106,20 @@ export class Recovery extends Component {
       this.setHint('已经康复完成了，进入领养吧');
       return;
     }
-    const result = await Ad.showRewarded('accelerate');
-    if (!result.ok) {
-      this.setHint('广告未就绪（本地占位），可以等进度条自然走完');
+    if (this.boosted) {
       return;
     }
+    const result = await showAd('accelerate');
+    if (!result.ok) {
+      this.setHint('今日加速次数已用完，可以等进度条自然走完');
+      this.refreshSpeed();
+      return;
+    }
+    this.boosted = true;
     this.elapsed = Math.min(this.seconds, this.elapsed + this.seconds / 2);
     this.redraw?.(this.elapsed / this.seconds);
     this.setHint('已加速 50%，康复耗时减半');
+    this.refreshSpeed();
     if (this.elapsed >= this.seconds) {
       this.complete();
     }

@@ -1,15 +1,18 @@
-// STATUS: implemented, W3 诊断页（听诊小游戏 + 失败三路兜底）
-import { _decorator, Component, Label, Node, UITransform } from 'cc';
+// STATUS: implemented, W3 诊断页（听诊小游戏 + 失败三路兜底 + 额外检查广告）
+import { _decorator, Button, Component, Label, Node, UITransform } from 'cc';
 import type { CaseConfigItem } from '../config/CaseConfig';
 import { CaseSession } from './CaseSession';
 import { Auscultation } from './Auscultation';
 import type { AuscultationResult } from './AuscultationScore';
+import { DiagnosisFallback } from './DiagnosisFallback';
 import { GameState } from '../core/GameFSM';
 import { goState } from '../core/SceneFlow';
-import { Ad } from '../net/Ad';
+import { AdQuota, adButtonText } from '../cache/AdQuota';
+import { showAd } from '../net/AdGateway';
 import { Save } from '../cache/Save';
 import { Track } from '../track/Track';
-import { addButton, addLabel, addRect, PALETTE } from '../ui/SceneUI';
+import { addButton, addLabel, PALETTE, setButtonState } from '../ui/SceneUI';
+import { ChoicePanel } from '../ui/ChoicePanel';
 
 const { ccclass } = _decorator;
 
@@ -17,9 +20,19 @@ const { ccclass } = _decorator;
 export class Diagnosis extends Component {
   private gameRoot: Node | null = null;
   private game: Auscultation | null = null;
-  private panel: Node | null = null;
   private hint: Label | null = null;
+  private inspection: Button | null = null;
   private lastResult: AuscultationResult | null = null;
+  private readonly panel = new ChoicePanel();
+  private readonly fallback = new DiagnosisFallback(
+    {
+      root: () => this.node,
+      retry: (withHint) => this.retry(withHint),
+      useBattery: () => this.useBattery(),
+      status: (text) => this.setHint(text),
+    },
+    this.panel,
+  );
 
   protected start(): void {
     const item = CaseSession.current;
@@ -31,22 +44,35 @@ export class Diagnosis extends Component {
     const root = this.node;
     addLabel(root, 'PageTitle', '听 诊', 330, { size: 40 });
     addLabel(root, 'PetName', `${item.petName} · ${item.breed}`, 288, {
-      size: 24,
-      color: PALETTE.sub,
+      size: 24, color: PALETTE.sub,
     });
-    this.hint = addLabel(root, 'Hint', '点击宠物身上的区域，找出异常心音', -280, {
-      size: 24,
-      color: PALETTE.sub,
-      width: 900,
+    this.hint = addLabel(root, 'Hint', '点击宠物身上的区域，找出异常心音', -262, {
+      size: 24, color: PALETTE.sub, width: 900,
     });
+    const watch = (): void => void this.watchInspection();
+    this.inspection = addButton(root, 'InspectionButton', '', -325, watch, PALETTE.accent, 420, 64);
+    this.refreshInspection();
     this.startGame(item);
   }
 
+  private refreshInspection(): void {
+    if (!this.inspection) {
+      return;
+    }
+    setButtonState(
+      this.inspection,
+      AdQuota.canShow('extra_inspection'),
+      adButtonText('extra_inspection', '额外检查：再看一处'),
+      PALETTE.accent,
+    );
+  }
+
   private startGame(item: CaseConfigItem): void {
-    this.closePanel();
+    this.panel.close();
     this.gameRoot?.destroy();
     const gameRoot = new Node('AuscultationRoot');
     gameRoot.parent = this.node;
+    gameRoot.setSiblingIndex(0);
     gameRoot.addComponent(UITransform).setContentSize(1280, 720);
     this.gameRoot = gameRoot;
     const game = gameRoot.addComponent(Auscultation);
@@ -62,20 +88,20 @@ export class Diagnosis extends Component {
       void goState(GameState.Treatment, 'Treatment');
       return;
     }
-    this.setHint('时间到了，可以重试，或看广告获得一条线索。');
-    this.showFailurePanel();
+    this.setHint('时间到了，可以重试、看广告拿线索，或用电池跳过。');
+    this.fallback.open();
   }
 
-  private showFailurePanel(): void {
-    if (this.panel) {
+  private async watchInspection(): Promise<void> {
+    const result = await showAd('extra_inspection');
+    if (!result.ok) {
+      this.setHint('今日额外检查次数已用完，可以直接听诊');
+      this.refreshInspection();
       return;
     }
-    const panel = addRect(this.node, 'FailPanel', 0, 900, 420, PALETTE.panel);
-    this.panel = panel;
-    addLabel(panel, 'FailTitle', '这次没听清，选一条路继续', 150, { size: 32, width: 820 });
-    addButton(panel, 'RetryButton', '免费重试', 40, () => this.retry(false), PALETTE.secondary, 420);
-    addButton(panel, 'AdButton', '看广告获得线索（占位）', -60, () => void this.watchAd(), PALETTE.accent, 460);
-    addButton(panel, 'ItemButton', '用听诊器电池跳过', -160, () => this.useItem(), PALETTE.primary, 460);
+    this.game?.revealHint();
+    this.refreshInspection();
+    this.setHint('额外检查点亮了一处异常');
   }
 
   private retry(withHint: boolean): void {
@@ -83,7 +109,7 @@ export class Diagnosis extends Component {
     if (!item) {
       return;
     }
-    this.closePanel();
+    this.panel.close();
     CaseSession.beginDiagnosis();
     CaseSession.addRetry();
     this.startGame(item);
@@ -93,7 +119,7 @@ export class Diagnosis extends Component {
     this.setHint(withHint ? '已点亮一处异常，慢慢来' : '已重置听诊，重新开始');
   }
 
-  private useItem(): void {
+  private useBattery(): void {
     if (!Save.useItem('battery')) {
       this.setHint('听诊器电池不足，可直接免费重试');
       return;
@@ -105,25 +131,13 @@ export class Diagnosis extends Component {
     void goState(GameState.Treatment, 'Treatment');
   }
 
-  private async watchAd(): Promise<void> {
-    const result = await Ad.showRewarded('extra_check');
-    if (!result.ok) {
-      this.setHint('广告未就绪（W2 占位），可直接免费重试');
-      return;
-    }
-    this.retry(true);
-  }
-
   private setHint(text: string): void {
     if (this.hint) {
       this.hint.string = text;
     }
   }
 
-  private closePanel(): void {
-    if (this.panel) {
-      this.panel.destroy();
-      this.panel = null;
-    }
+  protected onDestroy(): void {
+    this.panel.close();
   }
 }

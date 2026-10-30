@@ -109,8 +109,7 @@ export function addButton(
   return button;
 }
 
-/** 进度条：返回重绘函数，入参 0-1。 */
-export function addProgressBar(
+/** 进度条：返回重绘函数，入参 0-1。 */export function addProgressBar(
   parent: Node,
   name: string,
   y: number,
@@ -130,4 +129,19 @@ export function addProgressBar(
     graphics.rect(0, -height / 2, width * clamped, height);
     graphics.fill();
   };
+}
+
+/** 置灰或恢复按钮：广告次数用尽时按钮不可点，文案同步提示原因。 */
+export function setButtonState(button: Button, enabled: boolean, text?: string, color = PALETTE.secondary): void {
+  button.interactable = enabled;
+  const node = button.node;
+  const size = node.getComponent(UITransform)?.contentSize;
+  paintRect(node, size?.width ?? 340, size?.height ?? 86, enabled ? color : new Color(198, 190, 182, 255));
+  const label = node.getChildByName(`${node.name}Label`)?.getComponent(Label);
+  if (label) {
+    if (text) {
+      label.string = text;
+    }
+    label.color = enabled ? new Color(255, 255, 255, 255) : new Color(122, 114, 106, 255);
+  }
 }

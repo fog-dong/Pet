@@ -5,9 +5,10 @@ import { AFFECTION_THRESHOLD, Hospital } from './Hospital';
 import { Save } from '../cache/Save';
 import { GameState } from '../core/GameFSM';
 import { goState } from '../core/SceneFlow';
-import { Ad } from '../net/Ad';
+import { AdQuota, adButtonText } from '../cache/AdQuota';
+import { showAd } from '../net/AdGateway';
 import { Track } from '../track/Track';
-import { addButton, addLabel, addProgressBar, PALETTE } from '../ui/SceneUI';
+import { addButton, addLabel, addProgressBar, PALETTE, setButtonState } from '../ui/SceneUI';
 
 const { ccclass } = _decorator;
 
@@ -27,9 +28,7 @@ export class Adoption extends Component {
     addLabel(this.node, 'PageTitle', '领 养', 300, { size: 44 });
     addLabel(this.node, 'PetName', `${item.petName} 抬头看着你。`, 245, { size: 30 });
     this.hint = addLabel(this.node, 'Hint', '', 95, {
-      size: 22,
-      color: PALETTE.sub,
-      width: 1000,
+      size: 22, color: PALETTE.sub, width: 1000,
     });
     this.render();
   }
@@ -41,16 +40,12 @@ export class Adoption extends Component {
     body.addComponent(UITransform).setContentSize(1280, 720);
     this.body = body;
     const affection = Hospital.affection(this.petId);
-    addLabel(body, 'AffectionLabel', `好感度 ${affection}/${AFFECTION_THRESHOLD}`, 195, {
-      size: 26,
-    });
+    addLabel(body, 'AffectionLabel', `好感度 ${affection}/${AFFECTION_THRESHOLD}`, 195, { size: 26 });
     const redraw = addProgressBar(body, 'AffectionBar', 150, 620, 36);
     redraw(Math.min(1, affection / AFFECTION_THRESHOLD));
     if (affection < AFFECTION_THRESHOLD) {
       addLabel(body, 'LockHint', '好感度还不够，分享给好友可以 +1', 40, {
-        size: 22,
-        color: PALETTE.sub,
-        width: 900,
+        size: 22, color: PALETTE.sub, width: 900,
       });
       addButton(
         body,
@@ -78,14 +73,20 @@ export class Adoption extends Component {
         PALETTE.secondary,
         480,
       );
-      addButton(
+      const adButton = addButton(
         body,
         'AdSlot',
-        '看广告腾位（占位）',
+        '',
         -150,
         () => void this.adSlot(),
         PALETTE.accent,
         480,
+      );
+      setButtonState(
+        adButton,
+        AdQuota.canShow('free_slot'),
+        adButtonText('free_slot', '看广告腾位'),
+        PALETTE.accent,
       );
       addButton(body, 'LaterSlot', '稍后再说', -250, () => this.leave(), PALETTE.secondary, 300);
       return;
@@ -125,9 +126,10 @@ export class Adoption extends Component {
   }
 
   private async adSlot(): Promise<void> {
-    const result = await Ad.showRewarded('free_slot');
+    const result = await showAd('free_slot');
     if (!result.ok) {
-      this.setHint('广告未就绪（本地占位），可用分享腾位');
+      this.setHint('今日广告腾位次数已用完，可用分享腾位');
+      this.render();
       return;
     }
     Hospital.addSlotBonus(1);

@@ -1,11 +1,12 @@
 // STATUS: implemented, W3 通用兜底面板（失败 / 资源不足的三条免费路径）
 import { BlockInputEvents, Color, Label, Node } from 'cc';
-import { addButton, addLabel, addRect, PALETTE } from './SceneUI';
+import { addButton, addLabel, addRect, PALETTE, setButtonState } from './SceneUI';
 
 export interface PanelAction {
   text: string;
   action: () => void;
   color?: Color;
+  disabled?: boolean;
 }
 
 const PANEL_WIDTH = 900;
@@ -28,7 +29,7 @@ export class ChoicePanel {
     addLabel(panel, 'ChoiceTitle', title, 240, { size: 30, width: 820 });
     this.hint = addLabel(panel, 'ChoiceHint', '', 178, { size: 22, color: PALETTE.sub, width: 820 });
     actions.forEach((entry, index) => {
-      addButton(
+      const button = addButton(
         panel,
         `ChoiceAction${index}`,
         entry.text,
@@ -37,6 +38,9 @@ export class ChoicePanel {
         entry.color ?? PALETTE.secondary,
         560,
       );
+      if (entry.disabled) {
+        setButtonState(button, false);
+      }
     });
   }
 

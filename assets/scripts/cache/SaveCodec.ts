@@ -12,6 +12,8 @@ export interface SaveData {
   bedsOccupied: number;
   affection: Record<string, number>;
   slotBonus: number;
+  adDay: string;
+  adCounts: Record<string, number>;
 }
 
 /** 新档默认道具：听诊器电池 1 个，保证失败后有一条免费跳过路径。 */
@@ -34,6 +36,8 @@ export function emptySave(): SaveData {
     bedsOccupied: 0,
     affection: {},
     slotBonus: 0,
+    adDay: '',
+    adCounts: {},
   };
 }
 
@@ -82,6 +86,8 @@ export function decodeSave(raw: string | null): SaveData {
       bedsOccupied: Math.max(0, toNumber(parsed.bedsOccupied, 0)),
       affection: toNumberMap(parsed.affection),
       slotBonus: Math.max(0, toNumber(parsed.slotBonus, 0)),
+      adDay: typeof parsed.adDay === 'string' ? parsed.adDay : '',
+      adCounts: toNumberMap(parsed.adCounts),
     };
   } catch {
     return emptySave();

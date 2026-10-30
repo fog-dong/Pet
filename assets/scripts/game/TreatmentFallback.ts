@@ -1,7 +1,8 @@
 // STATUS: implemented, W3 治疗兜底（缺药 / 缺床位 / 治疗失败的三条免费路径）
 import type { Node } from 'cc';
 import { Hospital } from './Hospital';
-import { Ad } from '../net/Ad';
+import { AdQuota, adButtonText } from '../cache/AdQuota';
+import { showAd } from '../net/AdGateway';
 import { Track } from '../track/Track';
 import { ChoicePanel, PanelAction } from '../ui/ChoicePanel';
 import { PALETTE } from '../ui/SceneUI';
@@ -50,7 +51,11 @@ export class TreatmentFallback {
         },
         color: PALETTE.primary,
       },
-      { text: '看广告临时加床（占位）', action: () => this.fillBed('ad') },
+      {
+        text: adButtonText('extra_bed', '看广告临时加床'),
+        action: () => this.fillBed('ad'),
+        disabled: !AdQuota.canShow('extra_bed'),
+      },
       { text: '好友腾床 +1（本地模拟）', action: () => this.fillBed('friend') },
       { text: '等待空床（3 秒）', action: () => this.fillBed('wait') },
     ]);
@@ -67,7 +72,11 @@ export class TreatmentFallback {
       });
     }
     actions.push(
-      { text: '看广告补药（占位）', action: () => this.fillMedicine('ad') },
+      {
+        text: adButtonText('extra_medicine', '看广告补药'),
+        action: () => this.fillMedicine('ad'),
+        disabled: !AdQuota.canShow('extra_medicine'),
+      },
       { text: '好友送药 +1（本地模拟）', action: () => this.fillMedicine('friend') },
       { text: '等待补给（3 秒）', action: () => this.fillMedicine('wait') },
     );
@@ -86,9 +95,9 @@ export class TreatmentFallback {
       this.grantMedicine(name);
       return;
     }
-    void Ad.showRewarded('extra_medicine').then((result) => {
+    void showAd('extra_medicine').then((result) => {
       if (!result.ok) {
-        this.panel.setHint('广告未就绪（本地占位），可改用好友送药或等待补给。');
+        this.panel.setHint('今日广告补药次数已用完，可改用好友送药或等待补给。');
         return;
       }
       this.grantMedicine(name);
@@ -113,9 +122,9 @@ export class TreatmentFallback {
       this.releaseBed();
       return;
     }
-    void Ad.showRewarded('extra_bed').then((result) => {
+    void showAd('extra_bed').then((result) => {
       if (!result.ok) {
-        this.panel.setHint('广告未就绪（本地占位），可改用好友腾床或等待。');
+        this.panel.setHint('今日广告加床次数已用完，可改用好友腾床或等待。');
         return;
       }
       this.releaseBed();

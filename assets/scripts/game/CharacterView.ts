@@ -5,12 +5,11 @@ import { Quality } from '../config/Quality';
 import { addLabel, hexToColor } from '../ui/SceneUI';
 import { BODY_SIZE, drawBody, FALLBACK_COLOR, mixColor, MOOD_ICON } from './CharacterLook';
 import type { CharacterMood, CharacterShape } from './CharacterLook';
+import { warmArtBundle } from './ArtBundle';
 
 const { ccclass } = _decorator;
 
 export type { CharacterMood } from './CharacterLook';
-// 美术落地后由调用方取 art 分包贴图；art 缺失时本组件继续画色块。
-export { loadArtBundle, releaseArtBundle } from './ArtBundle';
 
 @ccclass('CharacterView')
 export class CharacterView extends Component {
@@ -36,6 +35,8 @@ export class CharacterView extends Component {
 
   showPet(petId: string, mood: CharacterMood = 'idle'): void {
     this.build();
+    // 首次展示宠物才预热 art：不 await，色块已经是 art 缺失时的正常分支。
+    void warmArtBundle();
     const pet = CharacterConfig.petById(petId);
     if (!pet) {
       this.setTitle('未知宠物');

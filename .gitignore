@@ -28,6 +28,10 @@ Thumbs.db
 *.pem
 *.key
 
+# 微信开发者工具本地配置：含真实 AppID 与本地设置，禁止入库（正式 AppID 只经构建参数注入）
+/project.config.json
+/project.private.config.json
+
 # IDE
 .vscode/
 .idea/

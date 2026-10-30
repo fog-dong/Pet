@@ -6,8 +6,7 @@
     "postcss": true,
     "minified": true,
     "newFeature": false,
-    "enhance": true,
-    "useIsolateContext": true
+    "enhance": true
   },
   "compileType": "game",
   "libVersion": "3.17.6",

@@ -7,6 +7,8 @@ exports.settleAssist = settleAssist;
 const cloud = require("wx-server-sdk");
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const db = cloud.database({ throwOnNotFound: false });
+/** SDK 仅在事务冲突时自动重试，默认 3 次；命中此上限后抛出冲突异常，由 index.ts 映射成 1006。 */
+const TRANSACTION_RETRIES = 3;
 /**
  * 去重、占额度、写记录压成一个原子读改写：
  * 改造前是「插 pair → inc 计数 → 读回 → 超限删 pair 并回退计数」，
@@ -48,5 +50,5 @@ async function settleAssist(input) {
             },
         });
         return { granted: true, reason: null, dailyCount };
-    });
+    }, TRANSACTION_RETRIES);
 }

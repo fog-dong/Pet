@@ -37,6 +37,9 @@ export interface AdEventData {
   todayCount: number;
 }
 
+/** SDK 仅在事务冲突时自动重试，默认 3 次；命中此上限后抛出冲突异常，由 index.ts 映射成 1006。 */
+const TRANSACTION_RETRIES = 3;
+
 export interface SettleInput {
   idempotencyKey: string;
   dailyId: string;
@@ -101,5 +104,5 @@ export async function settleAdEvent(input: SettleInput): Promise<AdEventData> {
     };
     await eventRef.set({ data: doc });
     return outcome(doc);
-  });
+  }, TRANSACTION_RETRIES);
 }

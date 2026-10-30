@@ -27,6 +27,9 @@ interface AssistDailyRow {
 
 export type AssistReason = 'ALREADY_ASSISTED' | 'LIMIT';
 
+/** SDK 仅在事务冲突时自动重试，默认 3 次；命中此上限后抛出冲突异常，由 index.ts 映射成 1006。 */
+const TRANSACTION_RETRIES = 3;
+
 export interface AssistOutcome {
   granted: boolean;
   reason: AssistReason | null;
@@ -88,5 +91,5 @@ export async function settleAssist(input: SettleInput): Promise<AssistOutcome> {
       },
     });
     return { granted: true, reason: null, dailyCount };
-  });
+  }, TRANSACTION_RETRIES);
 }

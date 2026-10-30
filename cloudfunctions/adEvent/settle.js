@@ -7,6 +7,8 @@ exports.settleAdEvent = settleAdEvent;
 const cloud = require("wx-server-sdk");
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const db = cloud.database({ throwOnNotFound: false });
+/** SDK 仅在事务冲突时自动重试，默认 3 次；命中此上限后抛出冲突异常，由 index.ts 映射成 1006。 */
+const TRANSACTION_RETRIES = 3;
 function outcome(doc) {
     return {
         granted: doc.granted === true,
@@ -55,5 +57,5 @@ async function settleAdEvent(input) {
         };
         await eventRef.set({ data: doc });
         return outcome(doc);
-    });
+    }, TRANSACTION_RETRIES);
 }

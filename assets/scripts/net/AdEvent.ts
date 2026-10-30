@@ -9,6 +9,13 @@ interface AdEventData {
   todayCount?: number;
 }
 
+/** 1006 = 服务端事务冲突重试耗尽，属可重试失败，按网络失败处理。 */
+const CODE_RETRY_EXHAUSTED = 1006;
+
+function isRetryable(code: number): boolean {
+  return code < 0 || code === CODE_RETRY_EXHAUSTED;
+}
+
 /** 发奖后异步上报；不阻塞玩法，网络失败先入队再补发。 */
 export async function reportAdEvent(scene: string, adSessionId: string, isEnded: boolean): Promise<void> {
   const unit = adUnitId(scene);
@@ -24,7 +31,7 @@ export async function reportAdEvent(scene: string, adSessionId: string, isEnded:
     { adSessionId, adUnitId: unit, scene, isEnded },
     { retry: 0 },
   );
-  if (response.code < 0) {
+  if (isRetryable(response.code)) {
     enqueueAdEvent({ adSessionId, adUnitId: unit, scene, isEnded });
     Track.track('ad_event_pending', { scene, code: response.code });
     return;
@@ -54,7 +61,7 @@ export async function flushPendingAdEvents(): Promise<number> {
       },
       { retry: 1 },
     );
-    if (response.code < 0) {
+    if (isRetryable(response.code)) {
       break;
     }
     removePendingAdEvent(item.adSessionId);

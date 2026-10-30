@@ -66,7 +66,7 @@ declare module 'wx-server-sdk' {
   export interface Database {
     collection<T = Record<string, unknown>>(name: string): Collection<T>;
     command: Command;
-    runTransaction<R>(handler: (transaction: Transaction) => Promise<R>): Promise<R>;
+    runTransaction<R>(handler: (transaction: Transaction) => Promise<R>, times?: number): Promise<R>;
   }
 
   export function init(options?: { env?: string }): void;

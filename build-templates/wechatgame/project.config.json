@@ -1,7 +1,7 @@
 {
   "description": "项目配置文件。",
   "miniprogramRoot": "./",
-  "cloudfunctionRoot": "../../cloudfunctions/",
+  "cloudfunctionRoot": "cloudfunctions/",
   "setting": {
     "urlCheck": true,
     "postcss": true,
@@ -11,7 +11,7 @@
     "useIsolateContext": true
   },
   "compileType": "game",
-  "libVersion": "game",
+  "libVersion": "3.17.6",
   "appid": "touristappid",
   "projectname": "Pet",
   "condition": {

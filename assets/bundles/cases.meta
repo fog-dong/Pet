@@ -1,0 +1,14 @@
+{
+  "ver": "1.2.0",
+  "importer": "directory",
+  "imported": true,
+  "uuid": "f59ae1fb-53ec-47f0-a2dd-1fa0000d55ba",
+  "files": [],
+  "subMetas": {},
+  "userData": {
+    "isBundle": true,
+    "bundleConfigID": "cases-subpackage",
+    "bundleName": "cases",
+    "priority": 1
+  }
+}

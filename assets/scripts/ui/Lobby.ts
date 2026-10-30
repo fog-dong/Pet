@@ -1,11 +1,13 @@
-// STATUS: implemented, W3 大厅：展示存档并进入单局
+// STATUS: implemented, W4 大厅：展示存档并进入单局（cases 分包按页引用计数）
 import { _decorator, Button, Component, Label } from 'cc';
 import { CaseConfig } from '../config/CaseConfig';
 import { CharacterConfig } from '../config/CharacterConfig';
+import { CONFIG_BUNDLE } from '../config/ConfigLoader';
 import { CaseSession } from '../game/CaseSession';
 import { CharacterView } from '../game/CharacterView';
 import { Save } from '../cache/Save';
 import { GameState } from '../core/GameFSM';
+import { Res } from '../core/Res';
 import { goState } from '../core/SceneFlow';
 import { Codex } from './CodexPanel';
 import { addButton, addLabel, PALETTE } from '../ui/SceneUI';
@@ -30,12 +32,18 @@ export class Lobby extends Component {
     Save.load();
     this.refreshStats();
     addButton(this.node, 'CodexButton', '图 鉴', 120, () => this.onCodexClick(), PALETTE.secondary, 260, 76, 470);
-    void CharacterConfig.load().then(() => {
-      if (!this.isValid) {
-        return;
-      }
-      CharacterView.mount(this.node, 470, -160).showDoctor('doc_director');
-    });
+    void Res.loadBundle(CONFIG_BUNDLE)
+      .then(() => CharacterConfig.load())
+      .then(() => {
+        if (!this.isValid) {
+          return;
+        }
+        CharacterView.mount(this.node, 470, -160).showDoctor('doc_director');
+      });
+  }
+
+  protected onDestroy(): void {
+    Res.release(CONFIG_BUNDLE);
   }
 
   private onCodexClick(): void {
@@ -72,7 +80,7 @@ export class Lobby extends Component {
     Track.track('lobby_start_click');
     const item = CaseConfig.random();
     if (!item) {
-      this.showHint('病例配置未加载，检查 assets/resources/config/cases.json');
+      this.showHint('病例配置未加载，检查 assets/bundles/cases/config/cases.json');
       return;
     }
     CaseSession.start(item);

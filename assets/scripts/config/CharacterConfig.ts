@@ -1,5 +1,5 @@
-// STATUS: implemented, W3 角色配置（pets.json / doctors.json）
-import { JsonAsset, resources } from 'cc';
+// STATUS: implemented, W4 角色配置（cases 分包加载 pets.json / doctors.json）
+import { loadConfigJson } from './ConfigLoader';
 
 export type PetSpecies = 'cat' | 'dog' | 'rabbit' | 'bird';
 export type LookShape = 'circle' | 'square';
@@ -36,18 +36,6 @@ interface DoctorFile {
   doctors: DoctorConfigItem[];
 }
 
-function loadJson<T>(path: string): Promise<T | null> {
-  return new Promise((resolve) => {
-    resources.load(path, JsonAsset, (error, asset) => {
-      if (error || !asset) {
-        resolve(null);
-        return;
-      }
-      resolve(asset.json as T);
-    });
-  });
-}
-
 export class CharacterConfigStore {
   private petItems: PetConfigItem[] = [];
   private doctorItems: DoctorConfigItem[] = [];
@@ -69,8 +57,8 @@ export class CharacterConfigStore {
       return true;
     }
     const [petFile, doctorFile] = await Promise.all([
-      loadJson<PetFile>('config/pets'),
-      loadJson<DoctorFile>('config/doctors'),
+      loadConfigJson<PetFile>('config/pets'),
+      loadConfigJson<DoctorFile>('config/doctors'),
     ]);
     this.petItems = petFile && Array.isArray(petFile.pets) ? petFile.pets : [];
     this.doctorItems = doctorFile && Array.isArray(doctorFile.doctors) ? doctorFile.doctors : [];

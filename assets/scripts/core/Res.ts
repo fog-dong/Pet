@@ -1,5 +1,6 @@
-// STATUS: scaffold, API frozen by architect on 2026-10-29
+// STATUS: implemented, W4 分包加载（assetManager + 引用计数，08 §8）
 // API: Res.loadBundle / Res.release, see docs/plan/08-客户端架构与状态机.md §8
+import { assetManager } from 'cc';
 
 interface BundleState {
   name: string;
@@ -9,20 +10,29 @@ interface BundleState {
 export class ResManager {
   private readonly bundles = new Map<string, BundleState>();
 
-  /**
-   * W1 占位：未接入 Cocos assetManager，固定返回 false。
-   * W2 接入后按引用计数加载，业务层只通过本方法获取分包。
-   */
-  async loadBundle(name: string): Promise<boolean> {
+  loadBundle(name: string): Promise<boolean> {
     if (!name) {
-      return false;
+      return Promise.resolve(false);
     }
     const existing = this.bundles.get(name);
     if (existing) {
       existing.refs += 1;
-      return true;
+      return Promise.resolve(true);
     }
-    return false;
+    if (assetManager.getBundle(name)) {
+      this.bundles.set(name, { name, refs: 1 });
+      return Promise.resolve(true);
+    }
+    return new Promise((resolve) => {
+      assetManager.loadBundle(name, (error, bundle) => {
+        if (error || !bundle) {
+          resolve(false);
+          return;
+        }
+        this.bundles.set(name, { name, refs: 1 });
+        resolve(true);
+      });
+    });
   }
 
   release(tag: string): void {
@@ -31,8 +41,13 @@ export class ResManager {
       return;
     }
     state.refs -= 1;
-    if (state.refs <= 0) {
-      this.bundles.delete(tag);
+    if (state.refs > 0) {
+      return;
+    }
+    this.bundles.delete(tag);
+    const bundle = assetManager.getBundle(tag);
+    if (bundle) {
+      assetManager.removeBundle(bundle);
     }
   }
 

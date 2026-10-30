@@ -1,5 +1,6 @@
-// STATUS: implemented, W3 病例配置（JsonAsset 加载 + 本地兜底）
-import { JsonAsset, resources } from 'cc';
+// STATUS: implemented, W4 病例配置（cases 分包加载 + 内置 2 例兜底）
+import { loadConfigJson } from './ConfigLoader';
+import { LOCAL_CASES } from './LocalCases';
 
 export type Severity = 'normal' | 'urgent' | 'critical';
 export type PetSpecies = 'cat' | 'dog';
@@ -97,18 +98,14 @@ export class CaseConfigStore {
     return this.items.length > 0;
   }
 
-  load(): Promise<boolean> {
-    return new Promise((resolve) => {
-      resources.load(CASES_PATH, JsonAsset, (error, asset) => {
-        if (error || !asset) {
-          resolve(false);
-          return;
-        }
-        const raw = asset.json as CaseFile | null;
-        this.items = raw && Array.isArray(raw.cases) ? raw.cases : [];
-        resolve(this.ready);
-      });
-    });
+  async load(): Promise<boolean> {
+    if (this.ready) {
+      return true;
+    }
+    const file = await loadConfigJson<CaseFile>(CASES_PATH);
+    const items = file && Array.isArray(file.cases) ? file.cases : [];
+    this.items = items.length > 0 ? items : [...LOCAL_CASES];
+    return this.ready;
   }
 
   byId(caseId: string): CaseConfigItem | null {

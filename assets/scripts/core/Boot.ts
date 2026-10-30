@@ -2,9 +2,11 @@
 // 流程：加载病例配置 → 初始化云环境 → login → getConfig → Login → Lobby
 import { _decorator, Component, director } from 'cc';
 import { GameState, chainAllowed, gameFSM } from './GameFSM';
+import { Res } from './Res';
 import { Net } from '../net/Net';
 import { CaseConfig } from '../config/CaseConfig';
 import { CharacterConfig } from '../config/CharacterConfig';
+import { CONFIG_BUNDLE } from '../config/ConfigLoader';
 import { CLOUD_ENV, CLIENT_CHANNEL, CLIENT_VERSION } from '../config/EnvConfig';
 import { Track } from '../track/Track';
 
@@ -39,6 +41,10 @@ export class Boot extends Component {
     }
     this.started = true;
 
+    const casesBundle = await Res.loadBundle(CONFIG_BUNDLE);
+    if (!casesBundle) {
+      Track.track('boot_cases_bundle_missing');
+    }
     const [casesReady] = await Promise.all([CaseConfig.load(), CharacterConfig.load()]);
     if (!casesReady) {
       Track.track('boot_cases_missing');

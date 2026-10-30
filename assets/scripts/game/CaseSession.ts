@@ -84,14 +84,15 @@ export class CaseSessionStore {
     this.retryCount += 1;
   }
 
-  finishDiagnosis(stars: number, mistakes: number): void {
-    const durationMs = this.diagnosisDurationMs;
+  finishDiagnosis(stars: number, mistakes: number, timeUsedMs = 0): void {
+    const durationMs = timeUsedMs > 0 ? timeUsedMs : this.diagnosisDurationMs;
     this.diagnosis = { stars, mistakes, durationMs, retryCount: this.retryCount };
     const item = this.item;
     Track.track('diagnosis_result', {
       caseId: item ? item.caseId : '',
       stars,
       mistakes,
+      timeUsed: durationMs,
       duration: durationMs,
       retryCount: this.retryCount,
     });

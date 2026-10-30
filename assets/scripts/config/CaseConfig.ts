@@ -23,6 +23,18 @@ export interface CaseRewardConfig {
   affection: number;
 }
 
+export interface AuscultationSpotConfig {
+  id: string;
+  x: number;
+  y: number;
+  label?: string;
+}
+
+export interface CaseAuscultationConfig {
+  abnormalSpots: AuscultationSpotConfig[];
+  distractors: AuscultationSpotConfig[];
+}
+
 export interface CaseConfigItem {
   caseId: string;
   petId: string;
@@ -34,6 +46,7 @@ export interface CaseConfigItem {
   symptoms: string[];
   diagnosisType: string;
   diagnosisDifficulty: number;
+  auscultation?: CaseAuscultationConfig;
   treatment: CaseTreatmentConfig;
   baseRewards: CaseRewardConfig;
 }

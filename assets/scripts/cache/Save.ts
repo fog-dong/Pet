@@ -1,46 +1,8 @@
-// STATUS: implemented, W3 本地存档（金币/爱心/图鉴/最好星级）
+// STATUS: implemented, W3 本地存档（金币/爱心/图鉴/道具/最好星级）
 import { sys } from 'cc';
+import { decodeSave, emptySave, SaveData } from './SaveCodec';
 
 const STORAGE_KEY = 'pet_save_v1';
-
-interface SaveData {
-  coins: number;
-  hearts: number;
-  petsSeen: string[];
-  petsAdopted: string[];
-  bestStars: Record<string, number>;
-  casesDone: number;
-}
-
-function emptySave(): SaveData {
-  return { coins: 0, hearts: 0, petsSeen: [], petsAdopted: [], bestStars: {}, casesDone: 0 };
-}
-
-function toNumber(value: unknown, fallback: number): number {
-  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
-}
-
-function toStringArray(value: unknown): string[] {
-  return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
-}
-
-function toStarMap(value: unknown): Record<string, number> {
-  const result: Record<string, number> = {};
-  if (!value || typeof value !== 'object') {
-    return result;
-  }
-  const source = value as Record<string, unknown>;
-  for (const key in source) {
-    if (!Object.prototype.hasOwnProperty.call(source, key)) {
-      continue;
-    }
-    const raw = source[key];
-    if (typeof raw === 'number') {
-      result[key] = raw;
-    }
-  }
-  return result;
-}
 
 export class SaveStore {
   private data: SaveData = emptySave();
@@ -51,23 +13,7 @@ export class SaveStore {
       return;
     }
     this.loaded = true;
-    const raw = sys.localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      return;
-    }
-    try {
-      const parsed = JSON.parse(raw) as Partial<SaveData>;
-      this.data = {
-        coins: toNumber(parsed.coins, 0),
-        hearts: toNumber(parsed.hearts, 0),
-        petsSeen: toStringArray(parsed.petsSeen),
-        petsAdopted: toStringArray(parsed.petsAdopted),
-        bestStars: toStarMap(parsed.bestStars),
-        casesDone: toNumber(parsed.casesDone, 0),
-      };
-    } catch {
-      this.data = emptySave();
-    }
+    this.data = decodeSave(sys.localStorage.getItem(STORAGE_KEY));
   }
 
   get coins(): number {
@@ -80,6 +26,10 @@ export class SaveStore {
 
   get casesDone(): number {
     return this.data.casesDone;
+  }
+
+  get items(): Readonly<Record<string, number>> {
+    return this.data.items;
   }
 
   addCoins(amount: number): void {
@@ -99,6 +49,28 @@ export class SaveStore {
   addHearts(amount: number): void {
     this.data.hearts = Math.max(0, this.data.hearts + Math.round(amount));
     this.persist();
+  }
+
+  itemCount(itemId: string): number {
+    return this.data.items[itemId] ?? 0;
+  }
+
+  addItem(itemId: string, count = 1): void {
+    if (!itemId || count <= 0) {
+      return;
+    }
+    this.data.items[itemId] = (this.data.items[itemId] ?? 0) + Math.round(count);
+    this.persist();
+  }
+
+  useItem(itemId: string, count = 1): boolean {
+    const owned = this.itemCount(itemId);
+    if (!itemId || count <= 0 || owned < count) {
+      return false;
+    }
+    this.data.items[itemId] = owned - count;
+    this.persist();
+    return true;
   }
 
   markSeen(petKey: string): void {

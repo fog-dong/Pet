@@ -9,7 +9,7 @@ export const PLACEHOLDER_HOST = 'example.com';
 export const PLACEHOLDER_URL_PREFIX = `https://${PLACEHOLDER_HOST}`;
 
 /** 协议文本版本；文案或采集范围变更后必须递增，触发重新弹窗。 */
-export const LEGAL_VERSION = '1.0.0';
+export const LEGAL_VERSION = '1.0.1';
 
 export interface LegalDoc {
   readonly id: string;
@@ -25,7 +25,7 @@ export const LEGAL_DOCS: readonly LegalDoc[] = [
     title: '隐私政策',
     url: `${PLACEHOLDER_URL_PREFIX}/privacy`,
     points: [
-      '登录时仅读取微信分配的唯一标识（openid），用于保存你的诊所进度与排行榜名次。',
+      '登录时仅读取微信分配的唯一标识（openid），用于保存你的救助站进度与排行榜名次。',
       '存档内容：金币、爱心、病例进度、图鉴与领养记录、道具与床位。',
       '广告与埋点只记录事件名、场景、完成与否与时间戳，不采集手机号、位置、相册与通讯录。',
       '你可以在微信「设置-小程序与小游戏-权限」中撤回授权；注销后云端存档将被清除。',
@@ -57,7 +57,7 @@ export const LEGAL_DOCS: readonly LegalDoc[] = [
 export const PRIVACY_CHECK_TEXT = '我已阅读并同意以上协议';
 export const PRIVACY_DECLINE_TITLE = '你可以先看看协议内容';
 export const PRIVACY_DECLINE_TEXT =
-  '未同意隐私政策前无法进入诊所，游戏不会上传任何数据。你可以重新阅读协议，随时回来点「同意并进入」。';
+  '未同意隐私政策前无法进入救助站，游戏不会上传任何数据。你可以重新阅读协议，随时回来点「同意并进入」。';
 
 /** 游客模式说明：不同意也不退出游戏，只是关掉云端能力，本地单局照玩。 */
 export const PRIVACY_GUEST_TEXT =
@@ -81,7 +81,7 @@ export const MEDICAL_DISCLAIMER_TEXT =
  * 游戏正式名称唯一数据源：必须与公众平台备案名逐字一致。
  * 启动页首图需同时展示「忠告 + 适龄 + 名称」，改名只改这一处并重建截图。
  */
-export const GAME_NAME = '萌宠诊所日记';
+export const GAME_NAME = '萌宠救助日记';
 
 /**
  * 适龄等级唯一数据源：必须与微信公众平台「适龄提示」设置同一数值。

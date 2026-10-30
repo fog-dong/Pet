@@ -38,7 +38,7 @@ function createQueue(initial) {
 }
 
 async function main() {
-  const { classifySyncCode, drainQueue } = await load('SyncPolicy', NET_DIR);
+  const { classifySyncCode, drainQueue, pendingBadgeText } = await load('SyncPolicy', NET_DIR);
   const { isPendingExpired, PENDING_TTL_MS } = await load('PendingTtl', CACHE_DIR);
 
   console.log('\n[1] 错误码分类：2002 不再等于终态');
@@ -104,6 +104,32 @@ async function main() {
   check('7 天内有效', isPendingExpired(now - PENDING_TTL_MS + 60 * 1000, now) === false);
   check('超过 7 天过期', isPendingExpired(now - PENDING_TTL_MS - 60 * 1000, now) === true);
   check('缺 enqueuedAt 视为过期', isPendingExpired(undefined, now) === true);
+
+  console.log('\n[7] 游客升级当场补发：login 成功后立即重放 2 条 pending');
+  // login 成功后才走到补发，用 drainQueue 作为「升级回调里的当场 flush」替身。
+  const upgraded = createQueue([
+    { caseSessionId: 'g1', caseId: 'c1' },
+    { caseSessionId: 'g2', caseId: 'c2' },
+  ]);
+  const attempts = [];
+  const firstPass = await drainQueue(upgraded.rows(), async (item) => {
+    attempts.push(item.caseSessionId);
+    return 0;
+  });
+  upgraded.keep(firstPass.verdicts);
+  check('当场触发 2 次重试', attempts.length === 2, `尝试=${attempts.join(',')}`);
+  check('两局都入账，队列清空', firstPass.sent === 2 && upgraded.rows().length === 0, `sent=${firstPass.sent} 队列=${upgraded.rows().length}`);
+  check('SyncBadge 归零', pendingBadgeText(upgraded.rows().length) === '', `文案=${JSON.stringify(pendingBadgeText(0))}`);
+
+  const stillMissing = createQueue([
+    { caseSessionId: 'h1', caseId: 'c1' },
+    { caseSessionId: 'h2', caseId: 'c2' },
+  ]);
+  const secondPass = await drainQueue(stillMissing.rows(), async () => 2002);
+  stillMissing.keep(secondPass.verdicts);
+  check('2002 不当成功', secondPass.sent === 0 && secondPass.deferred === 2, `sent=${secondPass.sent} deferred=${secondPass.deferred}`);
+  check('失败保留两条 pending', stillMissing.rows().length === 2, `队列=${stillMissing.rows().length}`);
+  check('SyncBadge 显示 2 局待同步', pendingBadgeText(2).includes('2 局'), pendingBadgeText(2));
 
   if (failed > 0) {
     console.log(`\n结果：${failed} 项失败`);

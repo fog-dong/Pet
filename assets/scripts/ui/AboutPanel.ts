@@ -50,8 +50,13 @@ export function openAboutPanel(parent: Node): void {
   privacyRow.addComponent(Button).transition = Button.Transition.NONE;
   privacyRow.on(Button.EventType.CLICK, (): void => {
     Track.track('about_privacy_click');
-    openPrivacyEntry(parent, () => {
-      privacyText.string = PRIVACY_ENTRY_DONE;
+    openPrivacyEntry(parent, (cloud) => {
+      // 等 login + 补发结束再翻成「已同意」，避免登录失败时提前宣称云端已启用。
+      void cloud.done.then(() => {
+        if (privacyText.isValid) {
+          privacyText.string = PRIVACY_ENTRY_DONE;
+        }
+      });
     });
   });
   addDialogButton(panel, 'AboutSupport', '联 系 客 服', -buttonX(), PALETTE.primary, () => {

@@ -3,11 +3,7 @@ import { _decorator, Button, Component, Label } from 'cc';
 import { CaseConfig } from '../config/CaseConfig';
 import { CharacterConfig } from '../config/CharacterConfig';
 import { CONFIG_BUNDLE } from '../config/ConfigLoader';
-import {
-  PRIVACY_GUEST_TEXT,
-  PRIVACY_UPGRADED_OFFLINE_TEXT,
-  PRIVACY_UPGRADED_TEXT,
-} from '../config/LegalConfig';
+import { PRIVACY_GUEST_TEXT } from '../config/LegalConfig';
 import { CaseSession } from '../game/CaseSession';
 import { CharacterView } from '../game/CharacterView';
 import { Save } from '../cache/Save';
@@ -95,11 +91,11 @@ export class Lobby extends Component {
     this.leaderboard.open(this.node);
   }
 
-  /** 常驻入口：同意过只读正文；游客在此补同意，同意后立刻接回云端能力。 */
+  /** 常驻入口：同意过只读正文；游客在此补同意，登录成功后当场补发本地结算。 */
   private onPrivacyClick(): void {
     Track.track('lobby_privacy_click');
-    openPrivacyEntry(this.node, (cloudReady) => {
-      this.showHint(cloudReady ? PRIVACY_UPGRADED_TEXT : PRIVACY_UPGRADED_OFFLINE_TEXT);
+    openPrivacyEntry(this.node, (cloud) => {
+      this.syncBadge.finishUpgrade(this.node, cloud, (text) => this.showHint(text));
     });
   }
 

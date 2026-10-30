@@ -3,6 +3,7 @@ import { BlockInputEvents, Button, Color, Node } from 'cc';
 import { PRIVACY_CHECK_TEXT, PRIVACY_DECLINE_TEXT, PRIVACY_DECLINE_TITLE, PRIVACY_GUEST_TEXT } from '../config/LegalConfig';
 import { PrivacyState } from '../cache/PrivacyState';
 import { agreePrivacy, startCloudSync } from '../core/BootCloud';
+import type { CloudSyncStart } from '../core/BootCloud';
 import { WxPrivacy } from '../net/Privacy';
 import { Track } from '../track/Track';
 import { addLabel, addRect, createNode, PALETTE, setButtonState } from './SceneUI';
@@ -123,9 +124,10 @@ export function closePrivacyDialog(): void {
 /**
  * 常驻入口共用（大厅「隐私与协议」、关于面板「隐私授权」）：
  * 已同意只读正文；游客期不主动重弹，但点这里会走与首次启动完全一致的授权窗，
- * 同意后立刻写 acceptedVersion 并接回云端；登录失败不阻塞当前单局，下次启动按已同意状态重跑。
+ * 同意后立刻写 acceptedVersion 并接回云端；login 失败不阻塞当前单局，下次启动按已同意状态重跑。
+ * `onAgreed` 拿到的是「登录 + 补发」的完成信号，调用方可据此刷新待同步提示。
  */
-export function openPrivacyEntry(parent: Node, onAgreed?: (cloudReady: boolean) => void): void {
+export function openPrivacyEntry(parent: Node, onAgreed?: (cloud: CloudSyncStart) => void): void {
   if (PrivacyState.accepted()) {
     Track.track('privacy_entry_read');
     openPrivacyDialog(parent, { mode: 'read' });

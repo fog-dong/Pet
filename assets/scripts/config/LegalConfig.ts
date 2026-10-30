@@ -70,6 +70,8 @@ export const PRIVACY_ENTRY_DONE = '已同意，可查看隐私政策';
 /** 补同意后的一次性提示：云环境未配置时按本地存档说明，避免误报已同步。 */
 export const PRIVACY_UPGRADED_TEXT = '已同意隐私政策，云端存档与排行榜已启用。';
 export const PRIVACY_UPGRADED_OFFLINE_TEXT = '已同意隐私政策；云环境未配置，暂时仍用本地存档。';
+/** 游客当场升级时的过场文案：等 login + 本地补发结束后再落到上面两条。 */
+export const PRIVACY_SYNCING_TEXT = '正在同步本地结算…';
 
 /** 医疗虚构免责固定句：与《提审检查清单》§2 口径逐字一致，场景内不得硬编码。 */
 export const MEDICAL_DISCLAIMER_TEXT =

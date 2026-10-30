@@ -35,23 +35,30 @@ export function agreePrivacy(): void {
 }
 
 /**
- * 大厅/关于面板补同意后启动云端。返回云端是否就绪：云环境仍是占位时保持本地模式，不阻塞单局。
- * 登录失败只在 syncCloud 里记一笔：acceptedVersion 已落盘，下次启动会重跑本流程。
+ * 大厅/关于面板补同意后启动云端。返回云环境是否就绪与「登录 + 补发」完成信号：
+ * 升级入口据此当场刷新待同步角标，不必等下一次启动。
  */
-export function startCloudSync(): boolean {
+export interface CloudSyncStart {
+  /** 云环境是否已配置（同步可得）。 */
+  readonly ready: boolean;
+  /** login → 补发 → 拉配置全部跑完；云环境未配置时立即 resolve(false)。 */
+  readonly done: Promise<boolean>;
+}
+
+export function startCloudSync(): CloudSyncStart {
   if (Net.init(CLOUD_ENV)) {
-    void syncCloud();
-    return true;
+    return { ready: true, done: syncCloud() };
   }
   Track.track('boot_cloud_offline_fallback');
-  return false;
+  return { ready: false, done: Promise.resolve(false) };
 }
 
 /**
  * 进厅后跑：登录拿 token → 补发离线队列 → 拉云资料 → 拉远端配置。
  * 全程不 await 场景加载，网络慢时玩家仍能进大厅看本地内容；只在同意隐私后被调用。
+ * 返回 false 表示 login 失败（补发未执行），调用方可据此提示「暂时仍用本地存档」。
  */
-export async function syncCloud(): Promise<void> {
+export async function syncCloud(): Promise<boolean> {
   const login = await Net.call<LoginData>('login', {
     version: CLIENT_VERSION,
     channel: CLIENT_CHANNEL,
@@ -59,10 +66,11 @@ export async function syncCloud(): Promise<void> {
   if (login.code !== 0 || !login.data) {
     // 失败即视为 pending：Net 层已内建 8s 超时 + 2 次重试，仍失败则等下次启动按已同意状态重跑。
     Track.track('boot_login_failed', { code: login.code });
-    return;
+    return false;
   }
   Session.set(login.data.token);
-  void flushPending();
+  // 登录成功立刻补发：游客当场升级时，这里结束时角标要已是最终状态。
+  await flushPending();
   void retryPendingSave();
   void flushPendingAssist();
   void flushPendingAdEvents();
@@ -72,7 +80,8 @@ export async function syncCloud(): Promise<void> {
   const config = await Net.call<GetConfigData>('getConfig', { version: 0 });
   if (config.code === 0 && config.data) {
     Quality.set(config.data.configs.quality);
-    return;
+  } else {
+    Track.track('boot_config_failed', { code: config.code });
   }
-  Track.track('boot_config_failed', { code: config.code });
+  return true;
 }

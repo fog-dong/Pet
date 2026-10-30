@@ -56,3 +56,8 @@ export async function drainQueue<T>(items: readonly T[], send: (item: T) => Prom
   }
   return { sent, deferred, stopped: false, verdicts };
 }
+
+/** 大厅角标文案：0 条时返回空串，避免上一轮的提示残留。 */
+export function pendingBadgeText(count: number): string {
+  return count > 0 ? `有 ${count} 局结算待同步，稍后自动补发` : '';
+}

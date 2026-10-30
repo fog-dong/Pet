@@ -1,7 +1,10 @@
-// STATUS: implemented, W9-9 隐私与协议弹窗（勾选才同意；不同意走游客模式，不退出游戏；面板走安全区避让）
+// STATUS: implemented, W11-2 隐私与协议弹窗（勾选才同意；不同意走游客模式，不退出游戏；面板走安全区避让）
 import { BlockInputEvents, Button, Color, Node } from 'cc';
 import { PRIVACY_CHECK_TEXT, PRIVACY_DECLINE_TEXT, PRIVACY_DECLINE_TITLE, PRIVACY_GUEST_TEXT } from '../config/LegalConfig';
+import { PrivacyState } from '../cache/PrivacyState';
+import { agreePrivacy, startCloudSync } from '../core/BootCloud';
 import { WxPrivacy } from '../net/Privacy';
+import { Track } from '../track/Track';
 import { addLabel, addRect, createNode, PALETTE, setButtonState } from './SceneUI';
 import { addDialogButton, buildDocScroll, buttonX, paintCheckBox, panelH, panelW } from './PrivacyDialogKit';
 import { attachSafeArea } from './SafeLayout';
@@ -115,4 +118,25 @@ export function closePrivacyDialog(): void {
     overlay.destroy();
   }
   overlay = null;
+}
+
+/**
+ * 常驻入口共用（大厅「隐私与协议」、关于面板「隐私授权」）：
+ * 已同意只读正文；游客期不主动重弹，但点这里会走与首次启动完全一致的授权窗，
+ * 同意后立刻写 acceptedVersion 并接回云端；登录失败不阻塞当前单局，下次启动按已同意状态重跑。
+ */
+export function openPrivacyEntry(parent: Node, onAgreed?: (cloudReady: boolean) => void): void {
+  if (PrivacyState.accepted()) {
+    Track.track('privacy_entry_read');
+    openPrivacyDialog(parent, { mode: 'read' });
+    return;
+  }
+  Track.track('privacy_entry_gate', { guest: PrivacyState.isGuest() });
+  openPrivacyDialog(parent, {
+    mode: 'gate',
+    onAgree: (): void => {
+      agreePrivacy();
+      onAgreed?.(startCloudSync());
+    },
+  });
 }

@@ -1,16 +1,20 @@
-// STATUS: implemented, W9-9 关于面板（医疗虚构免责 + 适龄 + 忠告 + 联系客服，文案全取自 LegalConfig；面板走安全区避让）
-import { BlockInputEvents, Color, Node } from 'cc';
+// STATUS: implemented, W11-2 关于面板（医疗虚构免责 + 适龄 + 忠告 + 隐私授权 + 联系客服，文案全取自 LegalConfig）
+import { BlockInputEvents, Button, Color, Node } from 'cc';
 import {
   AGE_RATING_TEXT,
   CUSTOMER_SERVICE,
   customerServiceReady,
   HEALTH_GAME_NOTICE_TEXT,
   MEDICAL_DISCLAIMER_TEXT,
+  PRIVACY_ENTRY_DONE,
+  PRIVACY_ENTRY_TODO,
 } from '../config/LegalConfig';
+import { PrivacyState } from '../cache/PrivacyState';
 import { openCustomerService, supportFallback } from '../net/Support';
 import { Track } from '../track/Track';
 import { addLabel, addRect, PALETTE } from './SceneUI';
 import { addDialogButton, buttonX, panelH, panelW } from './PrivacyDialogKit';
+import { openPrivacyEntry } from './PrivacyDialog';
 import { attachSafeArea } from './SafeLayout';
 import { screenHeight, screenWidth } from './ScreenMetrics';
 
@@ -38,7 +42,18 @@ export function openAboutPanel(parent: Node): void {
   addLabel(panel, 'AboutAge', AGE_RATING_TEXT, 170, { size: 26 });
   addLabel(panel, 'AboutMedical', MEDICAL_DISCLAIMER_TEXT, 100, { size: 22, width: textW });
   addLabel(panel, 'AboutNotice', HEALTH_GAME_NOTICE_TEXT, 0, { size: 20, color: PALETTE.sub, width: textW });
-  const hint = addLabel(panel, 'AboutSupportHint', '', -95, { size: 20, color: PALETTE.sub, width: textW });
+  const hint = addLabel(panel, 'AboutSupportHint', '', -70, { size: 20, color: PALETTE.sub, width: textW });
+  // 游客期不主动重弹隐私窗，但这里始终保留升级入口；同意后本行就地变成只读入口。
+  const privacyRow = addRect(panel, 'AboutPrivacy', -140, panelW() - 100, 56, new Color(247, 241, 232, 255));
+  const privacyText = addLabel(privacyRow, 'AboutPrivacyLabel', '', 0, { size: 22, width: panelW() - 150 });
+  privacyText.string = PrivacyState.accepted() ? PRIVACY_ENTRY_DONE : PRIVACY_ENTRY_TODO;
+  privacyRow.addComponent(Button).transition = Button.Transition.NONE;
+  privacyRow.on(Button.EventType.CLICK, (): void => {
+    Track.track('about_privacy_click');
+    openPrivacyEntry(parent, () => {
+      privacyText.string = PRIVACY_ENTRY_DONE;
+    });
+  });
   addDialogButton(panel, 'AboutSupport', '联 系 客 服', -buttonX(), PALETTE.primary, () => {
     void openCustomerService().then((result) => {
       Track.track('customer_service_result', { result });

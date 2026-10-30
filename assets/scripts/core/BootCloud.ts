@@ -1,4 +1,4 @@
-// STATUS: implemented, W9-4 隐私同意后的云同步入口（游客模式不初始化云端）
+// STATUS: implemented, W11-2 隐私同意后的云同步入口（游客模式不初始化云端；补同意后返回云端是否就绪）
 import { Net } from '../net/Net';
 import { Session } from '../net/Session';
 import { flushPending } from '../net/SyncCaseResult';
@@ -34,13 +34,17 @@ export function agreePrivacy(): void {
   void WxPrivacy.request();
 }
 
-/** 大厅内补同意后再启动云端；未配置云环境时保持本地模式，不阻塞单局。 */
-export function startCloudSync(): void {
+/**
+ * 大厅/关于面板补同意后启动云端。返回云端是否就绪：云环境仍是占位时保持本地模式，不阻塞单局。
+ * 登录失败只在 syncCloud 里记一笔：acceptedVersion 已落盘，下次启动会重跑本流程。
+ */
+export function startCloudSync(): boolean {
   if (Net.init(CLOUD_ENV)) {
     void syncCloud();
-    return;
+    return true;
   }
   Track.track('boot_cloud_offline_fallback');
+  return false;
 }
 
 /**
@@ -53,6 +57,7 @@ export async function syncCloud(): Promise<void> {
     channel: CLIENT_CHANNEL,
   });
   if (login.code !== 0 || !login.data) {
+    // 失败即视为 pending：Net 层已内建 8s 超时 + 2 次重试，仍失败则等下次启动按已同意状态重跑。
     Track.track('boot_login_failed', { code: login.code });
     return;
   }

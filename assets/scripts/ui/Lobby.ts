@@ -1,21 +1,24 @@
-// STATUS: implemented, W11-3 大厅（场景资源标签改挂 Widget，右侧按钮列按可视宽度贴边）
+// STATUS: implemented, W11-2 大厅（场景资源标签改挂 Widget，右侧按钮列按可视宽度贴边，隐私入口与大屏共用一套授权流程）
 import { _decorator, Button, Component, Label } from 'cc';
 import { CaseConfig } from '../config/CaseConfig';
 import { CharacterConfig } from '../config/CharacterConfig';
 import { CONFIG_BUNDLE } from '../config/ConfigLoader';
-import { PRIVACY_GUEST_TEXT } from '../config/LegalConfig';
+import {
+  PRIVACY_GUEST_TEXT,
+  PRIVACY_UPGRADED_OFFLINE_TEXT,
+  PRIVACY_UPGRADED_TEXT,
+} from '../config/LegalConfig';
 import { CaseSession } from '../game/CaseSession';
 import { CharacterView } from '../game/CharacterView';
 import { Save } from '../cache/Save';
 import { PrivacyState } from '../cache/PrivacyState';
 import { GameState } from '../core/GameFSM';
-import { agreePrivacy, startCloudSync } from '../core/BootCloud';
 import { Res } from '../core/Res';
 import { goState } from '../core/SceneFlow';
 import { Codex } from './CodexPanel';
 import { LeaderboardPanel } from './LeaderboardPanel';
 import { openAboutPanel } from './AboutPanel';
-import { openPrivacyDialog } from './PrivacyDialog';
+import { openPrivacyEntry } from './PrivacyDialog';
 import { Profile } from '../net/Profile';
 import { addButton, addLabel, PALETTE } from '../ui/SceneUI';
 import { rightEdgeX } from '../ui/ScreenMetrics';
@@ -87,20 +90,11 @@ export class Lobby extends Component {
     this.leaderboard.open(this.node);
   }
 
-  /** 常驻入口：同意过只读正文；游客在大厅里补同意，同意后立刻接回云端能力。 */
+  /** 常驻入口：同意过只读正文；游客在此补同意，同意后立刻接回云端能力。 */
   private onPrivacyClick(): void {
     Track.track('lobby_privacy_click');
-    if (PrivacyState.accepted()) {
-      openPrivacyDialog(this.node, { mode: 'read' });
-      return;
-    }
-    openPrivacyDialog(this.node, {
-      mode: 'gate',
-      onAgree: (): void => {
-        agreePrivacy();
-        startCloudSync();
-        this.showHint('已开启云端存档与排行榜。');
-      },
+    openPrivacyEntry(this.node, (cloudReady) => {
+      this.showHint(cloudReady ? PRIVACY_UPGRADED_TEXT : PRIVACY_UPGRADED_OFFLINE_TEXT);
     });
   }
 

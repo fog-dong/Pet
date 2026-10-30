@@ -63,6 +63,14 @@ export const PRIVACY_DECLINE_TEXT =
 export const PRIVACY_GUEST_TEXT =
   '需要同意隐私政策才能使用云端存档和排行榜，你仍可以以游客模式体验基础病例。';
 
+/** 常驻授权条目：未同意时是升级入口，已同意后变成只读入口（大厅与关于面板共用）。 */
+export const PRIVACY_ENTRY_TODO = '同意隐私政策以启用云端存档和排行榜';
+export const PRIVACY_ENTRY_DONE = '已同意，可查看隐私政策';
+
+/** 补同意后的一次性提示：云环境未配置时按本地存档说明，避免误报已同步。 */
+export const PRIVACY_UPGRADED_TEXT = '已同意隐私政策，云端存档与排行榜已启用。';
+export const PRIVACY_UPGRADED_OFFLINE_TEXT = '已同意隐私政策；云环境未配置，暂时仍用本地存档。';
+
 /** 医疗虚构免责固定句：与《提审检查清单》§2 口径逐字一致，场景内不得硬编码。 */
 export const MEDICAL_DISCLAIMER_TEXT =
   '本游戏为虚构的宠物医院模拟玩法，所有诊断、用药与治疗均为游戏设定，不构成任何医疗或兽医建议。';

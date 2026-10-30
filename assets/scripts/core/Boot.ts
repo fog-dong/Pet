@@ -1,4 +1,4 @@
-// STATUS: implemented, W9-9 启动流程（合规两行走安全区贴底、常驻 ≥3s；隐私门在云端初始化之前，不同意走游客模式）
+// STATUS: implemented, W11-2 启动流程（合规两行走安全区贴底、常驻 ≥3s；隐私门在云端初始化之前，不同意走游客模式）
 import { _decorator, Component, profiler } from 'cc';
 import { DEBUG } from 'cc/env';
 import { GameState, chainAllowed, gameFSM } from './GameFSM';
@@ -11,7 +11,7 @@ import { CaseConfig } from '../config/CaseConfig';
 import { CharacterConfig } from '../config/CharacterConfig';
 import { CONFIG_BUNDLE } from '../config/ConfigLoader';
 import { BUNDLE_TIMEOUT_MS } from '../config/BundleConfig';
-import { AGE_RATING_TEXT, HEALTH_GAME_NOTICE_TEXT, LEGAL_VERSION } from '../config/LegalConfig';
+import { AGE_RATING_TEXT, HEALTH_GAME_NOTICE_TEXT, LEGAL_VERSION, legalUrlsReady } from '../config/LegalConfig';
 import { openPrivacyDialog } from '../ui/PrivacyDialog';
 import { addLabel, createNode, PALETTE } from '../ui/SceneUI';
 import { alignBottom, attachSafeArea } from '../ui/SafeLayout';
@@ -21,9 +21,8 @@ import { Track } from '../track/Track';
 const { ccclass } = _decorator;
 const LOBBY_SCENE = 'Lobby';
 
-/** 适龄提示与健康游戏忠告必须在启动页常驻这么久才允许进大厅。 */
+/** 合规两行距安全区底边：忠告 48、适龄 88；两行都必须常驻 ≥ SPLASH_MIN_MS 才允许进大厅。 */
 const SPLASH_MIN_MS = 3000;
-/** 合规两行距安全区底边的余量：忠告行 48，适龄行抬到忠告行之上。 */
 const LEGAL_NOTICE_BOTTOM = 48;
 const LEGAL_AGE_BOTTOM = 88;
 
@@ -50,16 +49,12 @@ export class Boot extends Component {
     addLabel(this.node, 'BootLoading', '正在准备诊疗室…', 0, { size: 32, color: PALETTE.panel });
     this.addSplashLegal();
     // 调试浮层只用引擎自带 profiler：脚本层不留自定义面板，避免未使用的类被打进发布包。
-    if (DEBUG) {
-      profiler.showStats();
-    }
+    if (DEBUG) { profiler.showStats(); }
     void this.bootstrap();
   }
 
   private async bootstrap(): Promise<void> {
-    if (this.started) {
-      return;
-    }
+    if (this.started) { return; }
     this.started = true;
 
     const loading = Res.loadBundle(CONFIG_BUNDLE);
@@ -93,33 +88,26 @@ export class Boot extends Component {
   private addSplashLegal(): void {
     const root = createNode(this.node.parent ?? this.node, 'BootSplashLegal', 0, screenWidth(), screenHeight());
     attachSafeArea(root);
-    const notice = addLabel(root, 'BootSplashNotice', HEALTH_GAME_NOTICE_TEXT, 0, {
-      size: 18,
-      color: PALETTE.accent,
-      width: fitWidth(1100, 90),
-    });
+    const notice = addLabel(root, 'BootSplashNotice', HEALTH_GAME_NOTICE_TEXT, 0, { size: 18, color: PALETTE.accent, width: fitWidth(1100, 90) });
     alignBottom(notice.node, LEGAL_NOTICE_BOTTOM);
-    const age = addLabel(root, 'BootSplashAge', AGE_RATING_TEXT, 0, {
-      size: 22,
-      color: PALETTE.accent,
-      width: fitWidth(1100, 90),
-    });
+    const age = addLabel(root, 'BootSplashAge', AGE_RATING_TEXT, 0, { size: 22, color: PALETTE.accent, width: fitWidth(1100, 90) });
     alignBottom(age.node, LEGAL_AGE_BOTTOM);
   }
 
   /** 启动页驻留：玩家在协议页读得久了不再叠加等待，只补足 3 秒的缺口。 */
   private waitSplash(): Promise<void> {
     const remain = SPLASH_MIN_MS - (Date.now() - this.splashAt);
-    if (remain <= 0) {
-      return Promise.resolve();
-    }
-    return new Promise<void>((resolve) => setTimeout(resolve, remain));
+    return remain <= 0 ? Promise.resolve() : new Promise<void>((resolve) => setTimeout(resolve, remain));
   }
 
-  /** 启动 loading 期间弹隐私窗；已同意且版本一致直接放行，不同意也不退出游戏。 */
+  /** 启动 loading 期间弹隐私窗；已同意放行；游客期不主动重弹，升级入口留在大厅与关于面板。 */
   private gatePrivacy(): Promise<'granted' | 'guest'> {
     if (PrivacyState.accepted()) {
       return Promise.resolve('granted');
+    }
+    if (PrivacyState.isGuest()) {
+      Track.track('privacy_guest_resume', { version: LEGAL_VERSION });
+      return Promise.resolve('guest');
     }
     Track.track('privacy_dialog_show', { version: LEGAL_VERSION });
     return new Promise<'granted' | 'guest'>((resolve) => {
@@ -139,6 +127,11 @@ export class Boot extends Component {
   }
 
   private async enterLobby(): Promise<void> {
+    // 隐私门之后、进大厅之前做一次协议 URL 自检：占位只记日志，不阻塞发布。
+    if (!legalUrlsReady()) {
+      Track.track('boot_legal_urls_placeholder');
+      if (DEBUG) { console.warn('[Legal] 协议 URL 仍为占位，提审前替换 LegalConfig.LEGAL_DOCS'); }
+    }
     if (!(await gameFSM.transition(GameState.Login))) {
       Track.track('boot_fsm_blocked', { state: gameFSM.state });
       return;

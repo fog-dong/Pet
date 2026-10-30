@@ -1,8 +1,9 @@
-// STATUS: scaffold, API frozen by architect on 2026-10-29
-// 启动流程：初始化云环境 → login → getConfig → Login → Lobby（09 §3、08 §3）
+// STATUS: implemented, W3 启动流程（云不可用时走本地 fallback，不阻塞进厅）
+// 流程：加载病例配置 → 初始化云环境 → login → getConfig → Login → Lobby
 import { _decorator, Component, director } from 'cc';
 import { GameState, gameFSM } from './GameFSM';
 import { Net } from '../net/Net';
+import { CaseConfig } from '../config/CaseConfig';
 import { CLOUD_ENV, CLIENT_CHANNEL, CLIENT_VERSION } from '../config/EnvConfig';
 import { Track } from '../track/Track';
 
@@ -37,8 +38,15 @@ export class Boot extends Component {
     }
     this.started = true;
 
+    const casesReady = await CaseConfig.load();
+    if (!casesReady) {
+      Track.track('boot_cases_missing');
+    }
+
     if (!Net.init(CLOUD_ENV)) {
-      Track.track('boot_cloud_env_placeholder');
+      // ENV_PLACEHOLDER：W3 不部署云函数，直接走本地模式。
+      Track.track('boot_cloud_offline_fallback');
+      await this.enterLobby();
       return;
     }
 
@@ -48,15 +56,18 @@ export class Boot extends Component {
     });
     if (login.code !== 0 || !login.data) {
       Track.track('boot_login_failed', { code: login.code });
+      await this.enterLobby();
       return;
     }
 
-    // 配置拉取失败不阻塞进入大厅，沿用本地兜底。
     const config = await Net.call<GetConfigData>('getConfig', { version: 0 });
     if (config.code !== 0) {
       Track.track('boot_config_failed', { code: config.code });
     }
+    await this.enterLobby();
+  }
 
+  private async enterLobby(): Promise<void> {
     if (!(await gameFSM.transition(GameState.Login))) {
       Track.track('boot_fsm_blocked', { state: gameFSM.state });
       return;
@@ -65,7 +76,6 @@ export class Boot extends Component {
       Track.track('boot_fsm_blocked', { state: gameFSM.state });
       return;
     }
-
     if (!director.loadScene(LOBBY_SCENE)) {
       Track.track('boot_lobby_scene_missing');
     }

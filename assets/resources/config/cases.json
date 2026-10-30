@@ -1,0 +1,95 @@
+{
+  "version": 1,
+  "cases": [
+    {
+      "caseId": "case_cat_001",
+      "petName": "橘子",
+      "petSpecies": "cat",
+      "breed": "橘猫",
+      "severity": "normal",
+      "story": "一只吃得太快的橘猫，饭后一直干呕，主人很着急。",
+      "symptoms": ["干呕", "食欲下降", "精神萎靡"],
+      "diagnosisType": "auscultation",
+      "diagnosisDifficulty": 1,
+      "treatment": {
+        "medicine": ["止吐药", "健胃药", "观察"],
+        "bed": ["住院", "门诊"],
+        "time": ["正常", "加速"],
+        "correct": { "medicine": "健胃药", "bed": "门诊", "time": "正常" }
+      },
+      "baseRewards": { "coins": 30, "hearts": 1, "affection": 1 }
+    },
+    {
+      "caseId": "case_cat_002",
+      "petName": "狸花",
+      "petSpecies": "cat",
+      "breed": "狸花猫",
+      "severity": "urgent",
+      "story": "从窗台跳下后一直舔右前爪，走路有点瘸。",
+      "symptoms": ["跛行", "舔舐前爪", "轻微肿胀"],
+      "diagnosisType": "xray",
+      "diagnosisDifficulty": 2,
+      "treatment": {
+        "medicine": ["消炎药", "止痛药", "热敷"],
+        "bed": ["住院", "门诊"],
+        "time": ["正常", "加速"],
+        "correct": { "medicine": "消炎药", "bed": "门诊", "time": "正常" }
+      },
+      "baseRewards": { "coins": 45, "hearts": 2, "affection": 2 }
+    },
+    {
+      "caseId": "case_cat_003",
+      "petName": "布丁",
+      "petSpecies": "cat",
+      "breed": "布偶猫",
+      "severity": "critical",
+      "story": "连续两天不吃不喝，窝在角落，眼睛半闭。",
+      "symptoms": ["拒食", "嗜睡", "体温偏低"],
+      "diagnosisType": "bloodtest",
+      "diagnosisDifficulty": 3,
+      "treatment": {
+        "medicine": ["补液", "抗生素", "营养膏"],
+        "bed": ["住院", "门诊"],
+        "time": ["正常", "加速"],
+        "correct": { "medicine": "补液", "bed": "住院", "time": "加速" }
+      },
+      "baseRewards": { "coins": 70, "hearts": 3, "affection": 3 }
+    },
+    {
+      "caseId": "case_dog_001",
+      "petName": "豆豆",
+      "petSpecies": "dog",
+      "breed": "柴犬",
+      "severity": "normal",
+      "story": "遛弯回来后不停抓耳朵，还甩头。",
+      "symptoms": ["抓耳", "甩头", "耳道有异味"],
+      "diagnosisType": "otoscope",
+      "diagnosisDifficulty": 1,
+      "treatment": {
+        "medicine": ["洗耳液", "消炎滴耳", "驱虫"],
+        "bed": ["住院", "门诊"],
+        "time": ["正常", "加速"],
+        "correct": { "medicine": "消炎滴耳", "bed": "门诊", "time": "正常" }
+      },
+      "baseRewards": { "coins": 35, "hearts": 1, "affection": 1 }
+    },
+    {
+      "caseId": "case_dog_002",
+      "petName": "波比",
+      "petSpecies": "dog",
+      "breed": "柯基",
+      "severity": "critical",
+      "story": "误食了桌上的巧克力，已经开始呕吐发抖。",
+      "symptoms": ["呕吐", "发抖", "心跳过快"],
+      "diagnosisType": "poison",
+      "diagnosisDifficulty": 3,
+      "treatment": {
+        "medicine": ["催吐", "活性炭", "静养"],
+        "bed": ["住院", "门诊"],
+        "time": ["正常", "加速"],
+        "correct": { "medicine": "活性炭", "bed": "住院", "time": "加速" }
+      },
+      "baseRewards": { "coins": 80, "hearts": 3, "affection": 3 }
+    }
+  ]
+}

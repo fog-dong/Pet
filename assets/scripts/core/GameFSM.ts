@@ -1,5 +1,6 @@
-// STATUS: scaffold, API frozen by architect on 2026-10-29
+// STATUS: implemented, W3 状态机（白名单 + 每次流转记日志）
 // API: GameFSM whitelist, see docs/plan/08-客户端架构与状态机.md §5
+import { Track } from '../track/Track';
 
 export enum GameState {
   Boot = 'Boot',
@@ -73,7 +74,12 @@ export class GameFSM {
   }
 
   async transition(next: GameState): Promise<boolean> {
-    if (this.switching || !this.canTransition(next)) {
+    if (this.switching) {
+      Track.track('fsm_transition_ignored', { from: this.current, to: next, reason: 'switching' });
+      return false;
+    }
+    if (!this.canTransition(next)) {
+      Track.track('fsm_transition_blocked', { from: this.current, to: next });
       return false;
     }
     this.switching = true;
@@ -82,6 +88,7 @@ export class GameFSM {
       await this.runHooks(this.exitHooks.get(from), from, next);
       await this.runHooks(this.enterHooks.get(next), from, next);
       this.current = next;
+      Track.track('fsm_transition', { from, to: next });
       for (const listener of this.listeners) {
         listener(from, next);
       }

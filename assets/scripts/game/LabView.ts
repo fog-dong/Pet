@@ -121,9 +121,9 @@ export function drawPair(parent: Node, fromWorld: Vec3, toWorld: Vec3): void {
   graphics.stroke();
 }
 
-/** UI 坐标 → 卡片局部坐标，判断手指是否落在卡片圆形热区内。 */
-export function containsPoint(card: Node, ui: { x: number; y: number }): boolean {
-  const local = toLocal(card, new Vec3(ui.x, ui.y, 0));
+/** 世界坐标 → 卡片局部坐标，判断手指是否落在卡片圆形热区内。 */
+export function containsPoint(card: Node, world: Vec3): boolean {
+  const local = toLocal(card, world);
   return Math.hypot(local.x, local.y) <= LAB_HIT_RADIUS;
 }
 

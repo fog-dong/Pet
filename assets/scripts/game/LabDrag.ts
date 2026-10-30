@@ -16,6 +16,7 @@ export interface LabDragHooks {
 export class LabDrag {
   private readonly hooks: LabDragHooks;
   private dragging: LabCard | null = null;
+  private lastUi: { x: number; y: number } | null = null;
 
   constructor(hooks: LabDragHooks) {
     this.hooks = hooks;
@@ -23,18 +24,22 @@ export class LabDrag {
 
   bind(card: LabCard): void {
     const node = card.node;
-    node.on(Node.EventType.TOUCH_START, () => {
+    node.on(Node.EventType.TOUCH_START, (event: EventTouch) => {
       if (!this.hooks.active()) {
         return;
       }
       this.dragging = card;
+      this.lastUi = event.getUILocation();
       this.hooks.onHint('拖到右侧对应的试剂上');
     });
-    node.on(Node.EventType.TOUCH_MOVE, (event: EventTouch) => this.move(event));
-    node.on(Node.EventType.TOUCH_END, (event: EventTouch) => this.drop(event));
-    node.on(Node.EventType.TOUCH_CANCEL, () => {
-      this.dragging = null;
-      clearDrag(this.hooks.layer());
+    node.on(Node.EventType.TOUCH_MOVE, (event: EventTouch) => {
+      this.lastUi = event.getUILocation();
+      this.move(event);
+    });
+    node.on(Node.EventType.TOUCH_END, (event: EventTouch) => this.dropAt(event.getUILocation()));
+    // 浏览器/预览器常在指针离开卡片后把 touchend 变成 touchcancel，按最后落点判定，避免白拖一次。
+    node.on(Node.EventType.TOUCH_CANCEL, (event: EventTouch) => {
+      this.dropAt(this.lastUi ?? event.getUILocation());
     });
   }
 
@@ -45,18 +50,20 @@ export class LabDrag {
       return;
     }
     const ui = event.getUILocation();
+    // 起点是卡片中心的世界坐标，终点是手指当前位置：getUILocation 本身就是世界坐标，补 z 即可。
     drawDrag(layer, card.node.getWorldPosition(), new Vec3(ui.x, ui.y, 0));
   }
 
-  private drop(event: EventTouch): void {
+  private dropAt(ui: { x: number; y: number }): void {
     const card = this.dragging;
     this.dragging = null;
+    this.lastUi = null;
     clearDrag(this.hooks.layer());
     if (!card || !this.hooks.active()) {
       return;
     }
-    const ui = event.getUILocation();
-    const target = this.hooks.reagents().find((reagent) => !reagent.matched && containsPoint(reagent.node, ui));
+    const world = new Vec3(ui.x, ui.y, 0);
+    const target = this.hooks.reagents().find((reagent) => !reagent.matched && containsPoint(reagent.node, world));
     if (!target) {
       this.hooks.onEmpty();
       return;

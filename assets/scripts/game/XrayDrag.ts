@@ -6,14 +6,14 @@ export interface XrayDragHooks {
   board(): Node | null;
   marker(): Node | null;
   onDrop(): void;
-  onCancel(): void;
 }
 
 function toBoardLocal(board: Node, event: EventTouch): Vec3 {
+  // getUILocation 已是设计分辨率下的世界坐标（左下原点、设计单位），补 z 后直接交给 convertToNodeSpaceAR。
   const ui = event.getUILocation();
+  const world = new Vec3(ui.x, ui.y, 0);
   const transform = board.getComponent(UITransform);
-  const point = new Vec3(ui.x, ui.y, 0);
-  return transform ? transform.convertToNodeSpaceAR(point) : point;
+  return transform ? transform.convertToNodeSpaceAR(world) : world;
 }
 
 /** 松手时调用 onDrop，由 Xray 自行做距离判定与计时扣减。 */
@@ -35,8 +35,9 @@ export function bindXrayDrag(marker: Node, hooks: XrayDragHooks): void {
     dragging = false;
     hooks.onDrop();
   });
+  // 指针离开标记框后浏览器会改发 touchcancel，按当前框位判定，否则松手不生效。
   marker.on(Node.EventType.TOUCH_CANCEL, () => {
     dragging = false;
-    hooks.onCancel();
+    hooks.onDrop();
   });
 }

@@ -50,7 +50,6 @@ export class Xray extends Component {
       board: () => this.board,
       marker: () => this.marker,
       onDrop: () => this.dropMarker(),
-      onCancel: () => undefined,
     });
     this.hud.paint(this.timeLeft);
     Track.track('diagnosis_start', { caseId: item.caseId, type: 'xray', difficulty: item.diagnosisDifficulty });

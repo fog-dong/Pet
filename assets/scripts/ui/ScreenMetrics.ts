@@ -2,7 +2,7 @@
 // 引擎口径：view.getVisibleSize() 返回设计单位下的可视矩形（view.ts:354 + view.ts:474-475 除以 scale）；
 // FIXED_WIDTH 下 720 宽恒占满屏幕，所以横向布局只能落在 ±360 内，纵向则按真实高度铺。
 // W10-3 起只收口了宽度，W11-3 把设计帧从 1280×720 换成 720×1280 并补齐横排区间派生。
-import { view } from 'cc';
+import { sys, view } from 'cc';
 
 /** 设计帧兜底值：与 settings/v2/packages/project.json 的 general.designResolution 保持一致。 */
 export const DESIGN_W = 720;
@@ -22,6 +22,18 @@ export function screenWidth(): number {
 
 export function screenHeight(): number {
   return view.getVisibleSize().height || DESIGN_H;
+}
+
+/** 安全区底部内缩（设计单位）。刘海屏下约 60，非异形屏为 0。 */
+export function safeAreaBottom(): number {
+  const rect = sys.getSafeAreaRect();
+  return Math.max(0, rect.y);
+}
+
+/** 安全区顶部内缩（设计单位）。 */
+export function safeAreaTop(): number {
+  const rect = sys.getSafeAreaRect();
+  return Math.max(0, screenHeight() - rect.y - rect.height);
 }
 
 /** 宽度不超过可视宽度减去左右留白；720 帧下正文类元素的实际上限是 680。 */

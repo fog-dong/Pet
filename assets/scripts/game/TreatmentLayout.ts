@@ -2,7 +2,7 @@
 import type { Label, Node } from 'cc';
 import type { CaseConfigItem } from '../config/CaseConfig';
 import { addButton, addLabel, PALETTE } from '../ui/SceneUI';
-import { Choice, addChoiceRow, paintChoices } from '../ui/ChoiceRow';
+import { Choice, addChoiceRow, addRowHeader, paintChoices } from '../ui/ChoiceRow';
 import { fitRow, leftEdgeX, screenWidth } from '../ui/ScreenMetrics';
 import { Hospital } from './Hospital';
 
@@ -48,25 +48,25 @@ export function buildTreatmentLayout(
     rowRight,
   );
   const rowLabelX = leftEdgeX(48);
-  addLabel(root, 'MedicineLabel', '药品', 185, { size: 22, color: PALETTE.sub, x: rowLabelX, width: 96 });
-  addLabel(root, 'BedLabel', '床位', 95, { size: 22, color: PALETTE.sub, x: rowLabelX, width: 96 });
-  addLabel(root, 'TimeLabel', '时间', 5, { size: 22, color: PALETTE.sub, x: rowLabelX, width: 96 });
+  addRowHeader(root, '药品', 'medicine', 200, rowLabelX);
+  addRowHeader(root, '床位', 'bed', 105, rowLabelX);
+  addRowHeader(root, '时间', 'time', 10, rowLabelX);
   const medicines = addChoiceRow(root, 'Medicine', item.treatment.medicine, {
-    y: 185,
+    y: 200,
     x0: slot.x0,
     gap: slot.step,
     width: slot.width,
     onClick: handlers.onMedicine,
   });
   const beds = addChoiceRow(root, 'Bed', item.treatment.bed, {
-    y: 95,
+    y: 105,
     x0: slot.x0,
     gap: slot.step,
     width: slot.width,
     onClick: handlers.onBed,
   });
   const times = addChoiceRow(root, 'Time', item.treatment.time, {
-    y: 5,
+    y: 10,
     x0: slot.x0,
     gap: slot.step,
     width: slot.width,

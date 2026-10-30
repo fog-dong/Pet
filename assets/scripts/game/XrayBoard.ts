@@ -2,12 +2,14 @@
 import { Color, Graphics, Node } from 'cc';
 import type { CaseConfigItem, CaseXrayLesion } from '../config/CaseConfig';
 import { addLabel, addRect, PALETTE } from '../ui/SceneUI';
+import { buildLightbox } from './XrayLightbox';
 
 export const XRAY_BOARD_W = 560;
 export const XRAY_BOARD_H = 460;
 export const XRAY_MARKER_W = 132;
 export const XRAY_MARKER_H = 96;
-export const XRAY_START_Y = -170;
+/** 初始 y：片子内高 392（半高 196），标记高 96，-132 让底边停在 -180，不压木框。 */
+export const XRAY_START_Y = -132;
 
 const CLEAR = new Color(0, 0, 0, 0);
 
@@ -48,26 +50,9 @@ export function resolveLesions(item: CaseConfigItem): XrayPlan {
   };
 }
 
-/** 深色底 + 身体轮廓 + 肋骨线，全部是占位图形，不做真实医学影像。 */
+/** 灯箱样式的片子：木框 + 深灰内衬 + 浅蓝胶片，病灶/标记共用 board 的局部坐标。 */
 export function buildFilm(parent: Node): Node {
-  const board = addRect(parent, 'XrayBoard', 0, XRAY_BOARD_W, XRAY_BOARD_H, new Color(40, 44, 54, 255));
-  const graphics = board.getComponent(Graphics);
-  if (graphics) {
-    graphics.fillColor = new Color(78, 92, 112, 255);
-    graphics.ellipse(0, 0, 170, 190);
-    graphics.fill();
-    graphics.strokeColor = new Color(168, 190, 214, 200);
-    graphics.lineWidth = 3;
-    for (let i = -2; i <= 2; i += 1) {
-      const y = i * 46;
-      graphics.moveTo(-120 + Math.abs(i) * 26, y);
-      graphics.lineTo(120 - Math.abs(i) * 26, y);
-    }
-    graphics.moveTo(0, 170);
-    graphics.lineTo(0, -170);
-    graphics.stroke();
-  }
-  return board;
+  return buildLightbox(parent, 'XrayBoard', XRAY_BOARD_W, XRAY_BOARD_H);
 }
 
 export function buildMarker(board: Node): Node {
@@ -83,7 +68,7 @@ export function buildMarker(board: Node): Node {
     graphics.lineTo(12, 0);
     graphics.stroke();
   }
-  addLabel(marker, 'XrayMarkerLabel', '标记', 0, { size: 20, color: PALETTE.accent });
+  addLabel(marker, 'XrayMarkerLabel', '标记', XRAY_MARKER_H / 2 + 18, { size: 20, color: PALETTE.accent });
   return marker;
 }
 

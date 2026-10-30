@@ -46,7 +46,6 @@ export class Lab extends Component {
     this.hud = new DiagnosisHud(root, 'Lab', setHint ?? (() => undefined));
     // 左右两列卡片各贴边 200 宽，中间 260 宽的通道始终空着：宠物放这里，不挡拖拽判定。
     mountPetAvatar(root, item.petId, 0, -20, 150);
-    this.dragLayer = buildDragLayer(root);
     this.reagents = buildColumn(root, plan.reagents, LAB_COL_RIGHT, PALETTE.accent, 'Reagent');
     this.samples = buildColumn(
       root,
@@ -55,6 +54,8 @@ export class Lab extends Component {
       PALETTE.secondary,
       'Sample',
     );
+    // 连线层必须最后添加：先建卡片再建画布，否则线会被卡片盖住，拖到卡片上的那一段看不见。
+    this.dragLayer = buildDragLayer(root);
     this.drag = new LabDrag({
       active: () => !this.finished,
       layer: () => this.dragLayer,

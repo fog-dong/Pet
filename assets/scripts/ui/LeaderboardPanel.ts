@@ -5,14 +5,15 @@ import { Net } from '../net/Net';
 import { fetchLeaderboard, LeaderboardPage, LeaderboardType } from '../net/Leaderboard';
 import { addButton, addLabel, addRect, PALETTE, setButtonState } from './SceneUI';
 import { renderLeaderboardRows } from './LeaderboardRows';
+import { fitWidth, screenHeight, screenWidth } from './ScreenMetrics';
 
-const PANEL_W = 900;
 const PANEL_H = 620;
 const PAGE_SIZE = 5;
 
 export class LeaderboardPanel {
   private overlay: Node | null = null;
   private panel: Node | null = null;
+  private panelW = 900;
   private rows: Node | null = null;
   private hint: Label | null = null;
   private prevButton: Button | null = null;
@@ -25,18 +26,21 @@ export class LeaderboardPanel {
     if (this.overlay) {
       return;
     }
-    const overlay = addRect(parent, 'LeaderboardOverlay', 0, 1280, 720, new Color(0, 0, 0, 140));
+    const width = fitWidth(900, 30);
+    const overlay = addRect(parent, 'LeaderboardOverlay', 0, screenWidth(), screenHeight(), new Color(0, 0, 0, 140));
     overlay.addComponent(BlockInputEvents);
-    const panel = addRect(overlay, 'LeaderboardPanel', 0, PANEL_W, PANEL_H, PALETTE.panel);
+    const panel = addRect(overlay, 'LeaderboardPanel', 0, width, PANEL_H, PALETTE.panel);
     this.overlay = overlay;
     this.panel = panel;
+    this.panelW = width;
     addLabel(panel, 'LeaderboardTitle', '排 行 榜', 250, { size: 36 });
     addButton(panel, 'LeaderboardWeekly', '本周榜', 186, () => void this.switchType('weekly'), PALETTE.accent, 220, 64, -130);
     addButton(panel, 'LeaderboardFriends', '好友榜', 186, () => void this.switchType('friends'), PALETTE.secondary, 220, 64, 130);
-    this.hint = addLabel(panel, 'LeaderboardHint', '', -212, { size: 22, color: PALETTE.sub, width: 780 });
-    this.prevButton = addButton(panel, 'LeaderboardPrev', '上一页', -262, () => void this.turn(-1), PALETTE.secondary, 190, 64, -280);
+    this.hint = addLabel(panel, 'LeaderboardHint', '', -212, { size: 22, color: PALETTE.sub, width: width - 120 });
+    const navX = width / 2 - 170;
+    this.prevButton = addButton(panel, 'LeaderboardPrev', '上一页', -262, () => void this.turn(-1), PALETTE.secondary, 190, 64, -navX);
     addButton(panel, 'LeaderboardClose', '关闭', -262, () => this.close(), PALETTE.primary, 190, 64, 0);
-    this.nextButton = addButton(panel, 'LeaderboardNext', '下一页', -262, () => void this.turn(1), PALETTE.secondary, 190, 64, 280);
+    this.nextButton = addButton(panel, 'LeaderboardNext', '下一页', -262, () => void this.turn(1), PALETTE.secondary, 190, 64, navX);
     void this.load();
   }
 
@@ -126,7 +130,7 @@ export class LeaderboardPanel {
       this.rows = null;
       return;
     }
-    this.rows = renderLeaderboardRows(this.panel, this.rows, data, empty);
+    this.rows = renderLeaderboardRows(this.panel, this.rows, data, empty, this.panelW);
   }
 
   private refreshNav(): void {

@@ -8,6 +8,7 @@ import { CharacterView } from './CharacterView';
 import { GameState } from '../core/GameFSM';
 import { goState } from '../core/SceneFlow';
 import { addButton, addLabel, PALETTE } from '../ui/SceneUI';
+import { leftEdgeX, rightEdgeX } from '../ui/ScreenMetrics';
 
 const { ccclass } = _decorator;
 
@@ -45,7 +46,7 @@ export class CaseIntro extends Component {
       size: 18,
       color: PALETTE.sub,
       width: 440,
-      x: -400,
+      x: leftEdgeX(220),
     });
     addButton(root, 'AcceptButton', '开始诊断', -120, () => {
       void goState(GameState.Diagnosis, 'Diagnosis');
@@ -83,7 +84,7 @@ export class CaseIntro extends Component {
       if (!this.isValid) {
         return;
       }
-      CharacterView.mount(this.node, 470, 80).showPet(petId, 'sick');
+      CharacterView.mount(this.node, rightEdgeX(130), 80).showPet(petId, 'sick');
     });
   }
 }

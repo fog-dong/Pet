@@ -18,6 +18,7 @@ import { openAboutPanel } from './AboutPanel';
 import { openPrivacyDialog } from './PrivacyDialog';
 import { Profile } from '../net/Profile';
 import { addButton, addLabel, PALETTE } from '../ui/SceneUI';
+import { rightEdgeX } from '../ui/ScreenMetrics';
 import { Track } from '../track/Track';
 
 const { ccclass, property } = _decorator;
@@ -47,17 +48,18 @@ export class Lobby extends Component {
       void Profile.refresh();
     }
     void Track.flush();
-    addButton(this.node, 'CodexButton', '图 鉴', 120, () => this.onCodexClick(), PALETTE.secondary, 260, 76, 470);
-    addButton(this.node, 'LeaderboardButton', '排 行 榜', 210, () => this.onLeaderboardClick(), PALETTE.secondary, 260, 76, 470);
-    addButton(this.node, 'PrivacyButton', '隐私与协议', 300, () => this.onPrivacyClick(), PALETTE.secondary, 260, 76, 470);
-    addButton(this.node, 'AboutButton', '关 于', 30, () => openAboutPanel(this.node), PALETTE.secondary, 260, 76, 470);
+    const sideX = rightEdgeX(130);
+    addButton(this.node, 'CodexButton', '图 鉴', 120, () => this.onCodexClick(), PALETTE.secondary, 260, 76, sideX);
+    addButton(this.node, 'LeaderboardButton', '排 行 榜', 210, () => this.onLeaderboardClick(), PALETTE.secondary, 260, 76, sideX);
+    addButton(this.node, 'PrivacyButton', '隐私与协议', 300, () => this.onPrivacyClick(), PALETTE.secondary, 260, 76, sideX);
+    addButton(this.node, 'AboutButton', '关 于', 30, () => openAboutPanel(this.node), PALETTE.secondary, 260, 76, sideX);
     void Res.loadBundle(CONFIG_BUNDLE)
       .then(() => CharacterConfig.load())
       .then(() => {
         if (!this.isValid) {
           return;
         }
-        CharacterView.mount(this.node, 470, -160).showDoctor('doc_director');
+        CharacterView.mount(this.node, sideX, -160).showDoctor('doc_director');
       });
   }
 

@@ -1,6 +1,7 @@
 // STATUS: implemented, W3 通用兜底面板（失败 / 资源不足的三条免费路径）
 import { BlockInputEvents, Color, Label, Node } from 'cc';
 import { addButton, addLabel, addRect, PALETTE, setButtonState } from './SceneUI';
+import { fitWidth, screenHeight, screenWidth } from './ScreenMetrics';
 
 export interface PanelAction {
   text: string;
@@ -9,7 +10,6 @@ export interface PanelAction {
   disabled?: boolean;
 }
 
-const PANEL_WIDTH = 900;
 const PANEL_HEIGHT = 560;
 
 export class ChoicePanel {
@@ -22,12 +22,14 @@ export class ChoicePanel {
 
   open(parent: Node, title: string, actions: readonly PanelAction[]): void {
     this.close();
-    const overlay = addRect(parent, 'ChoiceOverlay', 0, 1280, 720, new Color(40, 32, 26, 120));
+    const width = fitWidth(900, 30);
+    const height = Math.min(PANEL_HEIGHT, screenHeight() - 120);
+    const overlay = addRect(parent, 'ChoiceOverlay', 0, screenWidth(), screenHeight(), new Color(40, 32, 26, 120));
     overlay.addComponent(BlockInputEvents);
-    const panel = addRect(overlay, 'ChoicePanel', 0, PANEL_WIDTH, PANEL_HEIGHT, PALETTE.panel);
+    const panel = addRect(overlay, 'ChoicePanel', 0, width, height, PALETTE.panel);
     this.node = overlay;
-    addLabel(panel, 'ChoiceTitle', title, 240, { size: 30, width: 820 });
-    this.hint = addLabel(panel, 'ChoiceHint', '', 178, { size: 22, color: PALETTE.sub, width: 820 });
+    addLabel(panel, 'ChoiceTitle', title, 240, { size: 30, width: width - 80 });
+    this.hint = addLabel(panel, 'ChoiceHint', '', 178, { size: 22, color: PALETTE.sub, width: width - 80 });
     actions.forEach((entry, index) => {
       const button = addButton(
         panel,
@@ -36,7 +38,7 @@ export class ChoicePanel {
         100 - index * 100,
         entry.action,
         entry.color ?? PALETTE.secondary,
-        560,
+        Math.min(560, width - 40),
       );
       if (entry.disabled) {
         setButtonState(button, false);

@@ -1,5 +1,6 @@
 // STATUS: implemented, W3 占位 UI 构建器（纯色 + Label，不依赖美术资源）
 import { Button, Color, Graphics, Label, Node, UITransform } from 'cc';
+import { fitWidth } from './ScreenMetrics';
 
 export const PALETTE = {
   panel: new Color(255, 255, 255, 240),
@@ -71,7 +72,7 @@ export function addLabel(
   options: LabelOptions = {},
 ): Label {
   const size = options.size ?? 26;
-  const width = options.width ?? 960;
+  const width = fitWidth(options.width ?? 960, 20);
   const node = createNode(parent, name, y, width, size + 12);
   node.setPosition(options.x ?? 0, y, 0);
   const label = node.addComponent(Label);

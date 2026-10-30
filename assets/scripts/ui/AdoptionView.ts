@@ -1,5 +1,6 @@
 // STATUS: implemented, W5 领养页布局（好感度门槛 / 三种腾位路径 / 领养按钮）
 import { Node, UITransform } from 'cc';
+import { screenHeight, screenWidth } from './ScreenMetrics';
 import { adButtonText } from '../cache/AdQuota';
 import { canOfferAd } from '../net/AdGateway';
 import { addButton, addLabel, addProgressBar, PALETTE, setButtonState } from './SceneUI';
@@ -33,7 +34,7 @@ export function renderAdoptionBody(
 ): Node {
   const body = new Node('AdoptionBody');
   body.parent = parent;
-  body.addComponent(UITransform).setContentSize(1280, 720);
+  body.addComponent(UITransform).setContentSize(screenWidth(), screenHeight());
   addLabel(body, 'AffectionLabel', `好感度 ${state.affection}/${state.threshold}`, 195, { size: 26 });
   const redraw = addProgressBar(body, 'AffectionBar', 150, 620, 36);
   redraw(Math.min(1, state.affection / Math.max(1, state.threshold)));

@@ -9,6 +9,7 @@ import { goState } from '../core/SceneFlow';
 import { adButtonText } from '../cache/AdQuota';
 import { adFailHint, canOfferAd, showAd } from '../net/AdGateway';
 import { addButton, addLabel, addProgressBar, PALETTE, setButtonState } from '../ui/SceneUI';
+import { rightEdgeX } from '../ui/ScreenMetrics';
 
 const { ccclass } = _decorator;
 
@@ -71,7 +72,7 @@ export class Recovery extends Component {
       if (!this.isValid) {
         return;
       }
-      const view = CharacterView.mount(this.node, 470, -30);
+      const view = CharacterView.mount(this.node, rightEdgeX(130), -30);
       view.showPet(petId, 'sick');
       this.petView = view;
     });

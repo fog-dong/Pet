@@ -2,6 +2,7 @@
 import { Color, Graphics, Node, UITransform, Vec3 } from 'cc';
 import type { CaseConfigItem, CaseLabPair } from '../config/CaseConfig';
 import { addLabel, addRect } from '../ui/SceneUI';
+import { screenHeight, screenWidth } from '../ui/ScreenMetrics';
 
 export const LAB_ITEM_W = 200;
 export const LAB_ITEM_H = 64;
@@ -81,7 +82,7 @@ export function buildCard(
 }
 
 export function buildDragLayer(parent: Node): Graphics | null {
-  const node = addRect(parent, 'LabDragLayer', 0, 1280, 720, CLEAR);
+  const node = addRect(parent, 'LabDragLayer', 0, screenWidth(), screenHeight(), CLEAR);
   node.setSiblingIndex(parent.children.length - 1);
   return node.getComponent(Graphics);
 }
@@ -104,7 +105,7 @@ export function drawDrag(layer: Graphics, fromWorld: Vec3, toWorld: Vec3): void 
 
 /** 正确配对后保留一条静态连线（每对一张独立 Graphics，互不覆盖）。 */
 export function drawPair(parent: Node, fromWorld: Vec3, toWorld: Vec3): void {
-  const node = addRect(parent, 'LabPairLine', 0, 1280, 720, CLEAR);
+  const node = addRect(parent, 'LabPairLine', 0, screenWidth(), screenHeight(), CLEAR);
   node.setSiblingIndex(parent.children.length - 2);
   const graphics = node.getComponent(Graphics);
   if (!graphics) {

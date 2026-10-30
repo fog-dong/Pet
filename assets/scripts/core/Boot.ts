@@ -15,6 +15,7 @@ import { AGE_RATING_TEXT, HEALTH_GAME_NOTICE_TEXT, LEGAL_VERSION } from '../conf
 import { openPrivacyDialog } from '../ui/PrivacyDialog';
 import { addLabel, createNode, PALETTE } from '../ui/SceneUI';
 import { alignBottom, attachSafeArea } from '../ui/SafeLayout';
+import { fitWidth, screenHeight, screenWidth } from '../ui/ScreenMetrics';
 import { Track } from '../track/Track';
 
 const { ccclass } = _decorator;
@@ -90,18 +91,18 @@ export class Boot extends Component {
 
   /** 合规两行挂到 Canvas 下才能安全区对齐：BootNode 没有 UITransform，Widget 拿不到父级尺寸。 */
   private addSplashLegal(): void {
-    const root = createNode(this.node.parent ?? this.node, 'BootSplashLegal', 0, 1280, 720);
+    const root = createNode(this.node.parent ?? this.node, 'BootSplashLegal', 0, screenWidth(), screenHeight());
     attachSafeArea(root);
     const notice = addLabel(root, 'BootSplashNotice', HEALTH_GAME_NOTICE_TEXT, 0, {
       size: 18,
       color: PALETTE.accent,
-      width: 1100,
+      width: fitWidth(1100, 90),
     });
     alignBottom(notice.node, LEGAL_NOTICE_BOTTOM);
     const age = addLabel(root, 'BootSplashAge', AGE_RATING_TEXT, 0, {
       size: 22,
       color: PALETTE.accent,
-      width: 1100,
+      width: fitWidth(1100, 90),
     });
     alignBottom(age.node, LEGAL_AGE_BOTTOM);
   }

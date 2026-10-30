@@ -14,6 +14,7 @@ import { goState } from '../core/SceneFlow';
 import { Save } from '../cache/Save';
 import { Track } from '../track/Track';
 import { ChoicePanel } from '../ui/ChoicePanel';
+import { screenHeight, screenWidth } from '../ui/ScreenMetrics';
 
 const { ccclass } = _decorator;
 
@@ -67,7 +68,7 @@ export class Diagnosis extends Component {
     const root = new Node('DiagnosisGame');
     root.parent = this.node;
     root.setSiblingIndex(0);
-    root.addComponent(UITransform).setContentSize(1280, 720);
+    root.addComponent(UITransform).setContentSize(screenWidth(), screenHeight());
     this.gameRoot = root;
     this.index = index;
     const kind = this.kinds[index];

@@ -10,8 +10,9 @@ import {
 import { openCustomerService, supportFallback } from '../net/Support';
 import { Track } from '../track/Track';
 import { addLabel, addRect, PALETTE } from './SceneUI';
-import { addDialogButton, PANEL_H, PANEL_W } from './PrivacyDialogKit';
+import { addDialogButton, buttonX, panelH, panelW } from './PrivacyDialogKit';
 import { attachSafeArea } from './SafeLayout';
+import { screenHeight, screenWidth } from './ScreenMetrics';
 
 let overlay: Node | null = null;
 
@@ -28,22 +29,23 @@ export function openAboutPanel(parent: Node): void {
     return;
   }
   Track.track('about_panel_open');
-  overlay = addRect(parent, 'AboutOverlay', 0, 1280, 720, new Color(0, 0, 0, 170));
+  overlay = addRect(parent, 'AboutOverlay', 0, screenWidth(), screenHeight(), new Color(0, 0, 0, 170));
   overlay.addComponent(BlockInputEvents);
-  const panel = addRect(overlay, 'AboutPanel', 0, PANEL_W, PANEL_H, PALETTE.panel);
+  const textW = panelW() - 120;
+  const panel = addRect(overlay, 'AboutPanel', 0, panelW(), panelH(), PALETTE.panel);
   attachSafeArea(panel);
   addLabel(panel, 'AboutTitle', '关 于', 235, { size: 34 });
   addLabel(panel, 'AboutAge', AGE_RATING_TEXT, 170, { size: 26 });
-  addLabel(panel, 'AboutMedical', MEDICAL_DISCLAIMER_TEXT, 100, { size: 22, width: 860 });
-  addLabel(panel, 'AboutNotice', HEALTH_GAME_NOTICE_TEXT, 0, { size: 20, color: PALETTE.sub, width: 860 });
-  const hint = addLabel(panel, 'AboutSupportHint', '', -95, { size: 20, color: PALETTE.sub, width: 860 });
-  addDialogButton(panel, 'AboutSupport', '联 系 客 服', -190, PALETTE.primary, () => {
+  addLabel(panel, 'AboutMedical', MEDICAL_DISCLAIMER_TEXT, 100, { size: 22, width: textW });
+  addLabel(panel, 'AboutNotice', HEALTH_GAME_NOTICE_TEXT, 0, { size: 20, color: PALETTE.sub, width: textW });
+  const hint = addLabel(panel, 'AboutSupportHint', '', -95, { size: 20, color: PALETTE.sub, width: textW });
+  addDialogButton(panel, 'AboutSupport', '联 系 客 服', -buttonX(), PALETTE.primary, () => {
     void openCustomerService().then((result) => {
       Track.track('customer_service_result', { result });
       hint.string = supportFallback(result) || '已为你打开客服会话。';
     });
   });
-  addDialogButton(panel, 'AboutClose', '关 闭', 190, PALETTE.secondary, () => close());
+  addDialogButton(panel, 'AboutClose', '关 闭', buttonX(), PALETTE.secondary, () => close());
   if (!customerServiceReady()) {
     hint.string = CUSTOMER_SERVICE.fallbackText;
   }

@@ -1,12 +1,15 @@
-// STATUS: implemented, W4 大厅：展示存档并进入单局（cases 分包按页引用计数）
+// STATUS: implemented, W9-4 大厅：展示存档并进入单局（游客模式关云端能力，可在厅内补同意）
 import { _decorator, Button, Component, Label } from 'cc';
 import { CaseConfig } from '../config/CaseConfig';
 import { CharacterConfig } from '../config/CharacterConfig';
 import { CONFIG_BUNDLE } from '../config/ConfigLoader';
+import { PRIVACY_GUEST_TEXT } from '../config/LegalConfig';
 import { CaseSession } from '../game/CaseSession';
 import { CharacterView } from '../game/CharacterView';
 import { Save } from '../cache/Save';
+import { PrivacyState } from '../cache/PrivacyState';
 import { GameState } from '../core/GameFSM';
+import { agreePrivacy, startCloudSync } from '../core/BootCloud';
 import { Res } from '../core/Res';
 import { goState } from '../core/SceneFlow';
 import { Codex } from './CodexPanel';
@@ -35,7 +38,13 @@ export class Lobby extends Component {
   protected start(): void {
     Save.load();
     this.refreshStats();
-    void Profile.refresh();
+    if (PrivacyState.isGuest()) {
+      // 游客：不拉云资料、不碰排行榜，本地单局照常。
+      Track.track('lobby_guest_mode');
+      this.showHint(PRIVACY_GUEST_TEXT);
+    } else {
+      void Profile.refresh();
+    }
     void Track.flush();
     addButton(this.node, 'CodexButton', '图 鉴', 120, () => this.onCodexClick(), PALETTE.secondary, 260, 76, 470);
     addButton(this.node, 'LeaderboardButton', '排 行 榜', 210, () => this.onLeaderboardClick(), PALETTE.secondary, 260, 76, 470);
@@ -69,13 +78,28 @@ export class Lobby extends Component {
 
   private onLeaderboardClick(): void {
     Track.track('lobby_leaderboard_click');
+    if (PrivacyState.isGuest()) {
+      this.showHint('游客模式下排行榜暂不可用，在「隐私与协议」中同意后即可开启。');
+      return;
+    }
     this.leaderboard.open(this.node);
   }
 
-  /** 常驻入口：同意过也要能随时重看协议与未成年人说明。 */
+  /** 常驻入口：同意过只读正文；游客在大厅里补同意，同意后立刻接回云端能力。 */
   private onPrivacyClick(): void {
     Track.track('lobby_privacy_click');
-    openPrivacyDialog(this.node, { mode: 'read' });
+    if (PrivacyState.accepted()) {
+      openPrivacyDialog(this.node, { mode: 'read' });
+      return;
+    }
+    openPrivacyDialog(this.node, {
+      mode: 'gate',
+      onAgree: (): void => {
+        agreePrivacy();
+        startCloudSync();
+        this.showHint('已开启云端存档与排行榜。');
+      },
+    });
   }
 
   protected onEnable(): void {

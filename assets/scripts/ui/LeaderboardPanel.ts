@@ -1,14 +1,14 @@
-// STATUS: implemented, W7 排行榜弹窗（分页 + 好友榜空壳 + 空状态）
+// STATUS: implemented, W9-4 排行榜弹窗（分页 + 好友榜空壳 + 空状态；游客模式不发请求）
 import { BlockInputEvents, Button, Color, Label, Node } from 'cc';
+import { PrivacyState } from '../cache/PrivacyState';
 import { Net } from '../net/Net';
 import { fetchLeaderboard, LeaderboardPage, LeaderboardType } from '../net/Leaderboard';
 import { addButton, addLabel, addRect, PALETTE, setButtonState } from './SceneUI';
+import { renderLeaderboardRows } from './LeaderboardRows';
 
 const PANEL_W = 900;
 const PANEL_H = 620;
 const PAGE_SIZE = 5;
-const ROW_GAP = 56;
-const ROW_TOP = 110;
 
 export class LeaderboardPanel {
   private overlay: Node | null = null;
@@ -74,6 +74,14 @@ export class LeaderboardPanel {
   private async load(): Promise<void> {
     this.loading = true;
     this.renderRows(null, '加载中…');
+    if (PrivacyState.isGuest()) {
+      // 游客不发起任何云端请求，面板只说明原因。
+      this.loading = false;
+      this.renderRows(null, '游客模式下排行榜暂不可用');
+      this.setHint('在「隐私与协议」中同意后可开启排行榜。');
+      this.refreshNav();
+      return;
+    }
     if (!Net.ready) {
       this.loading = false;
       this.renderRows(null, '离线模式，排行榜暂不可用');
@@ -113,24 +121,12 @@ export class LeaderboardPanel {
   }
 
   private renderRows(data: LeaderboardPage | null, empty: string): void {
-    this.rows?.destroy();
-    this.rows = null;
     if (!this.panel) {
+      this.rows?.destroy();
+      this.rows = null;
       return;
     }
-    const rows = new Node('LeaderboardRows');
-    rows.parent = this.panel;
-    this.rows = rows;
-    if (!data || data.entries.length === 0) {
-      addLabel(rows, 'LeaderboardEmpty', empty, 20, { size: 28, color: PALETTE.sub, width: 760 });
-      return;
-    }
-    data.entries.forEach((entry, index) => {
-      const y = ROW_TOP - index * ROW_GAP;
-      addLabel(rows, `LB_Rank${index}`, `#${entry.rank}`, y, { size: 28, width: 120, x: -320 });
-      addLabel(rows, `LB_Name${index}`, entry.nickname ?? entry.displayId, y, { size: 26, width: 420, x: -40 });
-      addLabel(rows, `LB_Score${index}`, `${entry.score}`, y, { size: 26, width: 160, x: 300 });
-    });
+    this.rows = renderLeaderboardRows(this.panel, this.rows, data, empty);
   }
 
   private refreshNav(): void {

@@ -1,6 +1,7 @@
-// STATUS: implemented, W7 领养页动作（用户主动分享 + 云端助力，断网本地到账并补发）
+// STATUS: implemented, W9-4 领养页动作（用户主动分享 + 云端助力，断网本地到账并补发；游客模式不联网也不发奖）
 import { claimNextAssist, nextAssistFriend, recordAssist } from '../cache/Assist';
 import { enqueueAssist } from '../cache/PendingAssist';
+import { PrivacyState } from '../cache/PrivacyState';
 import { Net } from '../net/Net';
 import { Share } from '../net/Share';
 import { Track } from '../track/Track';
@@ -11,7 +12,7 @@ const CODE_TODAY_ASSIST_LIMIT = 1005;
 /** 06 §5.2 助力请求文案：第一人称，不写“求助力”等诱导话术。 */
 export const ASSIST_TITLE = '医院床位不够了，能来搭把手吗？';
 
-export type AssistResult = 'granted' | 'ALREADY_ASSISTED' | 'LIMIT';
+export type AssistResult = 'granted' | 'ALREADY_ASSISTED' | 'LIMIT' | 'GUEST';
 
 interface AssistData {
   granted?: boolean;
@@ -25,6 +26,11 @@ function makeNonce(): string {
 }
 
 export async function requestAssist(scene: string): Promise<AssistResult> {
+  if (PrivacyState.isGuest()) {
+    // 游客模式不发奖也不联网：走本地兜底等于绕开隐私同意。
+    Track.track('assist_blocked', { scene, outcome: 'GUEST' });
+    return 'GUEST';
+  }
   Track.track('share_click', { scene });
   const shared = Share.toFriend({ title: ASSIST_TITLE, query: `scene=${scene}` });
   Track.track('share_result', { scene, shared });
@@ -75,6 +81,9 @@ function fallback(friendId: string, scene: string, reason: string): AssistResult
 export function assistHint(outcome: AssistResult): string {
   if (outcome === 'granted') {
     return '好友助力到账';
+  }
+  if (outcome === 'GUEST') {
+    return '游客模式暂不支持好友助力，可在「隐私与协议」中同意后开启';
   }
   return outcome === 'ALREADY_ASSISTED'
     ? '今天这几位好友都帮过忙了，明天再来'

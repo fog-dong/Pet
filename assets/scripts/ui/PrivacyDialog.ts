@@ -1,6 +1,6 @@
-// STATUS: implemented, W8-5 隐私与协议弹窗（未勾选同意置灰；不同意只出说明，不退出游戏）
+// STATUS: implemented, W9-4 隐私与协议弹窗（勾选才同意；不同意走游客模式，不退出游戏）
 import { BlockInputEvents, Button, Color, Node, SafeArea } from 'cc';
-import { PRIVACY_CHECK_TEXT, PRIVACY_DECLINE_TEXT, PRIVACY_DECLINE_TITLE } from '../config/LegalConfig';
+import { PRIVACY_CHECK_TEXT, PRIVACY_DECLINE_TEXT, PRIVACY_DECLINE_TITLE, PRIVACY_GUEST_TEXT } from '../config/LegalConfig';
 import { WxPrivacy } from '../net/Privacy';
 import { addLabel, addRect, createNode, PALETTE, setButtonState } from './SceneUI';
 import { addDialogButton, buildDocScroll, paintCheckBox, PANEL_H, PANEL_W } from './PrivacyDialogKit';
@@ -8,6 +8,7 @@ import { addDialogButton, buildDocScroll, paintCheckBox, PANEL_H, PANEL_W } from
 export interface PrivacyDialogOptions {
   readonly mode: 'gate' | 'read';
   readonly onAgree?: () => void;
+  readonly onGuest?: () => void;
   readonly onClose?: () => void;
 }
 
@@ -52,12 +53,18 @@ function renderDeclined(panel: Node): void {
   body = createNode(panel, 'PrivacyDeclineBody', 0, PANEL_W, PANEL_H);
   addLabel(body, 'DeclineTitle', PRIVACY_DECLINE_TITLE, 170, { size: 30 });
   addLabel(body, 'DeclineText', PRIVACY_DECLINE_TEXT, 90, { size: 24, color: PALETTE.sub, width: 820 });
-  addLabel(body, 'DeclineHint', '进入大厅后仍可在「隐私与协议」里随时查看正文。', 10, {
+  addLabel(body, 'DeclineGuest', PRIVACY_GUEST_TEXT, 40, { size: 22, color: PALETTE.sub, width: 820 });
+  addLabel(body, 'DeclineHint', '进入大厅后仍可在「隐私与协议」里随时查看正文。', 0, {
     size: 22,
     color: PALETTE.sub,
     width: 820,
   });
-  addDialogButton(body, 'PrivacyReread', '重新阅读协议', 0, PALETTE.primary, () => renderGate(panel));
+  addDialogButton(body, 'PrivacyReread', '重新阅读协议', -190, PALETTE.primary, () => renderGate(panel));
+  addDialogButton(body, 'PrivacyGuest', '仅体验基础内容', 190, PALETTE.secondary, () => {
+    const onGuest = settings.onGuest;
+    closePrivacyDialog();
+    onGuest?.();
+  });
 }
 
 function renderRead(panel: Node): void {

@@ -52,6 +52,10 @@ export const PRIVACY_DECLINE_TITLE = '你可以先看看协议内容';
 export const PRIVACY_DECLINE_TEXT =
   '未同意隐私政策前无法进入诊所，游戏不会上传任何数据。你可以重新阅读协议，随时回来点「同意并进入」。';
 
+/** 游客模式说明：不同意也不退出游戏，只是关掉云端能力，本地单局照玩。 */
+export const PRIVACY_GUEST_TEXT =
+  '需要同意隐私政策才能使用云端存档和排行榜，你仍可以以游客模式体验基础病例。';
+
 /** 三个 URL 全部就位才算配置完成，用于提审前自检。 */
 export function legalUrlsReady(): boolean {
   return LEGAL_DOCS.every((doc) => doc.url.startsWith('https://'));

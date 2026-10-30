@@ -1,18 +1,16 @@
-// STATUS: implemented, W8-5 启动流程（首帧后先要隐私同意，再拉配置与云端同步，同意后才进厅）
+// STATUS: implemented, W9-4 启动流程（隐私门在云端初始化之前；不同意走游客模式，不退出游戏）
 import { _decorator, Component, profiler } from 'cc';
 import { DEBUG } from 'cc/env';
 import { GameState, chainAllowed, gameFSM } from './GameFSM';
 import { goState } from './SceneFlow';
 import { Res } from './Res';
-import { Net } from '../net/Net';
-import { WxPrivacy } from '../net/Privacy';
-import { syncCloud } from './BootCloud';
+import { agreePrivacy, startCloudSync } from './BootCloud';
 import { PrivacyState } from '../cache/PrivacyState';
+import { WxPrivacy } from '../net/Privacy';
 import { CaseConfig } from '../config/CaseConfig';
 import { CharacterConfig } from '../config/CharacterConfig';
 import { CONFIG_BUNDLE } from '../config/ConfigLoader';
 import { BUNDLE_TIMEOUT_MS } from '../config/BundleConfig';
-import { CLOUD_ENV } from '../config/EnvConfig';
 import { LEGAL_VERSION } from '../config/LegalConfig';
 import { openPrivacyDialog } from '../ui/PrivacyDialog';
 import { addLabel, PALETTE } from '../ui/SceneUI';
@@ -71,35 +69,31 @@ export class Boot extends Component {
     Res.release(CONFIG_BUNDLE);
     Track.track('fsm_chain_check', { ok: chainAllowed() });
 
-    // 隐私同意发生在任何云端调用之前：未同意时不发登录请求，也不进大厅。
-    if (!(await this.gatePrivacy())) {
-      Track.track('boot_privacy_pending');
-      return;
-    }
-
-    if (Net.init(CLOUD_ENV)) {
-      void syncCloud();
-    } else {
-      // ENV_PLACEHOLDER：未部署云函数时走本地模式，不阻塞单局。
-      Track.track('boot_cloud_offline_fallback');
+    // 隐私门在任何云端调用之前：同意才初始化云端，选游客模式则全程不碰云端。
+    const consent = await this.gatePrivacy();
+    if (consent === 'granted') {
+      startCloudSync();
     }
     await this.enterLobby();
   }
 
-  /** 首帧后弹隐私窗；已同意且版本一致则直接放行。 */
-  private gatePrivacy(): Promise<boolean> {
+  /** 启动 loading 期间弹隐私窗；已同意且版本一致直接放行，不同意也不退出游戏。 */
+  private gatePrivacy(): Promise<'granted' | 'guest'> {
     if (PrivacyState.accepted()) {
-      return Promise.resolve(true);
+      return Promise.resolve('granted');
     }
     Track.track('privacy_dialog_show', { version: LEGAL_VERSION });
-    return new Promise<boolean>((resolve) => {
+    return new Promise<'granted' | 'guest'>((resolve) => {
       openPrivacyDialog(this.node, {
         mode: 'gate',
         onAgree: (): void => {
-          PrivacyState.markAccepted();
-          Track.track('privacy_agree', { version: LEGAL_VERSION });
-          void WxPrivacy.request();
-          resolve(true);
+          agreePrivacy();
+          resolve('granted');
+        },
+        onGuest: (): void => {
+          PrivacyState.markGuest();
+          Track.track('privacy_guest_mode', { version: LEGAL_VERSION });
+          resolve('guest');
         },
       });
     });

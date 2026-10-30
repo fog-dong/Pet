@@ -6,6 +6,7 @@
   },
   "scripts": {
     "build:cloud": "tsc -p cloudfunctions/tsconfig.build.json && node scripts/stamp-cloud-build.js",
+    "build:wechat": "node scripts/build-wechat.js",
     "typecheck:cloud": "tsc -p cloudfunctions/tsconfig.json",
     "wx:appid": "node scripts/apply-wechat-appid.js",
     "verify:idempotency": "node scripts/verify-idempotency.js",

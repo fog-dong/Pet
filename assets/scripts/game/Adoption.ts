@@ -1,5 +1,5 @@
 // STATUS: implemented, W5 领养页（好感度门槛 + 三种腾位路径 + 用户主动分享）
-import { _decorator, Button, Component, Label, Node } from 'cc';
+import { _decorator, Button, Component, director, Label, Node } from 'cc';
 import { CaseSession } from './CaseSession';
 import { AFFECTION_THRESHOLD, Hospital } from './Hospital';
 import { GameState } from '../core/GameFSM';
@@ -25,7 +25,7 @@ export class Adoption extends Component {
   protected start(): void {
     const item = CaseSession.current;
     if (!item) {
-      void goState(GameState.Lobby, 'Lobby');
+      void this.leaveToLobby();
       return;
     }
     this.petId = item.petId;
@@ -132,6 +132,15 @@ export class Adoption extends Component {
 
   private leave(): void {
     void goState(GameState.Result, 'Result');
+  }
+
+  /** 构建启动场景配错会直接进本场景且 FSM 仍停在 Boot：回大厅会被拦，改为回启动页，避免停成黑屏。 */
+  private async leaveToLobby(): Promise<void> {
+    if (await goState(GameState.Lobby, 'Lobby')) {
+      return;
+    }
+    Track.track('adoption_fallback_boot');
+    director.loadScene('Boot');
   }
 
   private setHint(text: string): void {

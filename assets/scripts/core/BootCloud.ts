@@ -4,6 +4,7 @@ import { Session } from '../net/Session';
 import { flushPending } from '../net/SyncCaseResult';
 import { retryPendingSave } from '../net/CloudSave';
 import { flushPendingAssist } from '../net/AssistSync';
+import { flushPendingAdEvents } from '../net/AdEvent';
 import { Quality } from '../config/Quality';
 import { CLIENT_CHANNEL, CLIENT_VERSION } from '../config/EnvConfig';
 import { Track } from '../track/Track';
@@ -39,6 +40,7 @@ export async function syncCloud(): Promise<void> {
   void flushPending();
   void retryPendingSave();
   void flushPendingAssist();
+  void flushPendingAdEvents();
 
   const config = await Net.call<GetConfigData>('getConfig', { version: 0 });
   if (config.code === 0 && config.data) {

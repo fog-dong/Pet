@@ -1,5 +1,6 @@
 // STATUS: implemented, W7 广告发放出口（频控 + 配置校验 + 降级开关 + 埋点，业务层唯一调用点）
 import { Ad, AdResult } from './Ad';
+import { reportAdEvent } from './AdEvent';
 import { AdQuota } from '../cache/AdQuota';
 import { AD_DEGRADE_ENABLED, isAdConfigured } from '../config/AdConfig';
 import { Track } from '../track/Track';
@@ -33,15 +34,18 @@ export function adFailHint(result: AdResult, exhausted: string): string {
 /** 展示激励视频并核销次数；超过每日上限时不打扰玩家，直接返回未就绪。 */
 export async function showAd(scene: string): Promise<AdResult> {
   if (!AdQuota.canShow(scene)) {
-    return { ok: false, code: 'AD_NOT_READY', scene, isEnded: false };
+    // 未起播，没有广告会话，因此不带 adSessionId。
+    return { ok: false, code: 'AD_NOT_READY', scene, isEnded: false, adSessionId: '' };
   }
   const result = await Ad.showRewarded(scene);
   if (result.ok) {
     AdQuota.consume(scene);
+    void reportAdEvent(scene, result.adSessionId, true);
     Track.track('ad_reward', { scene, reward: REWARD_LABEL[scene] ?? scene });
     return result;
   }
   if (result.code === 'AD_NOT_ENDED') {
+    void reportAdEvent(scene, result.adSessionId, false);
     return result;
   }
   if (!isAdConfigured(scene)) {

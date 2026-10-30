@@ -11,6 +11,7 @@ import { Res } from '../core/Res';
 import { goState } from '../core/SceneFlow';
 import { Codex } from './CodexPanel';
 import { LeaderboardPanel } from './LeaderboardPanel';
+import { Profile } from '../net/Profile';
 import { addButton, addLabel, PALETTE } from '../ui/SceneUI';
 import { Track } from '../track/Track';
 
@@ -33,6 +34,7 @@ export class Lobby extends Component {
   protected start(): void {
     Save.load();
     this.refreshStats();
+    void Profile.refresh();
     addButton(this.node, 'CodexButton', '图 鉴', 120, () => this.onCodexClick(), PALETTE.secondary, 260, 76, 470);
     addButton(this.node, 'LeaderboardButton', '排 行 榜', 210, () => this.onLeaderboardClick(), PALETTE.secondary, 260, 76, 470);
     void Res.loadBundle(CONFIG_BUNDLE)

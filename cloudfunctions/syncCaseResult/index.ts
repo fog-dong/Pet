@@ -4,6 +4,7 @@ import * as cloud from 'wx-server-sdk';
 import { readCaseCatalog } from './cases';
 import { isInt } from './guard';
 import { settleCaseResult } from './settle';
+import { clearPending, markPending } from './pending';
 import type { CaseConfigItem, CaseRewards, CaseResultSummary } from './types';
 import { readDiagnosis, readTreatment } from './validate';
 
@@ -111,7 +112,8 @@ export async function main(event: SyncCaseResultEvent): Promise<CloudResponse<Sy
 
   const item = (await loadCaseCatalog())?.get(caseId);
   if (!item) {
-    // 配置未发布或病例不存在：不按客户端数值兜底发奖。
+    // 配置未发布或病例不存在：不按客户端数值兜底发奖；记一条服务端标记供每日积压扫描。
+    await markPending(OPENID, caseSessionId, caseId, INVALID_STATE_CODE, Date.now());
     return reject<SyncCaseResultData>(INVALID_STATE_CODE, 'INVALID_STATE', caseId);
   }
 
@@ -129,6 +131,7 @@ export async function main(event: SyncCaseResultEvent): Promise<CloudResponse<Sy
     if (!outcome) {
       return reject<SyncCaseResultData>(1001, 'SESSION_INVALID', caseId);
     }
+    await clearPending(OPENID, caseSessionId);
     return ok<SyncCaseResultData>({
       result: outcome.result,
       rewards: outcome.rewards,

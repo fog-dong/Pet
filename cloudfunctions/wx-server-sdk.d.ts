@@ -60,6 +60,7 @@ declare module 'wx-server-sdk' {
     gt(value: unknown): unknown;
     gte(value: unknown): unknown;
     lt(value: unknown): unknown;
+    lte(value: unknown): unknown;
     inc(value: number): unknown;
   }
 

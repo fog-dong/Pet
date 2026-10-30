@@ -8,6 +8,7 @@ const cloud = require("wx-server-sdk");
 const cases_1 = require("./cases");
 const guard_1 = require("./guard");
 const settle_1 = require("./settle");
+const pending_1 = require("./pending");
 const validate_1 = require("./validate");
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const MAX_ID_LENGTH = 64;
@@ -77,7 +78,8 @@ async function main(event) {
     }
     const item = (await loadCaseCatalog())?.get(caseId);
     if (!item) {
-        // 配置未发布或病例不存在：不按客户端数值兜底发奖。
+        // 配置未发布或病例不存在：不按客户端数值兜底发奖；记一条服务端标记供每日积压扫描。
+        await (0, pending_1.markPending)(OPENID, caseSessionId, caseId, INVALID_STATE_CODE, Date.now());
         return reject(INVALID_STATE_CODE, 'INVALID_STATE', caseId);
     }
     try {
@@ -94,6 +96,7 @@ async function main(event) {
         if (!outcome) {
             return reject(1001, 'SESSION_INVALID', caseId);
         }
+        await (0, pending_1.clearPending)(OPENID, caseSessionId);
         return ok({
             result: outcome.result,
             rewards: outcome.rewards,

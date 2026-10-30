@@ -1,5 +1,12 @@
-// STATUS: implemented, W9-5 提审材料文案入口（协议 URL / 医疗免责 / 适龄提示 / 客服全在此文件，提审前只改这里）
+// STATUS: implemented, W10-2 提审材料文案与 URL 入口（协议 URL / 医疗免责 / 适龄 / 客服全在此文件，提审前只改这里）
 // 口径来源：docs/plan/15-性能优化发布与合规检查.md §6「隐私：最小采集、告知同意、可注销」
+// 提审前必须替换：三个协议 H5 与客服 URL 现在是 example.com 合法占位，只用于「改一处就能换」；
+// 自检函数把占位域名判为「未配置」，所以占位状态下不会出现「点开打不开的协议」或误调客服接口。
+
+/** 合法占位域名：真实 H5 就绪后整段替换，替换后 `legalUrlsReady()` / `customerServiceReady()` 自动翻真。 */
+export const PLACEHOLDER_HOST = 'example.com';
+/** 占位 URL 前缀；替换时把整段换成运营提供的真实 H5 域名即可。 */
+export const PLACEHOLDER_URL_PREFIX = `https://${PLACEHOLDER_HOST}`;
 
 /** 协议文本版本；文案或采集范围变更后必须递增，触发重新弹窗。 */
 export const LEGAL_VERSION = '1.0.0';
@@ -7,7 +14,7 @@ export const LEGAL_VERSION = '1.0.0';
 export interface LegalDoc {
   readonly id: string;
   readonly title: string;
-  /** 占位为空串：发布流程替换为运营提供的真实 H5，禁止硬编码第三方地址。 */
+  /** 占位用 `PLACEHOLDER_HOST`：发布流程替换为运营提供的真实 H5，禁止硬编码第三方地址。 */
   readonly url: string;
   readonly points: readonly string[];
 }
@@ -16,7 +23,7 @@ export const LEGAL_DOCS: readonly LegalDoc[] = [
   {
     id: 'privacy',
     title: '隐私政策',
-    url: '',
+    url: `${PLACEHOLDER_URL_PREFIX}/privacy`,
     points: [
       '登录时仅读取微信分配的唯一标识（openid），用于保存你的诊所进度与排行榜名次。',
       '存档内容：金币、爱心、病例进度、图鉴与领养记录、道具与床位。',
@@ -27,7 +34,7 @@ export const LEGAL_DOCS: readonly LegalDoc[] = [
   {
     id: 'agreement',
     title: '用户协议',
-    url: '',
+    url: `${PLACEHOLDER_URL_PREFIX}/agreement`,
     points: [
       '游戏为虚拟体验，病例与诊疗均为虚构内容，不构成任何真实医疗或兽医建议。',
       '禁止使用外挂或刷取排行榜；违规成绩可能被清除。',
@@ -37,7 +44,7 @@ export const LEGAL_DOCS: readonly LegalDoc[] = [
   {
     id: 'minors',
     title: '未成年人保护说明',
-    url: '',
+    url: `${PLACEHOLDER_URL_PREFIX}/minors`,
     points: [
       '本作不含暴力、恐怖与不良引导内容，宠物诊疗以照护与科普为主。',
       '未成年人需在监护人同意与陪同下使用；单日广告观看次数受服务端上限约束。',
@@ -66,7 +73,7 @@ export const HEALTH_GAME_NOTICE_TEXT =
   '抵制不良游戏，拒绝盗版游戏。注意自我保护，谨防受骗上当。适度游戏益脑，沉迷游戏伤身。合理安排时间，享受健康生活。';
 
 export interface CustomerServiceConfig {
-  /** 占位为空串：运营在公众平台开通微信客服后填入官方下发的会话 URL。 */
+  /** 占位用 `PLACEHOLDER_HOST`：运营在公众平台开通微信客服后填入官方下发的会话 URL。 */
   readonly url: string;
   /** 平台要求携带的来源场景描述。 */
   readonly scene: string;
@@ -75,17 +82,22 @@ export interface CustomerServiceConfig {
 }
 
 export const CUSTOMER_SERVICE: CustomerServiceConfig = {
-  url: '',
+  url: `${PLACEHOLDER_URL_PREFIX}/customer-service`,
   scene: '宠物医院小游戏-关于面板',
   fallbackText: '客服系统配置中，可通过公众号留言反馈。',
 };
 
+/** 占位值一律按「未配置」处理，避免提审前误以为链路已通。 */
+function isRealUrl(url: string): boolean {
+  return url.startsWith('https://') && !url.includes(PLACEHOLDER_HOST);
+}
+
 /** 客服会话是否已配置真实 URL（提审前自检用）。 */
 export function customerServiceReady(): boolean {
-  return CUSTOMER_SERVICE.url.startsWith('https://');
+  return isRealUrl(CUSTOMER_SERVICE.url);
 }
 
 /** 三个 URL 全部就位才算配置完成，用于提审前自检。 */
 export function legalUrlsReady(): boolean {
-  return LEGAL_DOCS.every((doc) => doc.url.startsWith('https://'));
+  return LEGAL_DOCS.every((doc) => isRealUrl(doc.url));
 }

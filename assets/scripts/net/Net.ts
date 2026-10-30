@@ -1,5 +1,6 @@
-// STATUS: implemented, W5 真实云函数调用（8s 超时 + 2 次重试 + 失败返回错误码不抛错）
+// STATUS: implemented, W5 真实云函数调用（8s 超时 + 2 次重试 + 失败返回错误码不抛错）；W10-2 云端总开关改读 EnvConfig
 // API: Net.call, see docs/plan/接口冻结清单.md §1
+import { isCloudEnabled } from '../config/EnvConfig';
 
 export interface NetResponse<T> {
   code: number;
@@ -32,7 +33,7 @@ export class NetworkClient {
     if (this.initialized) {
       return true;
     }
-    if (!env || env === 'ENV_PLACEHOLDER') {
+    if (!isCloudEnabled() || !env) {
       return false;
     }
     wx.cloud.init({ env, traceUser: true });

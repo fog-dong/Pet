@@ -3,6 +3,7 @@ import { BlockInputEvents, Color, Node } from 'cc';
 import {
   AGE_RATING_TEXT,
   CUSTOMER_SERVICE,
+  customerServiceReady,
   HEALTH_GAME_NOTICE_TEXT,
   MEDICAL_DISCLAIMER_TEXT,
 } from '../config/LegalConfig';
@@ -43,7 +44,7 @@ export function openAboutPanel(parent: Node): void {
     });
   });
   addDialogButton(panel, 'AboutClose', '关 闭', 190, PALETTE.secondary, () => close());
-  if (!CUSTOMER_SERVICE.url) {
+  if (!customerServiceReady()) {
     hint.string = CUSTOMER_SERVICE.fallbackText;
   }
 }

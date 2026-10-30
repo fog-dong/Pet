@@ -3,6 +3,7 @@ import { Ad, AdResult } from './Ad';
 import { reportAdEvent } from './AdEvent';
 import { AdQuota } from '../cache/AdQuota';
 import { AD_DEGRADE_ENABLED, isAdConfigured } from '../config/AdConfig';
+import { COPY } from '../config/CopyText';
 import { Track } from '../track/Track';
 
 const REWARD_LABEL: Readonly<Record<string, string>> = {
@@ -28,7 +29,7 @@ export function adFailHint(result: AdResult, exhausted: string): string {
   if (result.code === 'AD_NOT_ENDED') {
     return '完整看完广告才能领取奖励';
   }
-  return '广告暂不可用，可以先走免费路径';
+  return COPY.adUnavailable;
 }
 
 /** 展示激励视频并核销次数；超过每日上限时不打扰玩家，直接返回未就绪。 */

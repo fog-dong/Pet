@@ -4,6 +4,8 @@ import { DEBUG } from 'cc/env';
 import { GameState, chainAllowed, gameFSM } from './GameFSM';
 import { goState } from './SceneFlow';
 import { Res } from './Res';
+import { withTimeout } from './AsyncTimeout';
+import { prepareFade } from './PageFade';
 import { agreePrivacy, startCloudSync } from './BootCloud';
 import { PrivacyState } from '../cache/PrivacyState';
 import { WxPrivacy } from '../net/Privacy';
@@ -11,7 +13,9 @@ import { CaseConfig } from '../config/CaseConfig';
 import { CharacterConfig } from '../config/CharacterConfig';
 import { CONFIG_BUNDLE } from '../config/ConfigLoader';
 import { BUNDLE_TIMEOUT_MS } from '../config/BundleConfig';
+import { COPY } from '../config/CopyText';
 import { AGE_RATING_TEXT, GAME_NAME, HEALTH_GAME_NOTICE_TEXT, LEGAL_VERSION, legalUrlsReady } from '../config/LegalConfig';
+import { addLogo, mountBackdrop } from '../ui/Backdrop';
 import { openPrivacyDialog } from '../ui/PrivacyDialog';
 import { addLabel, createNode, PALETTE } from '../ui/SceneUI';
 import { alignBottom, alignTop, attachSafeArea } from '../ui/SafeLayout';
@@ -29,18 +33,6 @@ const SPLASH_NAME_TOP = 48;
 const LEGAL_NOTICE_BOTTOM = 40;
 const LEGAL_AGE_BOTTOM = 132;
 
-/** 分包加载最多等这么久，超时就用内置病例兜底，避免低端机首屏黑屏。 */
-function withTimeout<T>(task: Promise<T>, ms: number): Promise<T | null> {
-  return new Promise((resolve) => {
-    const timer = setTimeout(() => resolve(null), ms);
-    const settle = (value: T | null): void => {
-      clearTimeout(timer);
-      resolve(value);
-    };
-    task.then(settle, () => settle(null));
-  });
-}
-
 @ccclass('Boot')
 export class Boot extends Component {
   private started = false;
@@ -48,11 +40,14 @@ export class Boot extends Component {
 
   protected start(): void {
     paintSceneBackground();
+    // 常驻淡入层先建：后面 Boot → Lobby 才有淡出可看。
+    prepareFade();
+    mountBackdrop(this.node, 'clinic');
+    addLogo(this.node, 120, Math.min(560, screenWidth() * 0.78));
     Track.start();
     WxPrivacy.register();
-    addLabel(this.node, 'BootLoading', '正在准备救助站…', 0, { size: 32, color: PALETTE.text });
+    addLabel(this.node, 'BootLoading', COPY.bootLoading, -160, { size: 32, color: PALETTE.text });
     this.addSplashLegal();
-    // 调试浮层只用引擎自带 profiler：脚本层不留自定义面板，避免未使用的类被打进发布包。
     if (DEBUG) { profiler.showStats(); }
     void this.bootstrap();
   }

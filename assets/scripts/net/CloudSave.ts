@@ -2,6 +2,7 @@
 import { sys } from 'cc';
 import { Net } from './Net';
 import { readPendingSave, writePendingSave } from '../cache/PendingSync';
+import { COPY } from '../config/CopyText';
 import { Track } from '../track/Track';
 
 const REV_KEY = 'pet_cloud_rev_v1';
@@ -69,5 +70,5 @@ export function pushHint(result: PushResult): string {
   if (result.ok) {
     return '';
   }
-  return result.stale ? '云端存档已更新，本地结算已同步' : '网络不可用，结算将在下次启动补发';
+  return result.stale ? '云端存档已更新，本地结算已同步' : COPY.weakNetwork;
 }

@@ -20,13 +20,19 @@ export class CharacterView extends Component {
   private statusLabel: Label | null = null;
   private currentMood: CharacterMood = 'idle';
   private unsubscribe: (() => void) | null = null;
+  private bodySize = BODY_SIZE;
 
-  /** 场景里挂一个角色位，返回可继续调 showPet / showDoctor 的组件。 */
-  static mount(parent: Node, x: number, y: number): CharacterView {
+  /** 场景里挂一个角色位，返回可继续调 showPet / showDoctor 的组件；size 决定立绘边长。 */
+  static mount(parent: Node, x: number, y: number, size = BODY_SIZE): CharacterView {
     const node = new Node('CharacterView');
+    // 先关掉再挂组件：onLoad 里的 build 要读到 mount 传进来的尺寸。
+    node.active = false;
     node.parent = parent;
     node.setPosition(x, y, 0);
-    return node.addComponent(CharacterView);
+    const view = node.addComponent(CharacterView);
+    view.bodySize = size;
+    node.active = true;
+    return view;
   }
 
   protected onLoad(): void {
@@ -64,6 +70,17 @@ export class CharacterView extends Component {
 
   playIdle(): void {
     this.playMood('idle');
+  }
+
+  /** 页面自己已经给出名字/状态（大厅、接诊页）时关掉立绘角标，避免叠字。 */
+  hideBadges(): void {
+    this.build();
+    if (this.nameLabel) {
+      this.nameLabel.node.active = false;
+    }
+    if (this.statusLabel) {
+      this.statusLabel.node.active = false;
+    }
   }
 
   playSick(): void {
@@ -113,10 +130,12 @@ export class CharacterView extends Component {
     if (this.visual) {
       return;
     }
-    this.node.addComponent(UITransform).setContentSize(240, 240);
-    this.visual = PetVisual.mount(this.node, BODY_SIZE);
-    this.nameLabel = addLabel(this.node, 'Name', '', -100, { size: 28, width: 300 });
-    this.statusLabel = addLabel(this.node, 'Status', '', 100, { size: 30, width: 200 });
+    const size = this.bodySize;
+    this.node.addComponent(UITransform).setContentSize(size + 90, size + 90);
+    this.visual = PetVisual.mount(this.node, size);
+    const offset = size * 0.66;
+    this.nameLabel = addLabel(this.node, 'Name', '', -offset, { size: 28, width: 300 });
+    this.statusLabel = addLabel(this.node, 'Status', '', offset, { size: 30, width: 200 });
   }
 
   private setTitle(text: string): void {

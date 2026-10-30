@@ -1,4 +1,5 @@
 // STATUS: implemented, W13-2 上报结果分类（2002 配置未发布算可恢复，不再丢弃；纯函数，便于本地回归）
+import { COPY, fillCopy } from '../config/CopyText';
 
 /** 0 成功、1002 参数错误、1004 冲突回放、2002 病例配置未发布、1006 事务重试耗尽。 */
 export type SyncVerdict = 'ok' | 'drop' | 'defer' | 'retry';
@@ -59,5 +60,5 @@ export async function drainQueue<T>(items: readonly T[], send: (item: T) => Prom
 
 /** 大厅角标文案：0 条时返回空串，避免上一轮的提示残留。 */
 export function pendingBadgeText(count: number): string {
-  return count > 0 ? `有 ${count} 局结算待同步，稍后自动补发` : '';
+  return count > 0 ? fillCopy(COPY.pendingSync, { n: count }) : '';
 }

@@ -1,95 +1,107 @@
-// STATUS: implemented, W3 结算页（总星 = 诊断 + 治疗 + 康复，广告金币翻倍，下一例回大厅）
-import { _decorator, Button, Component, Label } from 'cc';
-import { CaseSession } from './CaseSession';
-import type { CaseReward } from './CaseSettle';
+// STATUS: implemented, W16 P1 结算页（星级逐颗弹出 + 奖励上浮 + 同步状态走 Toast）
+import { _decorator, Component, Label } from 'cc';
 import { Save } from '../cache/Save';
-import { adButtonText } from '../cache/AdQuota';
-import { adFailHint, canOfferAd, showAd } from '../net/AdGateway';
-import { pushHint, pushSave } from '../net/CloudSave';
-import { syncCaseResult, flushPending } from '../net/SyncCaseResult';
+import { COPY, fillCopy } from '../config/CopyText';
 import { GameState } from '../core/GameFSM';
 import { goState } from '../core/SceneFlow';
-import { addButton, addLabel, PALETTE, setButtonState } from '../ui/SceneUI';
+import { pushHint, pushSave } from '../net/CloudSave';
+import { flushPending, syncCaseResult } from '../net/SyncCaseResult';
+import { mountBackdrop } from '../ui/Backdrop';
+import { addButton, addLabel, PALETTE } from '../ui/SceneUI';
+import { showStars } from '../ui/StarRow';
+import { showToast } from '../ui/Toast';
+import { CaseSession } from './CaseSession';
+import type { CaseReward } from './CaseSettle';
 import { buildSaveSnapshot } from './CloudPayload';
-import { starText, totalText } from './ResultText';
+import { DoubleReward } from './ResultAd';
+import { totalText } from './ResultText';
+import { addBreakdown, addReward, floatReward, refreshReward } from './ResultView';
+import type { RewardHandle } from './ResultView';
 
 const { ccclass } = _decorator;
 
+const TITLE_Y = 520;
+const SUMMARY_Y = 448;
+const STARS_Y = 352;
+const CHIP_Y = 252;
+const REWARD_Y = 95;
+const AD_Y = -215;
+const MAIN_Y = -335;
+const TOAST_Y = -480;
+
 @ccclass('Result')
 export class Result extends Component {
-  private reward: CaseReward | null = null;
-  private rewardLabel: Label | null = null;
+  private handle: RewardHandle | null = null;
   private totalLabel: Label | null = null;
-  private doubleButton: Button | null = null;
-  private syncHint: Label | null = null;
-  private doubled = false;
 
   protected start(): void {
     const item = CaseSession.current;
     const reward = CaseSession.settle();
-    this.reward = reward;
     const success = reward.stars > 0;
     const root = this.node;
-    addLabel(root, 'PageTitle', '结 算', 300, { size: 46 });
-    addLabel(root, 'Stars', starText(reward.stars), 210, {
-      size: 60,
-      color: PALETTE.primary,
-    });
+    mountBackdrop(root, 'result');
+    addLabel(root, 'PageTitle', COPY.resultTitle, TITLE_Y, { size: 52 });
     addLabel(
       root,
       'Summary',
-      `${item ? item.petName : '本病例'} ${success ? '治疗成功' : '本次未能治愈'}`,
-      140,
-      { size: 32 },
+      success ? fillCopy(COPY.resultSuccess, { pet: item ? item.petName : '宝贝' }) : COPY.resultFail,
+      SUMMARY_Y,
+      { size: 30, color: PALETTE.sub },
     );
-    if (success) {
-      addLabel(
-        root,
-        'Breakdown',
-        `诊断 ${reward.diagnosisStars}★ · 治疗 ${reward.treatmentScore}/3 · 康复 ${reward.recoveryStars}★`,
-        85,
-        { size: 24, color: PALETTE.sub },
-      );
-    }
-    this.rewardLabel = addLabel(
-      root,
-      'Reward',
-      `金币 +${reward.coins}　爱心 +${reward.hearts}　好感 +${reward.affection}`,
-      30,
-      { size: 26 },
-    );
+    addBreakdown(root, reward, CHIP_Y);
+    this.handle = addReward(root, reward, REWARD_Y);
     addLabel(
       root,
       'Adopted',
       CaseSession.adopted ? '已领养，图鉴更新为「已救助」' : '本次未领养，可以稍后再来',
-      -20,
+      -60,
       { size: 22, color: PALETTE.sub },
     );
-    this.totalLabel = addLabel(root, 'Total', totalText(), -65, { size: 22, color: PALETTE.sub });
     if (reward.firstClear) {
-      addLabel(root, 'FirstClear', '首通奖励已发放（金币 ×1.5）', -108, {
-        size: 22,
-        color: PALETTE.primary,
-      });
+      addLabel(root, 'FirstClear', COPY.resultFirstClear, -98, { size: 22, color: PALETTE.primary });
     }
+    this.totalLabel = addLabel(root, 'Total', totalText(), -136, { size: 20, color: PALETTE.sub });
     if (success && reward.coins > 0) {
-      this.doubleButton = addButton(
-        root,
-        'DoubleRewardButton',
-        '',
-        -180,
-        () => void this.doubleReward(),
-        PALETTE.accent,
-        480,
-        76,
-      );
-      this.refreshDouble();
+      new DoubleReward(root, reward, {
+        y: AD_Y,
+        toastY: TOAST_Y,
+        alive: () => this.isValid,
+        onApplied: (coins) => this.onDoubled(reward, coins),
+      }).mount();
     }
-    addButton(root, 'LobbyButton', '下一例', -300, () => {
-      void goState(GameState.Lobby, 'Lobby');
-    });
-    this.syncHint = addLabel(root, 'SyncHint', '', -238, { size: 18, color: PALETTE.sub });
+    addButton(
+      root,
+      'LobbyButton',
+      COPY.resultNext,
+      MAIN_Y,
+      () => {
+        void goState(GameState.Lobby, 'Lobby');
+      },
+      PALETTE.primary,
+      520,
+      112,
+    );
+    void this.playStars(reward);
     void this.sync(reward);
+  }
+
+  /** 广告只看一次：翻倍后的金币就地改数字，再把本局金币飘一次。 */
+  private onDoubled(reward: CaseReward, coins: number): void {
+    if (this.handle) {
+      refreshReward(this.handle, coins, reward.hearts);
+    }
+    if (this.totalLabel) {
+      this.totalLabel.string = totalText();
+    }
+    floatReward(this.node, reward.coins, 0, REWARD_Y);
+  }
+
+  private async playStars(reward: CaseReward): Promise<void> {
+    await showStars(this.node, reward.stars, STARS_Y, { size: 86, gap: 116 });
+    if (!this.isValid) {
+      return;
+    }
+    floatReward(this.node, reward.coins, reward.hearts, REWARD_Y);
   }
 
   private async sync(reward: CaseReward): Promise<void> {
@@ -102,48 +114,9 @@ export class Result extends Component {
       }
     }
     const pushed = await pushSave(buildSaveSnapshot(Save.snapshot()));
-    if (this.isValid && this.syncHint) {
-      this.syncHint.string = pushHint(pushed);
+    const hint = pushHint(pushed);
+    if (this.isValid && hint) {
+      showToast(this.node, hint, { y: TOAST_Y });
     }
-  }
-
-  private refreshDouble(): void {
-    if (!this.doubleButton) {
-      return;
-    }
-    if (this.doubled) {
-      setButtonState(this.doubleButton, false, '本局金币已翻倍');
-      return;
-    }
-    setButtonState(
-      this.doubleButton,
-      canOfferAd('double_reward'),
-      adButtonText('double_reward', '看广告金币 ×2'),
-      PALETTE.accent,
-    );
-  }
-
-  private async doubleReward(): Promise<void> {
-    const reward = this.reward;
-    if (!reward || this.doubled) {
-      return;
-    }
-    const result = await showAd('double_reward');
-    if (!result.ok) {
-      if (this.syncHint) {
-        this.syncHint.string = adFailHint(result, '今日翻倍次数已用完，可直接进入下一例');
-      }
-      this.refreshDouble();
-      return;
-    }
-    this.doubled = true;
-    Save.addCoins(reward.coins);
-    if (this.rewardLabel) {
-      this.rewardLabel.string = `金币 +${reward.coins * 2}　爱心 +${reward.hearts}　好感 +${reward.affection}`;
-    }
-    if (this.totalLabel) {
-      this.totalLabel.string = totalText();
-    }
-    this.refreshDouble();
   }
 }

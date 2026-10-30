@@ -38,7 +38,7 @@
         }
       },
       "baseRewards": {
-        "coins": 30,
+        "coins": 200,
         "hearts": 1,
         "affection": 1
       },
@@ -125,7 +125,7 @@
         }
       },
       "baseRewards": {
-        "coins": 45,
+        "coins": 300,
         "hearts": 2,
         "affection": 2
       },
@@ -260,7 +260,7 @@
         }
       },
       "baseRewards": {
-        "coins": 70,
+        "coins": 450,
         "hearts": 3,
         "affection": 3
       },
@@ -379,7 +379,7 @@
         }
       },
       "baseRewards": {
-        "coins": 35,
+        "coins": 200,
         "hearts": 1,
         "affection": 1
       },
@@ -470,7 +470,7 @@
         }
       },
       "baseRewards": {
-        "coins": 80,
+        "coins": 450,
         "hearts": 3,
         "affection": 3
       },

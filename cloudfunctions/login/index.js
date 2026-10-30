@@ -41,8 +41,9 @@ async function createUser(openid, scene, now) {
                 status: 'active',
                 revision: 0,
                 resources: {
-                    coins: 0,
-                    hearts: 0,
+                    // 05 §9 初值与客户端 emptySave 对齐（金币 500 / 爱心 20）。
+                    coins: 500,
+                    hearts: 20,
                     beds: 0,
                     medicine: {},
                     trainingPoints: 0,

@@ -21,10 +21,14 @@ export interface SaveData {
 /** 新档默认道具：听诊器电池 1 个，保证失败后有一条免费跳过路径。 */
 export const DEFAULT_ITEMS: Record<string, number> = { battery: 1 };
 
+/** 05 §9 初值：金币 500 / 爱心 20，保证首日能自由试错并完成一次领养。 */
+export const INITIAL_COINS = 500;
+export const INITIAL_HEARTS = 20;
+
 export function emptySave(): SaveData {
   return {
-    coins: 0,
-    hearts: 0,
+    coins: INITIAL_COINS,
+    hearts: INITIAL_HEARTS,
     petsSeen: [],
     petsAdopted: [],
     adoptedAt: {},

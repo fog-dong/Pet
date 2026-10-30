@@ -30,7 +30,7 @@ export const LOCAL_CASES: CaseConfigItem[] = [
       time: ['正常', '加速'],
       correct: { medicine: '健胃药', bed: '门诊', time: '正常' },
     },
-    baseRewards: { coins: 30, hearts: 1, affection: 1 },
+    baseRewards: { coins: 200, hearts: 1, affection: 1 },
   },
   {
     caseId: 'local_dog_001',
@@ -58,6 +58,6 @@ export const LOCAL_CASES: CaseConfigItem[] = [
       time: ['正常', '加速'],
       correct: { medicine: '消炎滴耳', bed: '门诊', time: '正常' },
     },
-    baseRewards: { coins: 35, hearts: 1, affection: 1 },
+    baseRewards: { coins: 200, hearts: 1, affection: 1 },
   },
 ];

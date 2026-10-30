@@ -1,4 +1,4 @@
-// STATUS: implemented, W16 P1 大厅骨架：胶囊资源 HUD / 2×2 次级菜单 / 主按钮样式（从 Lobby 拆出，保持单文件 ≤150 行）
+// STATUS: implemented, W18-2 大厅骨架：胶囊资源 HUD / 医院 + 次级菜单（3+2）/ 主按钮样式
 import { Button, Color, Graphics, Label, Node, UITransform } from 'cc';
 import { makeLabel } from './FontKit';
 import { addPill } from './PanelKit';
@@ -6,14 +6,17 @@ import { pinTopLeftAt } from './SafeLayout';
 import { COLORS } from './Tokens';
 import { addUIButton, decorateButton } from './UIButton';
 
-const MENU_W = 214;
+const MENU_W = 200;
+const MENU_GAP = 20;
+const MENU_W_WIDE = 214;
 const MENU_H = 78;
 const MENU_X = 115;
 const MENU_ROW1 = -210;
 const MENU_ROW2 = -302;
 
-/** 次级入口：两行两列，顺序即数组顺序。 */
+/** 次级入口：医院独占首行三列之一，其余两行两列；顺序即数组顺序。 */
 export const LOBBY_MENU: ReadonlyArray<readonly [string, string]> = [
+  ['HospitalButton', '医院'],
   ['CodexButton', '图鉴'],
   ['LeaderboardButton', '排行榜'],
   ['PrivacyButton', '隐私与协议'],
@@ -50,13 +53,18 @@ function addResourcePill(parent: Node, name: string, color: Color, left: number)
 }
 
 export function buildLobbyMenu(parent: Node, onMenuClick: (name: string) => void): void {
+  // 首行三枚（医院 / 图鉴 / 排行榜），次行两枚（隐私 / 关于），x 居中排布。
+  const topCount = LOBBY_MENU.length - 2;
   LOBBY_MENU.forEach(([name, text], index) => {
-    const x = index % 2 === 0 ? -MENU_X : MENU_X;
-    const y = index < 2 ? MENU_ROW1 : MENU_ROW2;
+    const inTop = index < topCount;
+    const slot = inTop ? index : index - topCount;
+    const width = inTop ? MENU_W : MENU_W_WIDE;
+    const x = inTop ? (slot - (topCount - 1) / 2) * (MENU_W + MENU_GAP) : slot === 0 ? -MENU_X : MENU_X;
+    const y = inTop ? MENU_ROW1 : MENU_ROW2;
     addUIButton(parent, name, text, () => onMenuClick(name), {
       y,
       x,
-      width: MENU_W,
+      width,
       height: MENU_H,
       color: COLORS.sage,
       fontSize: 26,

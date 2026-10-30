@@ -98,6 +98,7 @@ export class Lobby extends Component {
       leaderboard: this.leaderboard,
       syncBadge: this.syncBadge,
       showHint: (text) => this.showHint(text),
+      refreshStats: () => this.refreshStats(),
     };
     openLobbyMenu(name, host);
   }

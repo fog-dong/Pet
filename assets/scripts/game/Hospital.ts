@@ -1,9 +1,10 @@
-// STATUS: implemented, W3 医院资源（药品库存 / 床位 / 好感度 / 领养位），全部落本地存档
+// STATUS: implemented, W18-2 医院资源（等级 / 药品 / 床位 / 好感度 / 领养位），全部落本地存档
 import { Save } from '../cache/Save';
+import { HOSPITAL_LEVELS, HospitalLevelConfig } from './HospitalLevels';
 
-/** 每种药首次遇到时补 3 个（05 文档 §9 初值）；每日补给用等待/好友/广告占位。 */
+/** 每种药首次遇到时补 3 个（05 文档 §9 初值）；每日补给在 P2 任务系统里做。 */
 export const DEFAULT_MEDICINE_STOCK = 3;
-/** 领养位基础数量，广告或好友可临时+1。 */
+/** 领养位基础数量，扩建或广告/好友可加成。 */
 export const ADOPTION_BASE_SLOTS = 3;
 /**
  * 领养好感门槛（06 §3.1 的 120 按单局折算为 35）：一局满分 45（诊断 15 + 治疗 20 + 对症 5 + 护理 5），
@@ -47,8 +48,21 @@ export class HospitalStore {
     });
   }
 
+  get level(): number {
+    return Save.snapshot().hospitalLevel;
+  }
+
+  get levelConfig(): HospitalLevelConfig {
+    return HOSPITAL_LEVELS[Math.min(this.level, HOSPITAL_LEVELS.length) - 1];
+  }
+
+  get nextLevel(): HospitalLevelConfig | null {
+    return HOSPITAL_LEVELS[this.level] ?? null;
+  }
+
+  /** 07 §3.1：床位随医院等级提升（L1 2 / L3 4 / L5 7）。 */
   get bedsOwned(): number {
-    return Save.snapshot().bedsOwned;
+    return this.levelConfig.beds;
   }
 
   get bedsOccupied(): number {
@@ -61,16 +75,17 @@ export class HospitalStore {
 
   /** 每局开始按院内已有住院病例占床（确定性轮转，便于复现床位不足）。 */
   resetBeds(): void {
+    const beds = this.bedsOwned;
     Save.mutate((data) => {
-      data.bedsOwned = Math.max(1, data.bedsOwned);
-      data.bedsOccupied = data.casesDone % (data.bedsOwned + 1);
+      data.bedsOccupied = data.casesDone % (beds + 1);
     });
   }
 
   admitBed(): boolean {
+    const beds = this.bedsOwned;
     let ok = false;
     Save.mutate((data) => {
-      if (data.bedsOccupied < data.bedsOwned) {
+      if (data.bedsOccupied < beds) {
         data.bedsOccupied += 1;
         ok = true;
       }
@@ -101,8 +116,9 @@ export class HospitalStore {
     return Save.snapshot().petsAdopted.length;
   }
 
+  /** 06 §3.2：基础 3 位 + 等级加成 + 活动/广告临时加成。 */
   get slots(): number {
-    return ADOPTION_BASE_SLOTS + Save.snapshot().slotBonus;
+    return ADOPTION_BASE_SLOTS + this.levelConfig.slotBonus + Save.snapshot().slotBonus;
   }
 
   get slotFree(): boolean {
@@ -116,6 +132,18 @@ export class HospitalStore {
     Save.mutate((data) => {
       data.slotBonus = Math.max(0, data.slotBonus + Math.round(count));
     });
+  }
+
+  /** 07 §3.1：金币是唯一扩建货币，回收点可延迟，不卡核心循环。 */
+  upgrade(): boolean {
+    const next = this.nextLevel;
+    if (!next || !Save.spendCoins(next.cost)) {
+      return false;
+    }
+    Save.mutate((data) => {
+      data.hospitalLevel = next.level;
+    });
+    return true;
   }
 }
 

@@ -10,7 +10,7 @@ export interface SaveData {
   casesDone: number;
   items: Record<string, number>;
   medicines: Record<string, number>;
-  bedsOwned: number;
+  hospitalLevel: number;
   bedsOccupied: number;
   affection: Record<string, number>;
   slotBonus: number;
@@ -20,9 +20,6 @@ export interface SaveData {
 
 /** 新档默认道具：听诊器电池 1 个，保证失败后有一条免费跳过路径。 */
 export const DEFAULT_ITEMS: Record<string, number> = { battery: 1 };
-
-/** 初始床位：2 张（05-治疗资源分配系统 §9）。 */
-export const DEFAULT_BEDS = 2;
 
 export function emptySave(): SaveData {
   return {
@@ -35,7 +32,7 @@ export function emptySave(): SaveData {
     casesDone: 0,
     items: { ...DEFAULT_ITEMS },
     medicines: {},
-    bedsOwned: DEFAULT_BEDS,
+    hospitalLevel: 1,
     bedsOccupied: 0,
     affection: {},
     slotBonus: 0,
@@ -100,7 +97,8 @@ export function decodeSave(raw: string | null): SaveData {
       casesDone: toNumber(parsed.casesDone, 0),
       items: parsed.items ? toNumberMap(parsed.items) : { ...DEFAULT_ITEMS },
       medicines: toNumberMap(parsed.medicines),
-      bedsOwned: Math.max(1, toNumber(parsed.bedsOwned, DEFAULT_BEDS)),
+      // 等级口径 1-6 与 HOSPITAL_LEVELS 一致；旧存档没有该字段时回到 1 级。
+      hospitalLevel: Math.max(1, Math.min(6, toNumber(parsed.hospitalLevel, 1))),
       bedsOccupied: Math.max(0, toNumber(parsed.bedsOccupied, 0)),
       affection: toNumberMap(parsed.affection),
       slotBonus: Math.max(0, toNumber(parsed.slotBonus, 0)),

@@ -3,7 +3,7 @@ import type { CaseConfigItem } from '../config/CaseConfig';
 import type { SaveData } from '../cache/SaveCodec';
 import type { CaseSyncInput } from '../net/SyncCaseResult';
 import type { DiagnosisResult, TreatmentResult } from './CaseSettle';
-import { ADOPTION_BASE_SLOTS } from './Hospital';
+import { Hospital } from './Hospital';
 
 export interface CaseSnapshot {
   sessionId: string;
@@ -45,8 +45,8 @@ export function buildCaseSync(input: CaseSnapshot): CaseSyncInput {
  */
 export function buildSaveSnapshot(save: Readonly<SaveData>): Record<string, unknown> {
   return {
-    level: 1,
-    beds: save.bedsOwned,
-    adoptionSlots: ADOPTION_BASE_SLOTS + save.slotBonus,
+    level: save.hospitalLevel,
+    beds: Hospital.bedsOwned,
+    adoptionSlots: Hospital.slots,
   };
 }

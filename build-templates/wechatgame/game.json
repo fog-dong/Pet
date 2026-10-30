@@ -1,0 +1,8 @@
+{
+  "networkTimeout": {
+    "request": 8000,
+    "connectSocket": 5000,
+    "uploadFile": 5000,
+    "downloadFile": 500000
+  }
+}

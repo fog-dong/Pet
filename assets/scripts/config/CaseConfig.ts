@@ -25,6 +25,7 @@ export interface CaseRewardConfig {
 
 export interface CaseConfigItem {
   caseId: string;
+  petId: string;
   petName: string;
   petSpecies: PetSpecies;
   breed: string;

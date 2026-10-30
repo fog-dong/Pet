@@ -4,6 +4,7 @@ import { _decorator, Component, director } from 'cc';
 import { GameState, gameFSM } from './GameFSM';
 import { Net } from '../net/Net';
 import { CaseConfig } from '../config/CaseConfig';
+import { CharacterConfig } from '../config/CharacterConfig';
 import { CLOUD_ENV, CLIENT_CHANNEL, CLIENT_VERSION } from '../config/EnvConfig';
 import { Track } from '../track/Track';
 
@@ -38,7 +39,7 @@ export class Boot extends Component {
     }
     this.started = true;
 
-    const casesReady = await CaseConfig.load();
+    const [casesReady] = await Promise.all([CaseConfig.load(), CharacterConfig.load()]);
     if (!casesReady) {
       Track.track('boot_cases_missing');
     }

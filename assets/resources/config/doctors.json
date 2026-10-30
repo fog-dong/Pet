@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "doctors": [
+    { "doctorId": "doc_director", "name": "林院长", "role": "院长", "bonus": "诊断星级 +1（上限 3 星）" },
+    { "doctorId": "doc_attending", "name": "周医生", "role": "主治", "bonus": "治疗评分 +1" },
+    { "doctorId": "doc_nurse", "name": "小雨", "role": "护士", "bonus": "康复时间 -20%" }
+  ]
+}

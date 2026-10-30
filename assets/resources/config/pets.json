@@ -1,0 +1,69 @@
+{
+  "version": 1,
+  "pets": [
+    {
+      "petId": "pet_orange_cat",
+      "name": "橘子",
+      "breed": "橘猫",
+      "species": "cat",
+      "baseLook": { "color": "#F2A65A", "shape": "circle" },
+      "colors": { "sick": "#A8A29A", "idle": "#F2A65A", "recovered": "#F7C89B" }
+    },
+    {
+      "petId": "pet_tabby_cat",
+      "name": "狸花",
+      "breed": "狸花猫",
+      "species": "cat",
+      "baseLook": { "color": "#8C8375", "shape": "circle" },
+      "colors": { "sick": "#A8A29A", "idle": "#8C8375", "recovered": "#BDB2A1" }
+    },
+    {
+      "petId": "pet_ragdoll",
+      "name": "布丁",
+      "breed": "布偶猫",
+      "species": "cat",
+      "baseLook": { "color": "#D8CFE8", "shape": "circle" },
+      "colors": { "sick": "#A8A29A", "idle": "#D8CFE8", "recovered": "#EFE6FA" }
+    },
+    {
+      "petId": "pet_shiba",
+      "name": "豆豆",
+      "breed": "柴犬",
+      "species": "dog",
+      "baseLook": { "color": "#D9A05B", "shape": "square" },
+      "colors": { "sick": "#A8A29A", "idle": "#D9A05B", "recovered": "#F0C089" }
+    },
+    {
+      "petId": "pet_corgi",
+      "name": "波比",
+      "breed": "柯基",
+      "species": "dog",
+      "baseLook": { "color": "#E8956B", "shape": "square" },
+      "colors": { "sick": "#A8A29A", "idle": "#E8956B", "recovered": "#F8BE9B" }
+    },
+    {
+      "petId": "pet_golden",
+      "name": "大黄",
+      "breed": "金毛",
+      "species": "dog",
+      "baseLook": { "color": "#E3B261", "shape": "square" },
+      "colors": { "sick": "#A8A29A", "idle": "#E3B261", "recovered": "#F6D79C" }
+    },
+    {
+      "petId": "pet_lop_rabbit",
+      "name": "雪球",
+      "breed": "垂耳兔",
+      "species": "rabbit",
+      "baseLook": { "color": "#EFE7DC", "shape": "circle" },
+      "colors": { "sick": "#A8A29A", "idle": "#EFE7DC", "recovered": "#FFF7EE" }
+    },
+    {
+      "petId": "pet_budgie",
+      "name": "小蓝",
+      "breed": "虎皮鹦鹉",
+      "species": "bird",
+      "baseLook": { "color": "#7FB7C9", "shape": "circle" },
+      "colors": { "sick": "#A8A29A", "idle": "#7FB7C9", "recovered": "#B3DCE8" }
+    }
+  ]
+}

@@ -1,7 +1,9 @@
 // STATUS: implemented, W3 病例介绍页
 import { _decorator, Component, director } from 'cc';
 import { CaseConfig } from '../config/CaseConfig';
+import { CharacterConfig } from '../config/CharacterConfig';
 import { CaseSession } from './CaseSession';
+import { CharacterView } from './CharacterView';
 import { GameState } from '../core/GameFSM';
 import { goState } from '../core/SceneFlow';
 import { addButton, addLabel, PALETTE } from '../ui/SceneUI';
@@ -30,11 +32,12 @@ export class CaseIntro extends Component {
       size: 24,
       color: PALETTE.sub,
     });
-    addLabel(root, 'Story', item.story, 50, { size: 26, width: 900 });
+    addLabel(root, 'Story', item.story, 50, { size: 26, width: 620, x: -160 });
     addLabel(root, 'Symptoms', `症状：${item.symptoms.join(' · ')}`, -20, {
       size: 24,
       color: PALETTE.sub,
-      width: 900,
+      width: 620,
+      x: -160,
     });
     addButton(root, 'AcceptButton', '开始诊断', -150, () => {
       void goState(GameState.Diagnosis, 'Diagnosis');
@@ -64,5 +67,15 @@ export class CaseIntro extends Component {
       },
       PALETTE.secondary,
     );
+    this.mountPet(item.petId);
+  }
+
+  private mountPet(petId: string): void {
+    void CharacterConfig.load().then(() => {
+      if (!this.isValid) {
+        return;
+      }
+      CharacterView.mount(this.node, 470, 80).showPet(petId, 'sick');
+    });
   }
 }

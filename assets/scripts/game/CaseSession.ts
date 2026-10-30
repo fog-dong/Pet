@@ -67,9 +67,10 @@ export class CaseSessionStore {
     this.retryCount = 0;
     this.adopted = false;
     Save.load();
-    Save.markSeen(item.caseId);
+    Save.markSeen(item.petId);
     Track.track('case_start', {
       caseId: item.caseId,
+      petId: item.petId,
       difficulty: item.diagnosisDifficulty,
       source: 'lobby',
     });

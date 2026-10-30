@@ -39,8 +39,8 @@ export class Adoption extends Component {
     const item = CaseSession.current;
     if (adopt && item) {
       CaseSession.adopted = true;
-      Save.markAdopted(item.caseId);
-      Track.track('adoption_complete', { caseId: item.caseId, petName: item.petName });
+      Save.markAdopted(item.petId);
+      Track.track('adoption_complete', { caseId: item.caseId, petId: item.petId });
     }
     void goState(GameState.Result, 'Result');
   }

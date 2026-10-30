@@ -1,11 +1,14 @@
 // STATUS: implemented, W3 大厅：展示存档并进入单局
 import { _decorator, Button, Component, Label } from 'cc';
 import { CaseConfig } from '../config/CaseConfig';
+import { CharacterConfig } from '../config/CharacterConfig';
 import { CaseSession } from '../game/CaseSession';
+import { CharacterView } from '../game/CharacterView';
 import { Save } from '../cache/Save';
 import { GameState } from '../core/GameFSM';
 import { goState } from '../core/SceneFlow';
-import { addLabel, PALETTE } from '../ui/SceneUI';
+import { Codex } from './CodexPanel';
+import { addButton, addLabel, PALETTE } from '../ui/SceneUI';
 import { Track } from '../track/Track';
 
 const { ccclass, property } = _decorator;
@@ -26,6 +29,26 @@ export class Lobby extends Component {
   protected start(): void {
     Save.load();
     this.refreshStats();
+    addButton(this.node, 'CodexButton', '图 鉴', 120, () => this.onCodexClick(), PALETTE.secondary, 260, 76, 470);
+    void CharacterConfig.load().then(() => {
+      if (!this.isValid) {
+        return;
+      }
+      CharacterView.mount(this.node, 470, -160).showDoctor('doc_director');
+    });
+  }
+
+  private onCodexClick(): void {
+    Track.track('lobby_codex_click');
+    if (CharacterConfig.ready) {
+      Codex.open(this.node);
+      return;
+    }
+    void CharacterConfig.load().then(() => {
+      if (this.isValid) {
+        Codex.open(this.node);
+      }
+    });
   }
 
   protected onEnable(): void {

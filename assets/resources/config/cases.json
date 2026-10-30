@@ -3,6 +3,7 @@
   "cases": [
     {
       "caseId": "case_cat_001",
+      "petId": "pet_orange_cat",
       "petName": "橘子",
       "petSpecies": "cat",
       "breed": "橘猫",
@@ -21,6 +22,7 @@
     },
     {
       "caseId": "case_cat_002",
+      "petId": "pet_tabby_cat",
       "petName": "狸花",
       "petSpecies": "cat",
       "breed": "狸花猫",
@@ -39,6 +41,7 @@
     },
     {
       "caseId": "case_cat_003",
+      "petId": "pet_ragdoll",
       "petName": "布丁",
       "petSpecies": "cat",
       "breed": "布偶猫",
@@ -57,6 +60,7 @@
     },
     {
       "caseId": "case_dog_001",
+      "petId": "pet_shiba",
       "petName": "豆豆",
       "petSpecies": "dog",
       "breed": "柴犬",
@@ -75,6 +79,7 @@
     },
     {
       "caseId": "case_dog_002",
+      "petId": "pet_corgi",
       "petName": "波比",
       "petSpecies": "dog",
       "breed": "柯基",

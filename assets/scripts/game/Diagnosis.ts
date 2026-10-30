@@ -1,6 +1,8 @@
 // STATUS: implemented, W3 诊断页（占位：一个完成按钮 + 失败三路兜底）
 import { _decorator, Component, Label, Node } from 'cc';
 import { CaseSession } from './CaseSession';
+import { CharacterView } from './CharacterView';
+import { CharacterConfig } from '../config/CharacterConfig';
 import { GameState } from '../core/GameFSM';
 import { goState } from '../core/SceneFlow';
 import { Ad } from '../net/Ad';
@@ -30,7 +32,8 @@ export class Diagnosis extends Component {
     addLabel(root, 'Symptom', `症状：${item.symptoms.join(' · ')}`, 140, {
       size: 24,
       color: PALETTE.sub,
-      width: 900,
+      width: 620,
+      x: -160,
     });
     this.hint = addLabel(root, 'Hint', '听诊小游戏 W4 接入，此处先占位', 40, {
       size: 24,
@@ -46,6 +49,16 @@ export class Diagnosis extends Component {
       PALETTE.secondary,
       420,
     );
+    this.mountPet(item.petId);
+  }
+
+  private mountPet(petId: string): void {
+    void CharacterConfig.load().then(() => {
+      if (!this.isValid) {
+        return;
+      }
+      CharacterView.mount(this.node, 470, 40).showPet(petId, 'sick');
+    });
   }
 
   private complete(): void {

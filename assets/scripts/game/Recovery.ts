@@ -1,6 +1,8 @@
 // STATUS: implemented, W3 康复页（进度条 + 广告加速占位）
 import { _decorator, Component, Label } from 'cc';
 import { CaseSession } from './CaseSession';
+import { CharacterView } from './CharacterView';
+import { CharacterConfig } from '../config/CharacterConfig';
 import { GameState } from '../core/GameFSM';
 import { goState } from '../core/SceneFlow';
 import { Ad } from '../net/Ad';
@@ -12,6 +14,7 @@ const BASE_SECONDS = 10;
 @ccclass('Recovery')
 export class Recovery extends Component {
   private redraw: ((ratio: number) => void) | null = null;
+  private petView: CharacterView | null = null;
   private hint: Label | null = null;
   private seconds = BASE_SECONDS;
   private elapsed = 0;
@@ -45,6 +48,18 @@ export class Recovery extends Component {
       },
       PALETTE.secondary,
     );
+    this.mountPet(item.petId);
+  }
+
+  private mountPet(petId: string): void {
+    void CharacterConfig.load().then(() => {
+      if (!this.isValid) {
+        return;
+      }
+      const view = CharacterView.mount(this.node, 470, -30);
+      view.showPet(petId, 'sick');
+      this.petView = view;
+    });
   }
 
   protected update(deltaTime: number): void {
@@ -52,9 +67,12 @@ export class Recovery extends Component {
       return;
     }
     this.elapsed = Math.min(this.seconds, this.elapsed + deltaTime);
-    this.redraw?.(this.elapsed / this.seconds);
+    const ratio = this.elapsed / this.seconds;
+    this.redraw?.(ratio);
+    this.petView?.setRecoveryProgress(ratio);
     if (this.elapsed >= this.seconds) {
       this.done = true;
+      this.petView?.playRecovered();
       if (this.hint) {
         this.hint.string = '康复完成，可以进入领养';
       }

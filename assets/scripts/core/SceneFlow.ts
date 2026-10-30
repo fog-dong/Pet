@@ -1,6 +1,7 @@
-// STATUS: implemented, W3 场景跳转（FSM 白名单 + 场景加载）
+// STATUS: implemented, W6 场景跳转（FSM 白名单 + 场景加载 + 分包回收）
 import { director } from 'cc';
 import { GameState, gameFSM } from './GameFSM';
+import { Res } from './Res';
 import { Track } from '../track/Track';
 
 export async function goState(next: GameState, sceneName: string): Promise<boolean> {
@@ -8,9 +9,24 @@ export async function goState(next: GameState, sceneName: string): Promise<boole
   if (!ok) {
     return false;
   }
-  if (sceneName && !director.loadScene(sceneName)) {
-    Track.track('scene_load_failed', { scene: sceneName, state: next });
-    return false;
+  if (!sceneName) {
+    Res.releaseUnused();
+    return true;
   }
-  return true;
+  return new Promise<boolean>((resolve) => {
+    const launched = director.loadScene(sceneName, (error) => {
+      // 新场景激活后旧场景已销毁，此时回收引用归零的分包。
+      Res.releaseUnused();
+      if (error) {
+        Track.track('scene_load_failed', { scene: sceneName, state: next });
+        resolve(false);
+        return;
+      }
+      resolve(true);
+    });
+    if (!launched) {
+      Track.track('scene_load_failed', { scene: sceneName, state: next });
+      resolve(false);
+    }
+  });
 }

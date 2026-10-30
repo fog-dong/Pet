@@ -1,6 +1,7 @@
 // STATUS: implemented, W3 听诊棋盘（宠物色块身体 + 可点热区 + 高亮/闪烁）
 import { Color, Graphics, Label, Node, Tween, tween, Vec3 } from 'cc';
 import type { AuscultationLayout, AuscultationSpotDef } from '../config/AuscultationConfig';
+import { Quality } from '../config/Quality';
 import { addLabel, addRect, createNode, PALETTE } from '../ui/SceneUI';
 
 const BOARD_W = 560;
@@ -12,9 +13,6 @@ const SPOT_IDLE = new Color(255, 255, 255, 70);
 const SPOT_FOUND = new Color(127, 183, 126, 255);
 const SPOT_WRONG = new Color(214, 106, 96, 255);
 const SPOT_SPENT = new Color(198, 192, 184, 200);
-
-/** 低端机降级开关：设为 false 时高亮改为静态，不跑 tween。 */
-export const AUSCULTATION_QUALITY = { pulse: true };
 
 export interface SpotView {
   def: AuscultationSpotDef;
@@ -111,7 +109,7 @@ export class AuscultationView {
   }
 
   private pulse(spot: SpotView): void {
-    if (!AUSCULTATION_QUALITY.pulse) {
+    if (Quality.low) {
       return;
     }
     Tween.stopAllByTarget(spot.node);

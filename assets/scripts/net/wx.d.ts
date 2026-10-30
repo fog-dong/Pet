@@ -19,9 +19,18 @@ interface WxShareOptions {
   query?: string;
 }
 
+interface WxPerformanceMemory {
+  usedJSHeapSize?: number;
+}
+
+interface WxPerformance {
+  memory?: WxPerformanceMemory;
+}
+
 interface WxApi {
   cloud: WxCloudApi;
   shareAppMessage(options: WxShareOptions): void;
+  getPerformance?(): WxPerformance;
 }
 
 declare const wx: WxApi;

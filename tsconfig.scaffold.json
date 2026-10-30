@@ -17,5 +17,5 @@
     "lib": ["ES2019", "DOM"],
     "types": []
   },
-  "include": ["assets/scripts/**/*.ts"]
+  "include": ["assets/scripts/**/*.ts", "temp/declarations/cc.env.d.ts"]
 }

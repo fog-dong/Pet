@@ -1,6 +1,7 @@
 // STATUS: implemented, W3 角色展示（色块 + 名字 + 状态图标，纯 Cocos 绘制）
 import { _decorator, Color, Component, Graphics, Label, Node, tween, Tween, UITransform, Vec3 } from 'cc';
 import { CharacterConfig } from '../config/CharacterConfig';
+import { Quality } from '../config/Quality';
 import { addLabel, hexToColor } from '../ui/SceneUI';
 
 const { ccclass } = _decorator;
@@ -100,6 +101,9 @@ export class CharacterView extends Component {
     body.setScale(Vec3.ONE);
     if (mood === 'sick') {
       body.setScale(new Vec3(0.94, 0.94, 1));
+      return;
+    }
+    if (Quality.low) {
       return;
     }
     const amplitude = mood === 'recovered' ? 1.06 : 1.03;

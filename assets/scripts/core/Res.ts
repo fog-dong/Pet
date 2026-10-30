@@ -1,5 +1,5 @@
-// STATUS: implemented, W4 分包加载（assetManager + 引用计数，08 §8）
-// API: Res.loadBundle / Res.release, see docs/plan/08-客户端架构与状态机.md §8
+// STATUS: implemented, W6 分包加载（assetManager + 引用计数 + 场景切换回收，08 §8）
+// API: Res.loadBundle / Res.release / Res.releaseUnused, see docs/plan/08-客户端架构与状态机.md §8
 import { assetManager } from 'cc';
 
 interface BundleState {
@@ -35,19 +35,26 @@ export class ResManager {
     });
   }
 
+  /** 只减引用，不立刻卸载；真正卸载交给场景切换后的 releaseUnused。 */
   release(tag: string): void {
     const state = this.bundles.get(tag);
-    if (!state) {
+    if (!state || state.refs <= 0) {
       return;
     }
     state.refs -= 1;
-    if (state.refs > 0) {
-      return;
-    }
-    this.bundles.delete(tag);
-    const bundle = assetManager.getBundle(tag);
-    if (bundle) {
-      assetManager.removeBundle(bundle);
+  }
+
+  /** 场景切换后调用：引用归零的分包统一卸载，避免常驻内存。 */
+  releaseUnused(): void {
+    for (const [name, state] of this.bundles) {
+      if (state.refs > 0) {
+        continue;
+      }
+      this.bundles.delete(name);
+      const bundle = assetManager.getBundle(name);
+      if (bundle) {
+        assetManager.removeBundle(bundle);
+      }
     }
   }
 

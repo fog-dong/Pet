@@ -8,6 +8,7 @@ import { Net } from '../net/Net';
 import { Session } from '../net/Session';
 import { flushPending } from '../net/SyncCaseResult';
 import { retryPendingSave } from '../net/CloudSave';
+import { flushPendingAssist } from '../net/AssistSync';
 import { CaseConfig } from '../config/CaseConfig';
 import { CharacterConfig } from '../config/CharacterConfig';
 import { CONFIG_BUNDLE } from '../config/ConfigLoader';
@@ -97,6 +98,7 @@ export class Boot extends Component {
     Session.set(login.data.token);
     void flushPending();
     void retryPendingSave();
+    void flushPendingAssist();
     await this.enterLobby();
   }
 

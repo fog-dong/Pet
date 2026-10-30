@@ -21,8 +21,10 @@ declare module 'wx-server-sdk' {
   export interface Query<T> {
     where(condition: Record<string, unknown>): Query<T>;
     orderBy(field: string, direction: 'asc' | 'desc'): Query<T>;
+    skip(count: number): Query<T>;
     limit(count: number): Query<T>;
     get(): Promise<QueryResult<T>>;
+    count(): Promise<{ total: number }>;
     update(options: { data: Record<string, unknown> }): Promise<UpdateResult>;
   }
 
@@ -49,8 +51,15 @@ declare module 'wx-server-sdk' {
     };
   }
 
+  export interface Command {
+    gt(value: unknown): unknown;
+    gte(value: unknown): unknown;
+    lt(value: unknown): unknown;
+  }
+
   export interface Database {
     collection<T = Record<string, unknown>>(name: string): Collection<T>;
+    command: Command;
     runTransaction<R>(handler: (transaction: Transaction) => Promise<R>): Promise<R>;
   }
 

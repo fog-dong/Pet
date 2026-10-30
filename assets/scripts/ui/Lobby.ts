@@ -10,6 +10,7 @@ import { GameState } from '../core/GameFSM';
 import { Res } from '../core/Res';
 import { goState } from '../core/SceneFlow';
 import { Codex } from './CodexPanel';
+import { LeaderboardPanel } from './LeaderboardPanel';
 import { addButton, addLabel, PALETTE } from '../ui/SceneUI';
 import { Track } from '../track/Track';
 
@@ -27,11 +28,13 @@ export class Lobby extends Component {
   startButton: Button | null = null;
 
   private hint: Label | null = null;
+  private readonly leaderboard = new LeaderboardPanel();
 
   protected start(): void {
     Save.load();
     this.refreshStats();
     addButton(this.node, 'CodexButton', '图 鉴', 120, () => this.onCodexClick(), PALETTE.secondary, 260, 76, 470);
+    addButton(this.node, 'LeaderboardButton', '排 行 榜', 210, () => this.onLeaderboardClick(), PALETTE.secondary, 260, 76, 470);
     void Res.loadBundle(CONFIG_BUNDLE)
       .then(() => CharacterConfig.load())
       .then(() => {
@@ -57,6 +60,11 @@ export class Lobby extends Component {
         Codex.open(this.node);
       }
     });
+  }
+
+  private onLeaderboardClick(): void {
+    Track.track('lobby_leaderboard_click');
+    this.leaderboard.open(this.node);
   }
 
   protected onEnable(): void {

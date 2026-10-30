@@ -20,6 +20,7 @@ export class Adoption extends Component {
   private waitButton: Button | null = null;
   private petId = '';
   private waiting = 0;
+  private assisting = false;
 
   protected start(): void {
     const item = CaseSession.current;
@@ -47,8 +48,8 @@ export class Adoption extends Component {
         slotFree: Hospital.slotFree,
       },
       {
-        shareAssist: () => this.shareAssist(),
-        shareSlot: () => this.shareSlot(),
+        shareAssist: () => void this.runAssist('affection'),
+        shareSlot: () => void this.runAssist('adoption_slot'),
         adSlot: () => void this.adSlot(),
         startWait: () => this.startWait(),
         adopt: () => this.adopt(),
@@ -58,22 +59,23 @@ export class Adoption extends Component {
     this.waitButton = this.body.getChildByName('WaitSlot')?.getComponent(Button) ?? null;
   }
 
-  private shareAssist(): void {
-    const outcome = requestAssist('affection');
-    if (outcome === 'granted') {
-      Hospital.addAffection(this.petId, 1);
-      this.render();
-    }
-    this.setHint(assistHint(outcome));
-  }
-
-  private shareSlot(): void {
-    const outcome = requestAssist('adoption_slot');
-    if (outcome === 'granted') {
-      Hospital.addSlotBonus(1);
-      this.render();
-      this.setHint('好友帮忙腾出一个领养位（本地模拟）');
+  private async runAssist(scene: string): Promise<void> {
+    if (this.assisting) {
       return;
+    }
+    this.assisting = true;
+    const outcome = await requestAssist(scene);
+    this.assisting = false;
+    if (!this.isValid) {
+      return;
+    }
+    if (outcome === 'granted') {
+      if (scene === 'affection') {
+        Hospital.addAffection(this.petId, 1);
+      } else {
+        Hospital.addSlotBonus(1);
+      }
+      this.render();
     }
     this.setHint(assistHint(outcome));
   }

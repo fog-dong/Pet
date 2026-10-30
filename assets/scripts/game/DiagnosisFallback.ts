@@ -43,7 +43,7 @@ export class DiagnosisFallback {
         color: PALETTE.primary,
       },
     ];
-    this.panel.open(this.hooks.root(), '这次没听清，选一条路继续', actions);
+    this.panel.open(this.hooks.root(), '这次没查完，选一条路继续', actions);
     this.panel.setHint('三条路都不需要付费，电池用完也能免费重试。');
   }
 

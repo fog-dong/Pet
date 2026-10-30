@@ -1,28 +1,34 @@
-// STATUS: implemented, W3 诊断页（听诊小游戏 + 失败三路兜底 + 额外检查广告）
+// STATUS: implemented, W4 诊断调度（听诊/拍片/化验，最多 2 个，共用评分入口）
 import { _decorator, Button, Component, Label, Node, UITransform } from 'cc';
 import type { CaseConfigItem } from '../config/CaseConfig';
 import { CaseSession } from './CaseSession';
-import { Auscultation } from './Auscultation';
 import type { AuscultationResult } from './AuscultationScore';
+import { combineDiagnosis, emptyOutcome } from './DiagnosisScore';
+import { DiagnosisKind, diagnosisSequence } from './DiagnosisSequence';
+import { buildDiagnosisLayout, DIAGNOSIS_HINT, DIAGNOSIS_NAME } from './DiagnosisLayout';
+import { buildInspection, refreshInspection, watchInspection } from './DiagnosisInspection';
+import { Hintable, spawnDiagnosis } from './DiagnosisGames';
 import { DiagnosisFallback } from './DiagnosisFallback';
 import { GameState } from '../core/GameFSM';
 import { goState } from '../core/SceneFlow';
-import { AdQuota, adButtonText } from '../cache/AdQuota';
-import { showAd } from '../net/AdGateway';
 import { Save } from '../cache/Save';
 import { Track } from '../track/Track';
-import { addButton, addLabel, PALETTE, setButtonState } from '../ui/SceneUI';
 import { ChoicePanel } from '../ui/ChoicePanel';
 
 const { ccclass } = _decorator;
 
 @ccclass('Diagnosis')
 export class Diagnosis extends Component {
+  private item: CaseConfigItem | null = null;
+  private kinds: DiagnosisKind[] = [];
+  private outcomes: AuscultationResult[] = [];
+  private index = 0;
+  private forceLow = false;
   private gameRoot: Node | null = null;
-  private game: Auscultation | null = null;
+  private game: Hintable | null = null;
   private hint: Label | null = null;
+  private step: Label | null = null;
   private inspection: Button | null = null;
-  private lastResult: AuscultationResult | null = null;
   private readonly panel = new ChoicePanel();
   private readonly fallback = new DiagnosisFallback(
     {
@@ -40,95 +46,94 @@ export class Diagnosis extends Component {
       void goState(GameState.Lobby, 'Lobby');
       return;
     }
+    this.item = item;
+    this.kinds = diagnosisSequence(item);
     CaseSession.beginDiagnosis();
-    const root = this.node;
-    addLabel(root, 'PageTitle', '听 诊', 330, { size: 40 });
-    addLabel(root, 'PetName', `${item.petName} · ${item.breed}`, 288, {
-      size: 24, color: PALETTE.sub,
-    });
-    this.hint = addLabel(root, 'Hint', '点击宠物身上的区域，找出异常心音', -262, {
-      size: 24, color: PALETTE.sub, width: 900,
-    });
-    const watch = (): void => void this.watchInspection();
-    this.inspection = addButton(root, 'InspectionButton', '', -325, watch, PALETTE.accent, 420, 64);
-    this.refreshInspection();
-    this.startGame(item);
+    const layout = buildDiagnosisLayout(this.node, item.petName, item.breed);
+    this.hint = layout.hint;
+    this.step = layout.step;
+    this.inspection = buildInspection(this.node, () => void this.onInspection());
+    refreshInspection(this.inspection);
+    this.startGame(0);
   }
 
-  private refreshInspection(): void {
-    if (!this.inspection) {
-      return;
-    }
-    setButtonState(
-      this.inspection,
-      AdQuota.canShow('extra_inspection'),
-      adButtonText('extra_inspection', '额外检查：再看一处'),
-      PALETTE.accent,
-    );
-  }
-
-  private startGame(item: CaseConfigItem): void {
-    this.panel.close();
-    this.gameRoot?.destroy();
-    const gameRoot = new Node('AuscultationRoot');
-    gameRoot.parent = this.node;
-    gameRoot.setSiblingIndex(0);
-    gameRoot.addComponent(UITransform).setContentSize(1280, 720);
-    this.gameRoot = gameRoot;
-    const game = gameRoot.addComponent(Auscultation);
-    this.game = game;
-    game.startWith(item, (result) => this.onFinished(result));
-  }
-
-  private onFinished(result: AuscultationResult): void {
-    this.lastResult = result;
-    CaseSession.finishDiagnosis(result.stars, result.mistakes, result.timeUsedMs);
-    if (result.stars > 0) {
-      this.setHint('诊断明确，准备治疗。');
-      void goState(GameState.Treatment, 'Treatment');
-      return;
-    }
-    this.setHint('时间到了，可以重试、看广告拿线索，或用电池跳过。');
-    this.fallback.open();
-  }
-
-  private async watchInspection(): Promise<void> {
-    const result = await showAd('extra_inspection');
-    if (!result.ok) {
-      this.setHint('今日额外检查次数已用完，可以直接听诊');
-      this.refreshInspection();
-      return;
-    }
-    this.game?.revealHint();
-    this.refreshInspection();
-    this.setHint('额外检查点亮了一处异常');
-  }
-
-  private retry(withHint: boolean): void {
-    const item = CaseSession.current;
+  private startGame(index: number): void {
+    const item = this.item;
     if (!item) {
       return;
     }
     this.panel.close();
-    CaseSession.beginDiagnosis();
+    this.gameRoot?.destroy();
+    const root = new Node('DiagnosisGame');
+    root.parent = this.node;
+    root.setSiblingIndex(0);
+    root.addComponent(UITransform).setContentSize(1280, 720);
+    this.gameRoot = root;
+    this.index = index;
+    const kind = this.kinds[index];
+    this.game = spawnDiagnosis(root, kind, item, (result) => this.onGameFinished(index, result));
+    this.paintStep();
+    this.setHint(`${DIAGNOSIS_NAME[kind]}：${DIAGNOSIS_HINT[kind]}`);
+  }
+
+  private paintStep(): void {
+    if (this.step) {
+      this.step.string = this.kinds.length > 1 ? `诊断 ${this.index + 1}/${this.kinds.length}` : '';
+    }
+  }
+
+  private onGameFinished(index: number, result: AuscultationResult): void {
+    this.outcomes[index] = result;
+    if (!result.completed) {
+      this.setHint('这一次没查完，可以重试、看广告拿提示，或用电池跳过。');
+      this.fallback.open();
+      return;
+    }
+    if (index + 1 < this.kinds.length) {
+      this.startGame(index + 1);
+      return;
+    }
+    this.finishDiagnosis();
+  }
+
+  private finishDiagnosis(): void {
+    const merged = combineDiagnosis(this.outcomes);
+    const stars = this.forceLow ? Math.min(1, merged.stars) : merged.stars;
+    CaseSession.finishDiagnosis(stars, merged.mistakes, merged.timeUsedMs);
+    this.setHint('诊断明确，准备治疗。');
+    void goState(GameState.Treatment, 'Treatment');
+  }
+
+  private retry(withHint: boolean): void {
     CaseSession.addRetry();
-    this.startGame(item);
+    this.startGame(this.index);
     if (withHint) {
       this.game?.revealHint();
     }
-    this.setHint(withHint ? '已点亮一处异常，慢慢来' : '已重置听诊，重新开始');
+    this.setHint(withHint ? '已给出提示，继续吧' : '已重置，重新开始');
   }
 
   private useBattery(): void {
     if (!Save.useItem('battery')) {
-      this.setHint('听诊器电池不足，可直接免费重试');
+      this.setHint('听诊器电池不足，可以直接重试');
       return;
     }
-    const item = CaseSession.current;
-    const result = this.lastResult;
-    Track.track('diagnosis_item_skip', { caseId: item ? item.caseId : '' });
-    CaseSession.finishDiagnosis(1, result ? result.mistakes : 0, result ? result.timeUsedMs : 0);
-    void goState(GameState.Treatment, 'Treatment');
+    this.panel.close();
+    Track.track('diagnosis_item_skip', {
+      caseId: this.item ? this.item.caseId : '',
+      type: this.kinds[this.index],
+    });
+    this.forceLow = true;
+    this.outcomes[this.index] = emptyOutcome(true);
+    if (this.index + 1 < this.kinds.length) {
+      this.startGame(this.index + 1);
+      return;
+    }
+    this.finishDiagnosis();
+  }
+
+  private async onInspection(): Promise<void> {
+    await watchInspection(this.inspection, () => this.game?.revealHint(), (text) => this.setHint(text));
   }
 
   private setHint(text: string): void {

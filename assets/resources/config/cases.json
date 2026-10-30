@@ -15,6 +15,7 @@
         "精神萎靡"
       ],
       "diagnosisType": "auscultation",
+      "diagnosisTypes": ["auscultation"],
       "diagnosisDifficulty": 1,
       "treatment": {
         "medicine": [
@@ -84,7 +85,25 @@
         "轻微肿胀"
       ],
       "diagnosisType": "xray",
+      "diagnosisTypes": ["xray"],
       "diagnosisDifficulty": 2,
+      "xray": {
+        "lesions": [
+          {
+            "id": "paw",
+            "x": 110,
+            "y": -100,
+            "label": "右前爪关节错位"
+          }
+        ],
+        "shadows": [
+          {
+            "id": "shadow_chest",
+            "x": -80,
+            "y": 70
+          }
+        ]
+      },
       "treatment": {
         "medicine": [
           "消炎药",
@@ -168,8 +187,58 @@
         "嗜睡",
         "体温偏低"
       ],
-      "diagnosisType": "bloodtest",
+      "diagnosisType": "xray",
+      "diagnosisTypes": ["xray", "lab"],
       "diagnosisDifficulty": 3,
+      "xray": {
+        "lesions": [
+          {
+            "id": "chest",
+            "x": 60,
+            "y": 70,
+            "label": "胸腔积液"
+          },
+          {
+            "id": "belly",
+            "x": -70,
+            "y": -60,
+            "label": "肠管积气"
+          }
+        ],
+        "shadows": [
+          {
+            "id": "shadow_rib",
+            "x": -120,
+            "y": 120
+          },
+          {
+            "id": "shadow_leg",
+            "x": 120,
+            "y": -140
+          }
+        ]
+      },
+      "lab": {
+        "pairs": [
+          {
+            "sample": "血液样本",
+            "reagent": "血常规"
+          },
+          {
+            "sample": "尿液样本",
+            "reagent": "尿比重"
+          },
+          {
+            "sample": "皮肤刮片",
+            "reagent": "镜检"
+          },
+          {
+            "sample": "血清样本",
+            "reagent": "电解质"
+          }
+        ],
+        "decoys": ["便检", "耳道分泌物"]
+      },
       "treatment": {
         "medicine": [
           "补液",
@@ -269,8 +338,26 @@
         "甩头",
         "耳道有异味"
       ],
-      "diagnosisType": "otoscope",
+      "diagnosisType": "lab",
+      "diagnosisTypes": ["lab"],
       "diagnosisDifficulty": 1,
+      "lab": {
+        "pairs": [
+          {
+            "sample": "耳道分泌物",
+            "reagent": "镜检"
+          },
+          {
+            "sample": "皮肤刮片",
+            "reagent": "真菌培养"
+          },
+          {
+            "sample": "血液样本",
+            "reagent": "血常规"
+          }
+        ],
+        "decoys": []
+      },
       "treatment": {
         "medicine": [
           "洗耳液",
@@ -338,8 +425,30 @@
         "发抖",
         "心跳过快"
       ],
-      "diagnosisType": "poison",
+      "diagnosisType": "auscultation",
+      "diagnosisTypes": ["auscultation", "lab"],
       "diagnosisDifficulty": 3,
+      "lab": {
+        "pairs": [
+          {
+            "sample": "胃液样本",
+            "reagent": "毒物筛查"
+          },
+          {
+            "sample": "血液样本",
+            "reagent": "血常规"
+          },
+          {
+            "sample": "尿液样本",
+            "reagent": "尿检"
+          },
+          {
+            "sample": "血清样本",
+            "reagent": "电解质"
+          }
+        ],
+        "decoys": ["便检", "皮肤刮片"]
+      },
       "treatment": {
         "medicine": [
           "催吐",

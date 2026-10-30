@@ -109,7 +109,8 @@ export function addButton(
   return button;
 }
 
-/** 进度条：返回重绘函数，入参 0-1。 */export function addProgressBar(
+/** 进度条：返回重绘函数，入参 0-1。 */
+export function addProgressBar(
   parent: Node,
   name: string,
   y: number,

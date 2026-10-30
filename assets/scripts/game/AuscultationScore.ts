@@ -6,6 +6,8 @@ export interface AuscultationResult {
   total: number;
   mistakes: number;
   timeUsedMs: number;
+  /** 本小游戏的倒计时总时长，用于多个诊断合并后的星级判定。 */
+  totalMs: number;
 }
 
 export type AuscultationFinish = (result: AuscultationResult) => void;

@@ -125,6 +125,7 @@ export class Auscultation extends Component {
       total: layout.abnormal.length,
       mistakes: this.mistakes,
       timeUsedMs,
+      totalMs: layout.totalMs,
     });
   }
 

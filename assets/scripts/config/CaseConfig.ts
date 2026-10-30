@@ -35,6 +35,30 @@ export interface CaseAuscultationConfig {
   distractors: AuscultationSpotConfig[];
 }
 
+export interface CaseXrayLesion {
+  id: string;
+  x: number;
+  y: number;
+  label?: string;
+}
+
+/** 04 §4：病灶区域 + 相似阴影干扰，全部为卡通占位坐标。 */
+export interface CaseXrayConfig {
+  lesions: CaseXrayLesion[];
+  shadows?: CaseXrayLesion[];
+}
+
+/** 04 §5：样本 → 试剂配对；decoys 为只出现一次的错误试剂。 */
+export interface CaseLabPair {
+  sample: string;
+  reagent: string;
+}
+
+export interface CaseLabConfig {
+  pairs: CaseLabPair[];
+  decoys?: string[];
+}
+
 export interface CaseConfigItem {
   caseId: string;
   petId: string;
@@ -45,8 +69,12 @@ export interface CaseConfigItem {
   story: string;
   symptoms: string[];
   diagnosisType: string;
+  /** 10 §6.1 冻结字段：可用诊断小游戏 1-2 个；缺省回退 diagnosisType。 */
+  diagnosisTypes?: string[];
   diagnosisDifficulty: number;
   auscultation?: CaseAuscultationConfig;
+  xray?: CaseXrayConfig;
+  lab?: CaseLabConfig;
   treatment: CaseTreatmentConfig;
   baseRewards: CaseRewardConfig;
 }

@@ -1,32 +1,92 @@
-// STATUS: implemented, W3 IAA 占位（本地 mock：1 秒后 isEnded=true，不调用 wx.createRewardedVideoAd）
+// STATUS: implemented, W7 真实激励视频（按场景缓存实例 + show 失败先 load 再 show + isEnded 校验）
 // API: Ad.showRewarded, see docs/plan/11-IAA广告系统.md
+import { adUnitId, isAdConfigured } from '../config/AdConfig';
 
-export type AdCode = 'OK' | 'AD_NOT_READY' | 'AD_NOT_ENDED' | 'AD_ERROR';
+export type AdCode = 'OK' | 'AD_NOT_READY' | 'AD_NOT_ENDED' | 'AD_ERROR' | 'AD_UNAVAILABLE';
 
 export interface AdResult {
   ok: boolean;
   code: AdCode;
   scene: string;
   isEnded: boolean;
+  /** 广告不可用但按一次奖励降级发放；调用方照常发奖即可。 */
+  degraded?: boolean;
 }
 
-/** 本地 mock：模拟用户看完 1 秒激励视频，不创建真实广告实例。 */
-const MOCK_MS = 1000;
+/** onClose 长时间不回调时的兜底，避免等待页卡死。 */
+const WATCH_TIMEOUT_MS = 120000;
+
+function platformReady(): boolean {
+  return typeof wx !== 'undefined' && typeof wx.createRewardedVideoAd === 'function';
+}
 
 export class AdClient {
-  /**
-   * W3 占位：真机联调时在内部替换为 wx.createRewardedVideoAd，
-   * 业务层只允许通过 net/AdGateway 调用，不直接持有平台对象。
-   */
+  private readonly ads = new Map<string, WxRewardedVideoAd>();
+
   async showRewarded(scene: string): Promise<AdResult> {
     if (!scene) {
-      return { ok: false, code: 'AD_ERROR', scene, isEnded: false };
+      return fail('AD_ERROR', scene);
     }
-    await new Promise<void>((resolve) => {
-      setTimeout(() => resolve(), MOCK_MS);
-    });
-    return { ok: true, code: 'OK', scene, isEnded: true };
+    if (!platformReady() || !isAdConfigured(scene)) {
+      return fail('AD_UNAVAILABLE', scene);
+    }
+    const ad = this.instance(scene);
+    return ad ? this.play(ad, scene) : fail('AD_UNAVAILABLE', scene);
   }
+
+  /** 同一广告位只创建一个实例；重复创建会触发微信侧报错。 */
+  private instance(scene: string): WxRewardedVideoAd | null {
+    const cached = this.ads.get(scene);
+    if (cached) {
+      return cached;
+    }
+    try {
+      const created = wx.createRewardedVideoAd?.({ adUnitId: adUnitId(scene) });
+      if (!created) {
+        return null;
+      }
+      this.ads.set(scene, created);
+      return created;
+    } catch {
+      return null;
+    }
+  }
+
+  private play(ad: WxRewardedVideoAd, scene: string): Promise<AdResult> {
+    return new Promise<AdResult>((resolve) => {
+      let settled = false;
+      let timer: ReturnType<typeof setTimeout> | null = null;
+      const finish = (result: AdResult): void => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        if (timer !== null) {
+          clearTimeout(timer);
+        }
+        ad.offClose(onClose);
+        ad.offError(onError);
+        resolve(result);
+      };
+      const onClose = (res?: WxRewardedVideoAdCloseResult): void => {
+        const ended = res?.isEnded === true;
+        finish({ ok: ended, code: ended ? 'OK' : 'AD_NOT_ENDED', scene, isEnded: ended });
+      };
+      const onError = (): void => finish(fail('AD_ERROR', scene));
+      ad.onClose(onClose);
+      ad.onError(onError);
+      timer = setTimeout(() => finish(fail('AD_ERROR', scene)), WATCH_TIMEOUT_MS);
+      ad.show().catch(() => {
+        ad.load()
+          .then(() => ad.show())
+          .catch(() => finish(fail('AD_UNAVAILABLE', scene)));
+      });
+    });
+  }
+}
+
+function fail(code: AdCode, scene: string): AdResult {
+  return { ok: false, code, scene, isEnded: false };
 }
 
 export const Ad = new AdClient();

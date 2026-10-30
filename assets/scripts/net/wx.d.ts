@@ -27,10 +27,31 @@ interface WxPerformance {
   memory?: WxPerformanceMemory;
 }
 
+interface WxRewardedVideoAdCloseResult {
+  isEnded?: boolean;
+}
+
+interface WxRewardedVideoAdError {
+  errCode?: number;
+  errMsg?: string;
+}
+
+/** 激励视频广告实例（基础库 2.0.4+；show/load 在 2.8.0+ 返回 Promise）。 */
+interface WxRewardedVideoAd {
+  load(): Promise<void>;
+  show(): Promise<void>;
+  onClose(callback: (result?: WxRewardedVideoAdCloseResult) => void): void;
+  offClose(callback: (result?: WxRewardedVideoAdCloseResult) => void): void;
+  onError(callback: (error: WxRewardedVideoAdError) => void): void;
+  offError(callback: (error: WxRewardedVideoAdError) => void): void;
+  destroy?(): void;
+}
+
 interface WxApi {
   cloud: WxCloudApi;
   shareAppMessage(options: WxShareOptions): void;
   getPerformance?(): WxPerformance;
+  createRewardedVideoAd?(options: { adUnitId: string }): WxRewardedVideoAd;
 }
 
 declare const wx: WxApi;

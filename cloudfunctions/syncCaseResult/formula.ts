@@ -27,19 +27,42 @@ function verifiedScore(item: CaseConfigItem, treatment: TreatmentInput): number 
   return medicineOk + bedOk;
 }
 
-function treatmentStars(score: number): number {
-  if (score >= 3) {
-    return 3;
-  }
-  return score >= 2 ? 2 : 0;
+/** 05 §3：危重病例必须 3/3 全对，普通/紧急 2/3 即成功。 */
+function treatmentThreshold(severity: string): number {
+  return severity === 'critical' ? 3 : 2;
 }
 
-/** 总星级 = 三项平均后四舍五入；治疗未成功（<2 分）直接 0 星。 */
+function treatmentStars(score: number, severity: string): number {
+  if (score < treatmentThreshold(severity)) {
+    return 0;
+  }
+  return score >= 3 ? 3 : 2;
+}
+
+/** 03 §8.2：诊断与治疗全对为 3 星；两项达标为 2 星（康复回调为 1 星，不会误升）。 */
 function totalStars(diagnosis: number, treatment: number, recovery: number): number {
   if (treatment <= 0) {
     return 0;
   }
-  return Math.max(1, Math.min(3, Math.round((diagnosis + treatment + recovery) / 3)));
+  if (diagnosis >= 3 && treatment >= 3) {
+    return 3;
+  }
+  if (diagnosis >= 2 && treatment >= 2) {
+    return recovery >= 3 ? 3 : 2;
+  }
+  return 1;
+}
+
+/** 06 §2.1 单局折算：诊断 15/10/5、治疗 20/10、对症药 +5、康复护理 +5。 */
+function affectionGain(
+  diagnosisStars: number,
+  treatmentScore: number,
+  medicineCorrect: boolean,
+  cared: boolean,
+): number {
+  const diagnosis = [0, 5, 10, 15][clampInt(diagnosisStars, 0, 3)];
+  const treatment = treatmentScore >= 3 ? 20 : treatmentScore >= 2 ? 10 : 0;
+  return diagnosis + treatment + (medicineCorrect ? 5 : 0) + (cared ? 5 : 0);
 }
 
 export function computeCase(
@@ -52,15 +75,21 @@ export function computeCase(
   const verified = verifiedScore(item, treatment);
   const claimed = clampInt(treatment.healing, 0, 3);
   const treatmentScore = Math.min(Math.max(claimed, verified), verified + 1);
-  const stars = treatmentStars(treatmentScore);
+  const severity = item.severity ?? 'normal';
+  const threshold = treatmentThreshold(severity);
+  const stars = treatmentStars(treatmentScore, severity);
+  const medicineOk =
+    typeof item.treatment?.correct?.medicine === 'string' &&
+    treatment.medicineUsed.includes(item.treatment.correct.medicine);
   return {
     stars: totalStars(diagnosisStars, stars, RECOVERY_STARS_FALLBACK),
     diagnosisStars,
     treatmentScore,
     treatmentStars: stars,
     recoveryStars: RECOVERY_STARS_FALLBACK,
-    status: treatmentScore >= 3 ? 'succeeded' : treatmentScore === 2 ? 'partial' : 'failed',
-    affection: Math.max(1, Math.round(item.baseRewards.affection + treatmentScore)),
+    status: treatmentScore >= 3 ? 'succeeded' : treatmentScore >= threshold ? 'partial' : 'failed',
+    // 康复星级未进冻结入参，服务端按「自然完成」记护理分，与客户端不加速时一致。
+    affection: affectionGain(diagnosisStars, treatmentScore, medicineOk, true),
   };
 }
 

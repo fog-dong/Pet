@@ -5,8 +5,11 @@ import { Save } from '../cache/Save';
 export const DEFAULT_MEDICINE_STOCK = 3;
 /** 领养位基础数量，广告或好友可临时+1。 */
 export const ADOPTION_BASE_SLOTS = 3;
-/** 好感度门槛：达到后才能领养（05 文档 §6 决策点）。 */
-export const AFFECTION_THRESHOLD = 4;
+/**
+ * 领养好感门槛（06 §3.1 的 120 按单局折算为 35）：一局满分 45（诊断 15 + 治疗 20 + 对症 5 + 护理 5），
+ * 低于满分就要靠分享/助力补 5，或再遇到同一只宠物累积。
+ */
+export const AFFECTION_THRESHOLD = 35;
 
 export class HospitalStore {
   seedMedicines(names: readonly string[]): void {

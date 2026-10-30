@@ -71,7 +71,8 @@ export class Adoption extends Component {
     }
     if (outcome === 'granted') {
       if (scene === 'affection') {
-        Hospital.addAffection(this.petId, 1);
+        // 06 §2.1：分享/助力每次 +5 好感。
+        Hospital.addAffection(this.petId, 5);
       } else {
         Hospital.addSlotBonus(1);
       }
@@ -126,7 +127,12 @@ export class Adoption extends Component {
       this.setHint('领养位已满，可以分享求助、看广告或等一会儿');
       return;
     }
-    CaseSession.markAdopted(item.petId);
+    // 好感不足时按钮本来不显示；这里再兜一层，防止旧存档/异常入口绕过门槛。
+    if (!CaseSession.markAdopted(item.petId)) {
+      this.render();
+      this.setHint(`好感度还差 ${AFFECTION_THRESHOLD - Hospital.affection(item.petId)} 点，先把这一局照顾好`);
+      return;
+    }
     void goState(GameState.Result, 'Result');
   }
 

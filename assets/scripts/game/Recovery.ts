@@ -1,7 +1,6 @@
 // STATUS: implemented, W3 康复页（进度 + 广告加速 + 好感度结算）
 import { _decorator, Button, Component, Label } from 'cc';
 import { CaseSession } from './CaseSession';
-import { RECOVERY_REFERENCE_MS } from './CaseScore';
 import { CharacterView } from './CharacterView';
 import { CharacterConfig } from '../config/CharacterConfig';
 import { GameState } from '../core/GameFSM';
@@ -119,7 +118,8 @@ export class Recovery extends Component {
     this.done = true;
     this.petView?.playRecovered();
     this.setHint('康复完成，可以进入领养');
-    CaseSession.finishRecovery(Date.now() - this.startedAt, RECOVERY_REFERENCE_MS);
+    // 分母用本局计划时长（正常 20s / 加速 12s）：自然走完 2 星，看广告减半 3 星。
+    CaseSession.finishRecovery(Date.now() - this.startedAt, this.seconds * 1000);
     this.refreshSpeed();
   }
 

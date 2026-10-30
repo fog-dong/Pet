@@ -1,4 +1,4 @@
-// STATUS: implemented, W3 单局评分与奖励（纯函数，无副作用）
+// STATUS: implemented, W18-1 单局评分（03 §8.2 / 05 §3 / 06 §2.1 对齐）
 import type { CaseRewardConfig, TreatmentCorrect } from '../config/CaseConfig';
 
 export interface TreatmentPlan {
@@ -13,16 +13,20 @@ export interface RewardAmounts {
 }
 
 const STAR_RATE: readonly number[] = [0, 0.5, 0.8, 1];
-const RECOVERY_SECONDS: Readonly<Record<string, number>> = { 正常: 14, 加速: 9, 观察: 18 };
-/** 康复星级的分母：按“正常等待 14 秒”为基准，选加速或看广告越快星越高。 */
-export const RECOVERY_REFERENCE_MS = 14000;
+/** 05 §4 时间选择决定康复时长；03 §5 康复目标 15-30 秒。 */
+const RECOVERY_SECONDS: Readonly<Record<string, number>> = { 正常: 20, 加速: 12, 观察: 26 };
 
 /** 时间选择决定康复时长：加速更短，但治疗评分要求选对。 */
 export function recoverySeconds(time: string): number {
-  return RECOVERY_SECONDS[time] ?? 14;
+  return RECOVERY_SECONDS[time] ?? RECOVERY_SECONDS['正常'];
 }
 
-/** 治疗 3 选：药 / 床 / 时间各 1 分，2 分算治疗成功。 */
+/** 05 §3：危重病例治疗难度上升，必须 3/3 全对；普通/紧急 2/3 即成功。 */
+export function treatmentThreshold(severity: string): number {
+  return severity === 'critical' ? 3 : 2;
+}
+
+/** 治疗 3 选：药 / 床 / 时间各 1 分。 */
 export function judgeTreatment(plan: TreatmentPlan, correct: TreatmentCorrect): number {
   return (
     (plan.medicine === correct.medicine ? 1 : 0) +
@@ -31,33 +35,41 @@ export function judgeTreatment(plan: TreatmentPlan, correct: TreatmentCorrect): 
   );
 }
 
-export function treatmentStars(score: number): number {
-  if (score >= 3) {
-    return 3;
+/** 命中危急度门槛才算成功；3/3 记 3 星，刚过门槛记 2 星。 */
+export function treatmentStars(score: number, severity = 'normal'): number {
+  if (score < treatmentThreshold(severity)) {
+    return 0;
   }
-  return score >= 2 ? 2 : 0;
+  return score >= 3 ? 3 : 2;
 }
 
-/** 康复星级按真实耗时占比：广告加速把耗时压到一半即可拿 3 星。 */
+/** 康复星级按实际耗时占比：广告减半 → 3 星；自然完成 → 2 星。 */
 export function recoveryStars(elapsedMs: number, totalMs: number): number {
   if (totalMs <= 0) {
-    return 1;
+    return 2;
   }
-  const ratio = Math.max(0, Math.min(1, elapsedMs / totalMs));
-  if (ratio <= 0.55) {
+  const ratio = Math.max(0, Math.min(2, elapsedMs / totalMs));
+  if (ratio <= 0.6) {
     return 3;
   }
-  return ratio <= 0.85 ? 2 : 1;
+  return ratio <= 1 ? 2 : 1;
 }
 
-/** 总星级 = 诊断 / 治疗 / 康复三项平均后取整，治疗未成功则为 0。 */
+/**
+ * 03 §8.2：3 星需诊断与治疗全对；2 星为两项均达标；否则 1 星。
+ * 康复本身不锁 3 星（避免「必须看广告」），加速只负责把 2 星补成 3 星。
+ */
 export function totalStars(diagnosis: number, treatment: number, recovery: number): number {
   if (treatment <= 0) {
     return 0;
   }
-  const clamp = (value: number): number => Math.max(0, Math.min(3, Math.round(value)));
-  const average = (clamp(diagnosis) + clamp(treatment) + clamp(recovery)) / 3;
-  return Math.max(1, Math.min(3, Math.round(average)));
+  if (diagnosis >= 3 && treatment >= 3) {
+    return 3;
+  }
+  if (diagnosis >= 2 && treatment >= 2) {
+    return recovery >= 3 ? 3 : 2;
+  }
+  return 1;
 }
 
 export function rewardAmounts(base: CaseRewardConfig, stars: number, firstClear: boolean): RewardAmounts {
@@ -68,7 +80,14 @@ export function rewardAmounts(base: CaseRewardConfig, stars: number, firstClear:
   };
 }
 
-/** 好感度 = 病例基础好感 + 治疗评分 + 康复速度加成，决定能否领养。 */
-export function affectionGain(base: number, treatmentScore: number, recovery: number): number {
-  return Math.max(1, Math.round(base + treatmentScore + (recovery >= 3 ? 1 : 0)));
+/** 06 §2.1 单局折算：诊断 15/10/5、治疗 20/10、对症药 +5、康复护理 +5，满分 45。 */
+export function affectionGain(
+  diagnosisStars: number,
+  treatmentScore: number,
+  medicineCorrect: boolean,
+  cared: boolean,
+): number {
+  const diagnosis = [0, 5, 10, 15][Math.max(0, Math.min(3, Math.round(diagnosisStars)))];
+  const treatment = treatmentScore >= 3 ? 20 : treatmentScore >= 2 ? 10 : 0;
+  return diagnosis + treatment + (medicineCorrect ? 5 : 0) + (cared ? 5 : 0);
 }

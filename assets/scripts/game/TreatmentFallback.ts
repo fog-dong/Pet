@@ -35,9 +35,10 @@ export class TreatmentFallback {
     this.panel.setHint('广告 / 好友送药 / 等待补给，三条免费路径都能继续。');
   }
 
-  failure(score: number, name: string): void {
+  failure(score: number, name: string, threshold = 2): void {
     this.focus = name || this.hooks.requiredMedicine();
-    this.panel.open(this.hooks.root(), `治疗评分 ${score}/3，还差一点`, this.medicineActions(true));
+    const reason = threshold >= 3 ? '危重病例需要 3/3 全对' : '还差一点';
+    this.panel.open(this.hooks.root(), `治疗评分 ${score}/3，${reason}`, this.medicineActions(true));
     this.panel.setHint('可以免费重试，也可以补一个对症药再来。');
   }
 

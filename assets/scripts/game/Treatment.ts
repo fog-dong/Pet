@@ -3,7 +3,7 @@ import { _decorator, Component } from 'cc';
 import type { CaseConfigItem } from '../config/CaseConfig';
 import { CaseSession } from './CaseSession';
 import { Hospital } from './Hospital';
-import { judgeTreatment } from './CaseScore';
+import { judgeTreatment, treatmentThreshold } from './CaseScore';
 import { TreatmentFallback } from './TreatmentFallback';
 import { TreatmentLayout, buildTreatmentLayout, renderTreatment } from './TreatmentLayout';
 import { GameState } from '../core/GameFSM';
@@ -124,7 +124,9 @@ export class Treatment extends Component {
     });
     CaseSession.finishTreatment(this.selectedMedicine, this.selectedBed, this.selectedTime, score);
     this.render();
-    if (score >= 2) {
+    // 05 §3：危重病例必须 3/3 全对才进康复，普通/紧急 2/3 即可。
+    const threshold = treatmentThreshold(item.severity);
+    if (score >= threshold) {
       this.panel.close();
       void goState(GameState.Recovery, 'Recovery');
       return;
@@ -133,7 +135,7 @@ export class Treatment extends Component {
       Hospital.freeBed();
     }
     this.selectedMedicine = '';
-    this.fallback.failure(score, item.treatment.correct.medicine);
+    this.fallback.failure(score, item.treatment.correct.medicine, threshold);
   }
 
   private status(text: string): void {

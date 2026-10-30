@@ -60,7 +60,7 @@ export function settleCase(input: SettleInput): CaseReward {
   const { item, treatment } = input;
   const diagnosisStars = input.diagnosis ? input.diagnosis.stars : 0;
   const recovery = input.recovery ? input.recovery.stars : 1;
-  const stars = totalStars(diagnosisStars, treatmentStars(treatment.score), recovery);
+  const stars = totalStars(diagnosisStars, treatmentStars(treatment.score, item.severity), recovery);
   const firstClear = Save.recordStars(item.caseId, stars);
   const amounts = rewardAmounts(item.baseRewards, stars, firstClear);
   Save.addCoins(amounts.coins);

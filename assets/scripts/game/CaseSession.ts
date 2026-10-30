@@ -2,7 +2,7 @@
 import type { CaseConfigItem } from '../config/CaseConfig';
 import type { CaseSyncInput } from '../net/SyncCaseResult';
 import { Save } from '../cache/Save';
-import { Hospital } from './Hospital';
+import { AFFECTION_THRESHOLD, Hospital } from './Hospital';
 import { Track } from '../track/Track';
 import { buildCaseSync } from './CloudPayload';
 import { newSessionId } from './SessionId';
@@ -75,12 +75,12 @@ export class CaseSessionStore {
   }
 
   finishTreatment(medicine: string, bed: string, time: string, score: number): void {
-    const success = treatmentStars(score) > 0;
+    const success = treatmentStars(score, this.item ? this.item.severity : 'normal') > 0;
     this.treatment = { medicine, bed, time, score, success };
     trackTreatment(this.item ? this.item.caseId : '', this.treatment);
   }
 
-  /** 康复结束即结算好感度，领养页据此判断门槛。 */
+  /** 康复结束即按 06 §2.1 的来源累计好感度，领养页据此判断门槛。 */
   finishRecovery(elapsedMs: number, totalMs: number): void {
     const stars = recoveryStars(elapsedMs, totalMs);
     this.recovery = { elapsedMs, totalMs, stars };
@@ -88,20 +88,30 @@ export class CaseSessionStore {
     if (!item) {
       return;
     }
-    const score = this.treatment ? this.treatment.score : 0;
-    this.affection = affectionGain(item.baseRewards.affection, score, stars);
+    const treatment = this.treatment;
+    this.affection = affectionGain(
+      this.diagnosis ? this.diagnosis.stars : 0,
+      treatment ? treatment.score : 0,
+      !!treatment && treatment.medicine === item.treatment.correct.medicine,
+      stars >= 2,
+    );
     Hospital.addAffection(item.petId, this.affection);
     trackRecovery(item.caseId, this.recovery);
   }
 
-  /** 领养成功：本地图鉴落库并记录领养日期，结算时按已领养处理。 */
-  markAdopted(petId: string): void {
+  /** 领养成功：好感度不足时拒绝（不能只靠 UI 隐藏按钮），本地图鉴落库后按已领养结算。 */
+  markAdopted(petId: string): boolean {
+    if (Hospital.affection(petId) < AFFECTION_THRESHOLD) {
+      Track.track('adoption_blocked', { petId, reason: 'affection' });
+      return false;
+    }
     this.adopted = true;
     Save.markAdopted(petId);
     Track.track('adoption_complete', {
       caseId: this.item ? this.item.caseId : '',
       petId,
     });
+    return true;
   }
 
   /** Result 结算后调用：服务端会按 diagnosis/treatment 重算星级与奖励。 */

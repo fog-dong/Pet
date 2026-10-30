@@ -71,12 +71,13 @@ export function renderAdoptionBody(
   buildHeader(body, state);
 
   if (state.affection < state.threshold) {
-    addLabel(body, 'LockHint', '好感度还不够；也可以分享求助，让好友来搭把手', 20, {
+    const gap = state.threshold - state.affection;
+    addLabel(body, 'LockHint', `好感还差 ${gap} 点：诊断、治疗、对症用药、康复护理都会累积`, 20, {
       size: 22,
       color: PALETTE.sub,
       width: 620,
     });
-    addButton(body, 'ShareAffection', '分享求助 +1 好感', -70, handlers.shareAssist, PALETTE.secondary, 520, 84);
+    addButton(body, 'ShareAffection', '分享求助 +5 好感', -70, handlers.shareAssist, PALETTE.secondary, 520, 84);
     addButton(body, 'LaterButton', '稍后再说', -170, handlers.leave, PALETTE.secondary, 340, 80);
     return body;
   }

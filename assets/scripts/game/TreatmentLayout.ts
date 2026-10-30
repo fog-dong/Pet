@@ -32,11 +32,15 @@ export function buildTreatmentLayout(
   handlers: TreatmentHandlers,
 ): TreatmentLayout {
   addLabel(root, 'PageTitle', '治 疗', 440, { size: 42 });
-  addLabel(root, 'PetName', `${item.petName} · ${item.breed}`, 388, {
+  addLabel(root, 'PetName', `${item.petName} · ${item.breed}`, 396, {
     size: 26,
     color: PALETTE.sub,
   });
-  addLabel(root, 'StockLabel', '药品看按钮角标；床位不足可改门诊或免费腾床', 344, {
+  // 05 §3：把危急度的治疗门槛写在页面上，不让玩家靠猜。
+  const severityHint =
+    item.severity === 'critical' ? '危重 · 药/床/时间必须全对（3/3）' : item.severity === 'urgent' ? '紧急 · 至少选对 2/3' : '普通 · 至少选对 2/3';
+  addLabel(root, 'SeverityLabel', severityHint, 356, { size: 21, color: PALETTE.primary });
+  addLabel(root, 'StockLabel', '药品看按钮角标；床位不足可改门诊或免费腾床', 316, {
     size: 21,
     color: PALETTE.sub,
   });

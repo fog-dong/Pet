@@ -3,13 +3,12 @@ import { Color, Graphics, Label, Node, Tween, tween, Vec3 } from 'cc';
 import type { AuscultationLayout, AuscultationSpotDef } from '../config/AuscultationConfig';
 import { Quality } from '../config/Quality';
 import { addLabel, addRect, createNode, PALETTE } from '../ui/SceneUI';
-import { drawAvatar } from './CharacterLook';
-import type { CharacterShape } from './CharacterLook';
+import { PetVisual } from './PetVisual';
 
 const BOARD_W = 560;
 const BOARD_H = 460;
-/** 身体要盖住所有热区（最远 ±160），四周再留一点边，所以取 360。 */
-const BODY_SIZE = 360;
+/** 身体要盖住所有热区（最远 ±160），四周再留一点边，所以取 400。 */
+const BODY_SIZE = 400;
 const SPOT_RADIUS = 34;
 const SPOT_IDLE = new Color(255, 255, 255, 70);
 const SPOT_FOUND = new Color(127, 183, 126, 255);
@@ -30,16 +29,15 @@ export class AuscultationView {
 
   constructor(
     parent: Node,
-    bodyColor: Color,
-    bodyShape: CharacterShape,
+    petId: string,
     layout: AuscultationLayout,
     onTap: (spot: SpotView) => void,
   ) {
     const board = addRect(parent, 'AuscultationBoard', 0, BOARD_W, BOARD_H, new Color(250, 246, 239, 255));
-    const body = createNode(board, 'Body', 10, BODY_SIZE, BODY_SIZE);
-    drawAvatar(body.addComponent(Graphics), bodyColor, bodyShape, BODY_SIZE);
-    layout.abnormal.forEach((def) => this.spots.push(this.build(body, def, true, onTap)));
-    layout.distractors.forEach((def) => this.spots.push(this.build(body, def, false, onTap)));
+    // 贴图铺在棋盘上，热区浮在它上面；贴图缺失时 PetVisual 自己显示占位块。
+    PetVisual.mount(board, BODY_SIZE).apply(petId);
+    layout.abnormal.forEach((def) => this.spots.push(this.build(board, def, true, onTap)));
+    layout.distractors.forEach((def) => this.spots.push(this.build(board, def, false, onTap)));
     this.progress = addLabel(board, 'Progress', '', -BOARD_H / 2 + 30, {
       size: 22,
       color: PALETTE.sub,

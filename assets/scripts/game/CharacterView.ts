@@ -1,25 +1,23 @@
-// STATUS: implemented, W3 角色展示（色块 + 名字 + 状态图标，纯 Cocos 绘制）；W8 预留 art 分包入口
-import { _decorator, Color, Component, Graphics, Label, Node, tween, Tween, UITransform, Vec3 } from 'cc';
+// STATUS: implemented, W3 角色展示（art 贴图 + 名字 + 心情图标，缺图走占位兜底）
+import { _decorator, Component, Label, Node, Tween, tween, UITransform, Vec3 } from 'cc';
 import { CharacterConfig } from '../config/CharacterConfig';
 import { Quality } from '../config/Quality';
-import { addLabel, hexToColor } from '../ui/SceneUI';
-import { BODY_SIZE, drawAvatar, FALLBACK_COLOR, mixColor, MOOD_ICON } from './CharacterLook';
-import type { CharacterMood, CharacterShape } from './CharacterLook';
-import { warmArtBundle } from './ArtBundle';
+import { addLabel } from '../ui/SceneUI';
+import { CLEAN_TINT, mixColor, MOOD_ICON, SICK_TINT } from './CharacterLook';
+import type { CharacterMood } from './CharacterLook';
+import { PetVisual } from './PetVisual';
 
 const { ccclass } = _decorator;
+
+const BODY_SIZE = 150;
 
 export type { CharacterMood } from './CharacterLook';
 
 @ccclass('CharacterView')
 export class CharacterView extends Component {
-  private body: Node | null = null;
-  private graphics: Graphics | null = null;
+  private visual: PetVisual | null = null;
   private nameLabel: Label | null = null;
   private statusLabel: Label | null = null;
-  private sickColor: Color = FALLBACK_COLOR;
-  private recoveredColor: Color = FALLBACK_COLOR;
-  private shape: CharacterShape = 'circle';
   private currentMood: CharacterMood = 'idle';
   private unsubscribe: (() => void) | null = null;
 
@@ -47,29 +45,20 @@ export class CharacterView extends Component {
 
   showPet(petId: string, mood: CharacterMood = 'idle'): void {
     this.build();
-    // 首次展示宠物才预热 art：不 await，色块已经是 art 缺失时的正常分支。
-    void warmArtBundle();
     const pet = CharacterConfig.petById(petId);
-    if (!pet) {
-      this.setTitle('未知宠物');
-      this.draw(FALLBACK_COLOR, 'circle');
-      this.playMood(mood);
-      return;
-    }
-    this.sickColor = hexToColor(pet.colors.sick, FALLBACK_COLOR);
-    this.recoveredColor = hexToColor(pet.colors.recovered, FALLBACK_COLOR);
-    this.shape = pet.baseLook.shape;
-    this.setTitle(`${pet.name} · ${pet.breed}`);
-    this.draw(hexToColor(pet.baseLook.color, FALLBACK_COLOR), pet.baseLook.shape);
+    this.setTitle(pet ? `${pet.name} · ${pet.breed}` : '未知宠物');
+    this.visual?.apply(pet ? petId : '');
+    this.visual?.setTint(mood === 'sick' ? SICK_TINT : CLEAN_TINT);
     this.playMood(mood);
   }
 
+  /** 医生立绘与宠物共用一套加载与占位逻辑，没出图时同样显示「暂缺图片」。 */
   showDoctor(doctorId: string): void {
     this.build();
     const doctor = CharacterConfig.doctorById(doctorId);
-    this.shape = 'square';
     this.setTitle(doctor ? `${doctor.name} · ${doctor.role}` : '未知医生');
-    this.draw(hexToColor('#8FAE9F', FALLBACK_COLOR), 'square');
+    this.visual?.apply(doctor ? doctorId : '');
+    this.visual?.setTint(CLEAN_TINT);
     this.playMood('idle');
   }
 
@@ -78,17 +67,18 @@ export class CharacterView extends Component {
   }
 
   playSick(): void {
+    this.visual?.setTint(SICK_TINT);
     this.playMood('sick');
   }
 
   playRecovered(): void {
+    this.visual?.setTint(CLEAN_TINT);
     this.playMood('recovered');
-    this.draw(this.recoveredColor, this.shape);
   }
 
-  /** 康复进度：色块从“生病灰”渐变到“康复暖色”。 */
+  /** 康复进度：贴图从「生病灰调」逐渐提亮回原色。 */
   setRecoveryProgress(ratio: number): void {
-    this.draw(mixColor(this.sickColor, this.recoveredColor, ratio), this.shape);
+    this.visual?.setTint(mixColor(SICK_TINT, CLEAN_TINT, ratio));
   }
 
   /** 美术到位后在这里替换成 Spine / Animation。 */
@@ -97,21 +87,21 @@ export class CharacterView extends Component {
     if (this.statusLabel) {
       this.statusLabel.string = MOOD_ICON[mood];
     }
-    const body = this.body;
-    if (!body) {
+    const content = this.visual?.contentNode;
+    if (!content) {
       return;
     }
-    Tween.stopAllByTarget(body);
-    body.setScale(Vec3.ONE);
+    Tween.stopAllByTarget(content);
+    content.setScale(Vec3.ONE);
     if (mood === 'sick') {
-      body.setScale(new Vec3(0.94, 0.94, 1));
+      content.setScale(new Vec3(0.94, 0.94, 1));
       return;
     }
     if (Quality.low) {
       return;
     }
     const amplitude = mood === 'recovered' ? 1.06 : 1.03;
-    tween(body)
+    tween(content)
       .to(1.1, { scale: new Vec3(amplitude, amplitude, 1) })
       .to(1.1, { scale: Vec3.ONE })
       .union()
@@ -120,29 +110,18 @@ export class CharacterView extends Component {
   }
 
   private build(): void {
-    if (this.body) {
+    if (this.visual) {
       return;
     }
     this.node.addComponent(UITransform).setContentSize(240, 240);
-    const body = new Node('Body');
-    body.parent = this.node;
-    body.addComponent(UITransform).setContentSize(BODY_SIZE, BODY_SIZE);
-    this.body = body;
-    this.graphics = body.addComponent(Graphics);
+    this.visual = PetVisual.mount(this.node, BODY_SIZE);
     this.nameLabel = addLabel(this.node, 'Name', '', -100, { size: 28, width: 300 });
     this.statusLabel = addLabel(this.node, 'Status', '', 100, { size: 30, width: 200 });
-    this.draw(FALLBACK_COLOR, 'circle');
   }
 
   private setTitle(text: string): void {
     if (this.nameLabel) {
       this.nameLabel.string = text;
-    }
-  }
-
-  private draw(color: Color, shape: CharacterShape): void {
-    if (this.graphics) {
-      drawAvatar(this.graphics, color, shape, BODY_SIZE);
     }
   }
 }

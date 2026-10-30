@@ -1,10 +1,9 @@
 // STATUS: implemented, W3 听诊小游戏（30 秒点击找异常点 + 1-3 星判定）
-import { _decorator, AudioSource, Color, Component, Label } from 'cc';
+import { _decorator, AudioSource, Component, Label } from 'cc';
 import type { CaseConfigItem } from '../config/CaseConfig';
 import { AuscultationLayout, buildLayout } from '../config/AuscultationConfig';
-import { CharacterConfig } from '../config/CharacterConfig';
 import { Quality } from '../config/Quality';
-import { addLabel, hexToColor, PALETTE } from '../ui/SceneUI';
+import { addLabel, PALETTE } from '../ui/SceneUI';
 import { rightEdgeX } from '../ui/ScreenMetrics';
 import { AuscultationView, SpotView } from './AuscultationView';
 import { DIAGNOSIS_HUD_Y } from './DiagnosisLayout';
@@ -12,7 +11,6 @@ import { AuscultationFinish, buildResult } from './AuscultationScore';
 import { Track } from '../track/Track';
 
 const { ccclass } = _decorator;
-const FALLBACK_BODY = new Color(200, 195, 188, 255);
 
 @ccclass('Auscultation')
 export class Auscultation extends Component {
@@ -52,10 +50,7 @@ export class Auscultation extends Component {
     this.running = true;
     this.audio = this.node.getComponent(AudioSource) ?? this.node.addComponent(AudioSource);
 
-    const pet = CharacterConfig.petById(item.petId);
-    const bodyColor = pet ? hexToColor(pet.baseLook.color, FALLBACK_BODY) : FALLBACK_BODY;
-    const shape = pet ? pet.baseLook.shape : 'circle';
-    this.view = new AuscultationView(this.node, bodyColor, shape, layout, (spot) => this.onTap(spot));
+    this.view = new AuscultationView(this.node, item.petId, layout, (spot) => this.onTap(spot));
     this.timerLabel = addLabel(this.node, 'TimerLabel', '', DIAGNOSIS_HUD_Y, {
       size: 28,
       color: PALETTE.primary,

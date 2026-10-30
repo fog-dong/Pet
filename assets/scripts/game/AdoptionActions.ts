@@ -5,6 +5,9 @@ import { Net } from '../net/Net';
 import { Share } from '../net/Share';
 import { Track } from '../track/Track';
 
+/** 服务端每日助力上限，见接口冻结清单 §2.6。 */
+const CODE_TODAY_ASSIST_LIMIT = 1005;
+
 /** 06 §5.2 助力请求文案：第一人称，不写“求助力”等诱导话术。 */
 export const ASSIST_TITLE = '医院床位不够了，能来搭把手吗？';
 
@@ -40,6 +43,11 @@ export async function requestAssist(scene: string): Promise<AssistResult> {
     resourceType: 'heart',
     nonce: makeNonce(),
   });
+  if (response.code === CODE_TODAY_ASSIST_LIMIT) {
+    // 服务端已到上限：不能走本地兜底，否则会绕开每日上限。
+    Track.track('assist_rejected', { scene, reason: 'TODAY_ASSIST_LIMIT' });
+    return 'LIMIT';
+  }
   if (response.code !== 0 || !response.data) {
     return fallback(peek.friendId, scene, `code_${response.code}`);
   }

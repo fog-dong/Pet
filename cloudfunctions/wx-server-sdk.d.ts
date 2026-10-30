@@ -28,10 +28,15 @@ declare module 'wx-server-sdk' {
     update(options: { data: Record<string, unknown> }): Promise<UpdateResult>;
   }
 
+  export interface RemoveResult {
+    stats: { removed: number };
+  }
+
   export interface DocumentRef<T> {
-    get(): Promise<QueryResult<T>>;
+    get(): Promise<{ data: T | null }>;
     set(options: { data: Record<string, unknown> }): Promise<UpdateResult>;
     update(options: { data: Record<string, unknown> }): Promise<UpdateResult>;
+    remove(): Promise<RemoveResult>;
   }
 
   export interface Collection<T> extends Query<T> {
@@ -55,6 +60,7 @@ declare module 'wx-server-sdk' {
     gt(value: unknown): unknown;
     gte(value: unknown): unknown;
     lt(value: unknown): unknown;
+    inc(value: number): unknown;
   }
 
   export interface Database {
@@ -65,5 +71,5 @@ declare module 'wx-server-sdk' {
 
   export function init(options?: { env?: string }): void;
   export function getWXContext(): WxContext;
-  export function database(): Database;
+  export function database(options?: { throwOnNotFound?: boolean }): Database;
 }

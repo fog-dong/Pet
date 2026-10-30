@@ -6,8 +6,8 @@ import { CharacterView } from './CharacterView';
 import { CharacterConfig } from '../config/CharacterConfig';
 import { GameState } from '../core/GameFSM';
 import { goState } from '../core/SceneFlow';
-import { AdQuota, adButtonText } from '../cache/AdQuota';
-import { showAd } from '../net/AdGateway';
+import { adButtonText } from '../cache/AdQuota';
+import { adFailHint, canOfferAd, showAd } from '../net/AdGateway';
 import { addButton, addLabel, addProgressBar, PALETTE, setButtonState } from '../ui/SceneUI';
 
 const { ccclass } = _decorator;
@@ -60,7 +60,7 @@ export class Recovery extends Component {
     }
     setButtonState(
       this.speedButton,
-      AdQuota.canShow('accelerate'),
+      canOfferAd('accelerate'),
       adButtonText('accelerate', '看广告加速 50%'),
       PALETTE.accent,
     );
@@ -111,7 +111,7 @@ export class Recovery extends Component {
     }
     const result = await showAd('accelerate');
     if (!result.ok) {
-      this.setHint('今日加速次数已用完，可以等进度条自然走完');
+      this.setHint(adFailHint(result, '今日加速次数已用完，可以等进度条自然走完'));
       this.refreshSpeed();
       return;
     }

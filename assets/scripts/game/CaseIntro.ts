@@ -39,14 +39,14 @@ export class CaseIntro extends Component {
       width: 620,
       x: -160,
     });
-    addButton(root, 'AcceptButton', '开始诊断', -150, () => {
+    addButton(root, 'AcceptButton', '开始诊断', -120, () => {
       void goState(GameState.Diagnosis, 'Diagnosis');
     });
     addButton(
       root,
       'SwapButton',
       '换一例',
-      -250,
+      -205,
       () => {
         const next = CaseConfig.random(item.caseId);
         if (!next) {
@@ -61,7 +61,7 @@ export class CaseIntro extends Component {
       root,
       'BackButton',
       '返回大厅',
-      -340,
+      -290,
       () => {
         void goState(GameState.Lobby, 'Lobby');
       },

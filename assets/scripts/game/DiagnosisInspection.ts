@@ -1,11 +1,11 @@
-// STATUS: implemented, W4 额外检查按钮（每日频控 + 广告提示）
+// STATUS: implemented, W7 额外检查按钮（每日频控 + 广告位配置校验 + 统一失败文案）
 import { Button, Node } from 'cc';
-import { AdQuota, adButtonText } from '../cache/AdQuota';
-import { showAd } from '../net/AdGateway';
+import { adButtonText } from '../cache/AdQuota';
+import { adFailHint, canOfferAd, showAd } from '../net/AdGateway';
 import { addButton, PALETTE, setButtonState } from '../ui/SceneUI';
 
 export function buildInspection(parent: Node, onWatch: () => void): Button {
-  return addButton(parent, 'InspectionButton', '', -325, onWatch, PALETTE.accent, 420, 64);
+  return addButton(parent, 'InspectionButton', '', -312, onWatch, PALETTE.accent, 520, 64);
 }
 
 export function refreshInspection(button: Button | null): void {
@@ -14,7 +14,7 @@ export function refreshInspection(button: Button | null): void {
   }
   setButtonState(
     button,
-    AdQuota.canShow('extra_inspection'),
+    canOfferAd('extra_inspection'),
     adButtonText('extra_inspection', '额外检查：再看一处'),
     PALETTE.accent,
   );
@@ -27,7 +27,7 @@ export async function watchInspection(
 ): Promise<void> {
   const result = await showAd('extra_inspection');
   if (!result.ok) {
-    setHint('今日额外检查次数已用完，可以直接诊断');
+    setHint(adFailHint(result, '今日额外检查次数已用完，可以直接诊断'));
     refreshInspection(button);
     return;
   }

@@ -5,6 +5,7 @@ import { Save } from '../cache/Save';
 import { Hospital } from './Hospital';
 import { Track } from '../track/Track';
 import { buildCaseSync } from './CloudPayload';
+import { newSessionId } from './SessionId';
 import { trackDiagnosis, trackRecovery, trackTreatment } from './CaseTrack';
 import { affectionGain, recoverySeconds, recoveryStars, treatmentStars } from './CaseScore';
 import { CaseReward, DiagnosisResult, RecoveryResult, TreatmentResult, emptyReward, settleCase, trackCaseComplete } from './CaseSettle';
@@ -37,7 +38,7 @@ export class CaseSessionStore {
 
   start(item: CaseConfigItem): void {
     this.item = item;
-    this.sid = `${item.caseId}_${Date.now().toString(36)}`;
+    this.sid = newSessionId();
     this.startedAt = Date.now();
     this.diagnosisStartedAt = 0;
     this.diagnosis = null;

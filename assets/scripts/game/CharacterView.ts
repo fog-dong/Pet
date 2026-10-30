@@ -3,24 +3,12 @@ import { _decorator, Color, Component, Graphics, Label, Node, tween, Tween, UITr
 import { CharacterConfig } from '../config/CharacterConfig';
 import { Quality } from '../config/Quality';
 import { addLabel, hexToColor } from '../ui/SceneUI';
+import { BODY_SIZE, drawBody, FALLBACK_COLOR, mixColor, MOOD_ICON } from './CharacterLook';
+import type { CharacterMood, CharacterShape } from './CharacterLook';
 
 const { ccclass } = _decorator;
 
-export type CharacterMood = 'idle' | 'sick' | 'recovered';
-
-const BODY_SIZE = 150;
-const FALLBACK_COLOR = new Color(200, 195, 188, 255);
-const MOOD_ICON: Record<CharacterMood, string> = { idle: '●', sick: '✚', recovered: '♥' };
-
-function mixColor(from: Color, to: Color, ratio: number): Color {
-  const t = Math.max(0, Math.min(1, ratio));
-  return new Color(
-    Math.round(from.r + (to.r - from.r) * t),
-    Math.round(from.g + (to.g - from.g) * t),
-    Math.round(from.b + (to.b - from.b) * t),
-    255,
-  );
-}
+export type { CharacterMood } from './CharacterLook';
 
 @ccclass('CharacterView')
 export class CharacterView extends Component {
@@ -30,7 +18,7 @@ export class CharacterView extends Component {
   private statusLabel: Label | null = null;
   private sickColor: Color = FALLBACK_COLOR;
   private recoveredColor: Color = FALLBACK_COLOR;
-  private shape: 'circle' | 'square' = 'circle';
+  private shape: CharacterShape = 'circle';
 
   /** 场景里挂一个角色位，返回可继续调 showPet / showDoctor 的组件。 */
   static mount(parent: Node, x: number, y: number): CharacterView {
@@ -136,18 +124,9 @@ export class CharacterView extends Component {
     }
   }
 
-  private draw(color: Color, shape: 'circle' | 'square'): void {
-    const graphics = this.graphics;
-    if (!graphics) {
-      return;
+  private draw(color: Color, shape: CharacterShape): void {
+    if (this.graphics) {
+      drawBody(this.graphics, color, shape);
     }
-    graphics.clear();
-    graphics.fillColor = color;
-    if (shape === 'square') {
-      graphics.rect(-BODY_SIZE / 2, -BODY_SIZE / 2, BODY_SIZE, BODY_SIZE);
-    } else {
-      graphics.circle(0, 0, BODY_SIZE / 2);
-    }
-    graphics.fill();
   }
 }

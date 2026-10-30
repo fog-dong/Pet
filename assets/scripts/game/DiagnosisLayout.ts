@@ -26,7 +26,7 @@ export function buildDiagnosisLayout(root: Node, petName: string, breed: string)
     size: 24, color: PALETTE.sub,
   });
   const step = addLabel(root, 'DiagnosisStep', '', 288, {
-    size: 24, color: PALETTE.primary, width: 360, x: 440,
+    size: 24, color: PALETTE.primary, width: 300, x: -430,
   });
   const hint = addLabel(root, 'Hint', '', -262, {
     size: 24, color: PALETTE.sub, width: 900,

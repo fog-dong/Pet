@@ -4,7 +4,7 @@ import { CaseSession } from './CaseSession';
 import { AFFECTION_THRESHOLD, Hospital } from './Hospital';
 import { GameState } from '../core/GameFSM';
 import { goState } from '../core/SceneFlow';
-import { showAd } from '../net/AdGateway';
+import { adFailHint, showAd } from '../net/AdGateway';
 import { Track } from '../track/Track';
 import { addLabel, PALETTE, setButtonState } from '../ui/SceneUI';
 import { renderAdoptionBody } from '../ui/AdoptionView';
@@ -84,7 +84,7 @@ export class Adoption extends Component {
     const result = await showAd('free_slot');
     if (!result.ok) {
       this.render();
-      this.setHint('今日广告腾位次数已用完，可继续等待或稍后再来');
+      this.setHint(adFailHint(result, '今日广告腾位次数已用完，可继续等待或稍后再来'));
       return;
     }
     Hospital.addSlotBonus(1);

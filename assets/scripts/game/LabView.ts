@@ -4,11 +4,13 @@ import type { CaseConfigItem, CaseLabPair } from '../config/CaseConfig';
 import { addLabel, addRect } from '../ui/SceneUI';
 
 export const LAB_ITEM_W = 200;
-export const LAB_ITEM_H = 76;
+export const LAB_ITEM_H = 64;
 export const LAB_COL_LEFT = -330;
 export const LAB_COL_RIGHT = 330;
-export const LAB_HIT_RADIUS = 72;
-export const LAB_COL_TOP = 170;
+export const LAB_HIT_RADIUS = 36;
+export const LAB_COL_TOP = 200;
+const LAB_COL_SPAN = 400;
+const LAB_COL_MAX_GAP = 96;
 
 const CLEAR = new Color(0, 0, 0, 0);
 const LINE = new Color(226, 197, 143, 220);
@@ -57,7 +59,7 @@ export function buildColumn(
   color: Color,
   prefix: string,
 ): LabCard[] {
-  const gap = Math.min(120, 520 / Math.max(1, names.length - 1));
+  const gap = Math.min(LAB_COL_MAX_GAP, LAB_COL_SPAN / Math.max(1, names.length - 1));
   return names.map((name, index) => ({
     name,
     node: buildCard(parent, name, LAB_COL_TOP - index * gap, x, color, prefix),

@@ -1,7 +1,7 @@
 // STATUS: implemented, W3 诊断失败兜底（重试 / 广告线索 / 电池跳过，广告带频控）
 import type { Node } from 'cc';
-import { AdQuota, adButtonText } from '../cache/AdQuota';
-import { showAd } from '../net/AdGateway';
+import { adButtonText } from '../cache/AdQuota';
+import { adFailHint, canOfferAd, showAd } from '../net/AdGateway';
 import { ChoicePanel, PanelAction } from '../ui/ChoicePanel';
 import { PALETTE } from '../ui/SceneUI';
 
@@ -19,7 +19,7 @@ export class DiagnosisFallback {
   ) {}
 
   open(): void {
-    const available = AdQuota.canShow('extra_check');
+    const available = canOfferAd('extra_check');
     const actions: PanelAction[] = [
       {
         text: '免费重试',
@@ -50,7 +50,7 @@ export class DiagnosisFallback {
   private async watch(): Promise<void> {
     const result = await showAd('extra_check');
     if (!result.ok) {
-      this.panel.setHint('广告未就绪（本地占位），可直接免费重试');
+      this.panel.setHint(adFailHint(result, '今日广告线索次数已用完，可直接免费重试'));
       return;
     }
     this.panel.close();

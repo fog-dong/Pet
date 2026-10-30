@@ -24,4 +24,10 @@ export function isAdConfigured(scene: string): boolean {
   return id.length > 0 && id !== AD_UNIT_PLACEHOLDER;
 }
 
+/**
+ * 已配置真实广告位时，加载失败是否按一次奖励降级发放。
+ * 占位 ID 永远不降级，避免提审前“没看广告也发奖”；需要关闭降级时改为 false。
+ */
+export const AD_DEGRADE_ENABLED = true;
+
 export const AD_SCENES: readonly string[] = Object.keys(AD_UNITS);

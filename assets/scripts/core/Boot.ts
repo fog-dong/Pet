@@ -1,37 +1,33 @@
-// STATUS: implemented, W6 启动流程（云不可用时走本地 fallback，不阻塞进厅；登录后补发队列）
-// 流程：加载病例配置 → 初始化云环境 → login → getConfig → 补发待同步 → Login → Lobby
+// STATUS: implemented, W7 启动流程（本地配置 + 2.5s 分包预算后进厅，云端同步后台跑）
 import { _decorator, Component, director, Node } from 'cc';
 import { DEBUG } from 'cc/env';
 import { GameState, chainAllowed, gameFSM } from './GameFSM';
+import { goState } from './SceneFlow';
 import { Res } from './Res';
 import { Net } from '../net/Net';
-import { Session } from '../net/Session';
-import { flushPending } from '../net/SyncCaseResult';
-import { retryPendingSave } from '../net/CloudSave';
-import { flushPendingAssist } from '../net/AssistSync';
+import { syncCloud } from './BootCloud';
 import { CaseConfig } from '../config/CaseConfig';
 import { CharacterConfig } from '../config/CharacterConfig';
 import { CONFIG_BUNDLE } from '../config/ConfigLoader';
-import { Quality } from '../config/Quality';
-import { CLOUD_ENV, CLIENT_CHANNEL, CLIENT_VERSION } from '../config/EnvConfig';
+import { CLOUD_ENV } from '../config/EnvConfig';
 import { DebugPanel } from '../ui/DebugPanel';
+import { addLabel, PALETTE } from '../ui/SceneUI';
 import { Track } from '../track/Track';
 
 const { ccclass } = _decorator;
 const LOBBY_SCENE = 'Lobby';
+const BUNDLE_BUDGET_MS = 2500;
 
-interface LoginData {
-  token: string;
-  isNewUser: boolean;
-  serverTime: number;
-  minVersion: string;
-}
-
-interface GetConfigData {
-  version: number;
-  configs: Record<string, unknown>;
-  forceUpdate: boolean;
-  minVersion: string;
+/** 分包加载最多等这么久，超时就用内置病例兜底，避免低端机首屏黑屏。 */
+function withTimeout<T>(task: Promise<T>, ms: number): Promise<T | null> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => resolve(null), ms);
+    const settle = (value: T | null): void => {
+      clearTimeout(timer);
+      resolve(value);
+    };
+    task.then(settle, () => settle(null));
+  });
 }
 
 @ccclass('Boot')
@@ -39,6 +35,7 @@ export class Boot extends Component {
   private started = false;
 
   protected start(): void {
+    addLabel(this.node, 'BootLoading', '正在准备诊疗室…', 0, { size: 32, color: PALETTE.panel });
     this.mountDebugPanel();
     void this.bootstrap();
   }
@@ -60,8 +57,13 @@ export class Boot extends Component {
     }
     this.started = true;
 
-    const casesBundle = await Res.loadBundle(CONFIG_BUNDLE);
-    if (!casesBundle) {
+    const loading = Res.loadBundle(CONFIG_BUNDLE);
+    const bundle = await withTimeout(loading, BUNDLE_BUDGET_MS);
+    if (bundle === null) {
+      Track.track('boot_cases_bundle_slow');
+      // 超时后分包才到：释放这次引用，交给下次场景切换回收。
+      void loading.then(() => Res.release(CONFIG_BUNDLE), () => undefined);
+    } else if (!bundle) {
       Track.track('boot_cases_bundle_missing');
     }
     const [casesReady] = await Promise.all([CaseConfig.load(), CharacterConfig.load()]);
@@ -72,33 +74,12 @@ export class Boot extends Component {
     Res.release(CONFIG_BUNDLE);
     Track.track('fsm_chain_check', { ok: chainAllowed() });
 
-    if (!Net.init(CLOUD_ENV)) {
-      // ENV_PLACEHOLDER：W3 不部署云函数，直接走本地模式。
-      Track.track('boot_cloud_offline_fallback');
-      await this.enterLobby();
-      return;
-    }
-
-    const login = await Net.call<LoginData>('login', {
-      version: CLIENT_VERSION,
-      channel: CLIENT_CHANNEL,
-    });
-    if (login.code !== 0 || !login.data) {
-      Track.track('boot_login_failed', { code: login.code });
-      await this.enterLobby();
-      return;
-    }
-
-    const config = await Net.call<GetConfigData>('getConfig', { version: 0 });
-    if (config.code === 0 && config.data) {
-      Quality.set(config.data.configs.quality);
+    if (Net.init(CLOUD_ENV)) {
+      void syncCloud();
     } else {
-      Track.track('boot_config_failed', { code: config.code });
+      // ENV_PLACEHOLDER：未部署云函数时走本地模式，不阻塞单局。
+      Track.track('boot_cloud_offline_fallback');
     }
-    Session.set(login.data.token);
-    void flushPending();
-    void retryPendingSave();
-    void flushPendingAssist();
     await this.enterLobby();
   }
 
@@ -107,11 +88,7 @@ export class Boot extends Component {
       Track.track('boot_fsm_blocked', { state: gameFSM.state });
       return;
     }
-    if (!(await gameFSM.transition(GameState.Lobby))) {
-      Track.track('boot_fsm_blocked', { state: gameFSM.state });
-      return;
-    }
-    if (!director.loadScene(LOBBY_SCENE)) {
+    if (!(await goState(GameState.Lobby, LOBBY_SCENE))) {
       Track.track('boot_lobby_scene_missing');
     }
   }

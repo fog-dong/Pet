@@ -3,25 +3,17 @@ import { _decorator, Button, Component, Label } from 'cc';
 import { CaseSession } from './CaseSession';
 import type { CaseReward } from './CaseSettle';
 import { Save } from '../cache/Save';
-import { AdQuota, adButtonText } from '../cache/AdQuota';
-import { showAd } from '../net/AdGateway';
+import { adButtonText } from '../cache/AdQuota';
+import { adFailHint, canOfferAd, showAd } from '../net/AdGateway';
 import { pushHint, pushSave } from '../net/CloudSave';
 import { syncCaseResult } from '../net/SyncCaseResult';
 import { GameState } from '../core/GameFSM';
 import { goState } from '../core/SceneFlow';
 import { addButton, addLabel, PALETTE, setButtonState } from '../ui/SceneUI';
 import { buildSaveSnapshot } from './CloudPayload';
+import { starText, totalText } from './ResultText';
 
 const { ccclass } = _decorator;
-
-function starText(stars: number): string {
-  const clamped = Math.max(0, Math.min(3, stars));
-  return `${'★'.repeat(clamped)}${'☆'.repeat(3 - clamped)}`;
-}
-
-function totalText(): string {
-  return `累计金币 ${Save.coins}　累计爱心 ${Save.hearts}　已治愈 ${Save.casesDone} 例`;
-}
 
 @ccclass('Result')
 export class Result extends Component {
@@ -121,7 +113,7 @@ export class Result extends Component {
     }
     setButtonState(
       this.doubleButton,
-      AdQuota.canShow('double_reward'),
+      canOfferAd('double_reward'),
       adButtonText('double_reward', '看广告金币 ×2'),
       PALETTE.accent,
     );
@@ -134,6 +126,9 @@ export class Result extends Component {
     }
     const result = await showAd('double_reward');
     if (!result.ok) {
+      if (this.syncHint) {
+        this.syncHint.string = adFailHint(result, '今日翻倍次数已用完，可直接进入下一例');
+      }
       this.refreshDouble();
       return;
     }

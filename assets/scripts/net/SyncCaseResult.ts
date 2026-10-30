@@ -1,6 +1,7 @@
-// STATUS: implemented, W5 单局结果上报（幂等键 + 失败入队，下次启动补发）
+// STATUS: implemented, W13-2 单局结果上报（2002 配置未发布改为可恢复：留队重试，不丢金币）
 import { Net, NetResponse } from './Net';
 import { enqueueCase, readCaseQueue, removeCase } from '../cache/PendingSync';
+import { classifySyncCode, drainQueue } from './SyncPolicy';
 import { Track } from '../track/Track';
 
 export interface CaseDiagnosisInput {
@@ -25,11 +26,6 @@ export interface CaseSyncInput {
   durationMs: number;
 }
 
-/** 1002 参数错误、2002 状态非法重发也不会成功，直接丢弃。 */
-function isFinal(code: number): boolean {
-  return code === 0 || code === 1004 || code === 1002 || code === 2002;
-}
-
 export async function syncCaseResult(input: CaseSyncInput): Promise<NetResponse<unknown>> {
   const payload: Record<string, unknown> = {
     caseSessionId: input.caseSessionId,
@@ -51,33 +47,37 @@ export async function syncCaseResult(input: CaseSyncInput): Promise<NetResponse<
   const response = await Net.call<unknown>('syncCaseResult', payload, {
     idempotencyKey: input.caseSessionId,
   });
-  if (isFinal(response.code)) {
+  const verdict = classifySyncCode(response.code);
+  if (verdict === 'ok') {
     removeCase(input.caseSessionId);
-    if (response.code !== 0 && response.code !== 1004) {
-      Track.track('case_sync_dropped', { code: response.code });
-    }
     return response;
   }
+  if (verdict === 'drop') {
+    removeCase(input.caseSessionId);
+    Track.track('case_sync_dropped', { code: response.code });
+    return response;
+  }
+  // defer（2002 配置未发布）/ retry（网络或 1006）：留在本地队列，下次启动、进厅或下局结算后重试。
   enqueueCase(input);
-  Track.track('case_sync_queued', { code: response.code });
+  Track.track('case_sync_queued', { code: response.code, recoverable: verdict === 'defer' });
   return response;
 }
 
-/** 启动时补发；网络错误即停，保留队列等下次再试。 */
+/** 启动 / 进厅 / 结算成功后补发；网络类失败即停，保留队列等下次再试。 */
 export async function flushPending(): Promise<number> {
   if (!Net.ready) {
     return 0;
   }
-  let sent = 0;
-  for (const item of readCaseQueue()) {
-    const response = await syncCaseResult(item);
-    if (!isFinal(response.code)) {
-      break;
-    }
-    sent += 1;
+  const queue = readCaseQueue();
+  if (queue.length === 0) {
+    return 0;
   }
-  if (sent > 0) {
-    Track.track('pending_case_flushed', { count: sent });
+  const result = await drainQueue(queue, async (item) => (await syncCaseResult(item)).code);
+  if (result.sent > 0) {
+    Track.track('pending_case_flushed', { count: result.sent });
   }
-  return sent;
+  if (result.deferred > 0) {
+    Track.track('pending_case_deferred', { count: result.deferred });
+  }
+  return result.sent;
 }

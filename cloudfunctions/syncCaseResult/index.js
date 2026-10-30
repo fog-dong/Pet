@@ -22,6 +22,11 @@ function ok(data) {
 function fail(code, msg) {
     return { code, msg, data: null, serverTime: Date.now() };
 }
+/** 拒绝路径统一留一行结构化日志：上线后能直接从日志区分 2002（配置未发布）与其他失败。 */
+function reject(code, msg, caseId) {
+    console.warn('[syncCaseResult] reject code=%d msg=%s caseId=%s', code, msg, caseId);
+    return fail(code, msg);
+}
 /**
  * SDK 只对事务冲突自动重试（默认 3 次），耗尽后抛出的仍是冲突类错误。
  * 其余异常（权限、网络）不上报 1006，原样上抛交给平台日志与客户端重试。
@@ -56,24 +61,24 @@ async function loadCaseCatalog() {
 async function main(event) {
     const { OPENID } = cloud.getWXContext();
     if (!OPENID) {
-        return fail(1001, 'SESSION_INVALID');
+        return reject(1001, 'SESSION_INVALID', '-');
     }
     const { caseSessionId, caseId, durationMs } = event;
     if (typeof caseSessionId !== 'string' || caseSessionId.length === 0 || caseSessionId.length > MAX_ID_LENGTH) {
-        return fail(1002, 'INVALID_PARAM');
+        return reject(1002, 'INVALID_PARAM', '-');
     }
     if (typeof caseId !== 'string' || caseId.length === 0 || caseId.length > MAX_ID_LENGTH) {
-        return fail(1002, 'INVALID_PARAM');
+        return reject(1002, 'INVALID_PARAM', '-');
     }
     const diagnosis = (0, validate_1.readDiagnosis)(event.diagnosis);
     const treatment = (0, validate_1.readTreatment)(event.treatment);
     if (!diagnosis || !treatment || !(0, guard_1.isInt)(durationMs, 0, MAX_DURATION_MS)) {
-        return fail(1002, 'INVALID_PARAM');
+        return reject(1002, 'INVALID_PARAM', caseId);
     }
     const item = (await loadCaseCatalog())?.get(caseId);
     if (!item) {
         // 配置未发布或病例不存在：不按客户端数值兜底发奖。
-        return fail(INVALID_STATE_CODE, 'INVALID_STATE');
+        return reject(INVALID_STATE_CODE, 'INVALID_STATE', caseId);
     }
     try {
         const outcome = await (0, settle_1.settleCaseResult)({
@@ -87,7 +92,7 @@ async function main(event) {
             now: Date.now(),
         });
         if (!outcome) {
-            return fail(1001, 'SESSION_INVALID');
+            return reject(1001, 'SESSION_INVALID', caseId);
         }
         return ok({
             result: outcome.result,
@@ -97,7 +102,7 @@ async function main(event) {
     }
     catch (error) {
         if (isTransactionConflict(error)) {
-            return fail(RETRY_EXHAUSTED_CODE, 'TRANSACTION_RETRY_EXHAUSTED');
+            return reject(RETRY_EXHAUSTED_CODE, 'TRANSACTION_RETRY_EXHAUSTED', caseId);
         }
         throw error;
     }

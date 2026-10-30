@@ -73,6 +73,11 @@ export function removeCase(caseSessionId: string): void {
   );
 }
 
+/** 待同步局数（顺带淘汰过期项），供大厅提示用。 */
+export function countPendingCases(): number {
+  return readCaseQueue().length;
+}
+
 export function readPendingSave(): PendingSave | null {
   const value = readJson<PendingSave>(SAVE_KEY);
   if (!value || typeof value.revision !== 'number' || !value.snapshot) {

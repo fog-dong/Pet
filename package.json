@@ -7,7 +7,8 @@
   "scripts": {
     "build:cloud": "tsc -p cloudfunctions/tsconfig.build.json && node scripts/stamp-cloud-build.js",
     "typecheck:cloud": "tsc -p cloudfunctions/tsconfig.json",
-    "verify:idempotency": "node scripts/verify-idempotency.js"
+    "verify:idempotency": "node scripts/verify-idempotency.js",
+    "verify:sync": "node --experimental-strip-types --no-warnings scripts/verify-sync-retry.js"
   },
   "devDependencies": {
     "typescript": "^5.4.5"

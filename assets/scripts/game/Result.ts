@@ -6,7 +6,7 @@ import { Save } from '../cache/Save';
 import { adButtonText } from '../cache/AdQuota';
 import { adFailHint, canOfferAd, showAd } from '../net/AdGateway';
 import { pushHint, pushSave } from '../net/CloudSave';
-import { syncCaseResult } from '../net/SyncCaseResult';
+import { syncCaseResult, flushPending } from '../net/SyncCaseResult';
 import { GameState } from '../core/GameFSM';
 import { goState } from '../core/SceneFlow';
 import { addButton, addLabel, PALETTE, setButtonState } from '../ui/SceneUI';
@@ -95,7 +95,11 @@ export class Result extends Component {
   private async sync(reward: CaseReward): Promise<void> {
     const input = CaseSession.report(reward.durationMs);
     if (input) {
-      await syncCaseResult(input);
+      const response = await syncCaseResult(input);
+      // 本局入账成功后再补发历史积压（配置晚发布时积压会在这一刻清算）。
+      if (response.code === 0) {
+        void flushPending();
+      }
     }
     const pushed = await pushSave(buildSaveSnapshot(Save.snapshot()));
     if (this.isValid && this.syncHint) {

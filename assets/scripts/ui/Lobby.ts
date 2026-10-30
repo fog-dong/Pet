@@ -23,6 +23,7 @@ import { Profile } from '../net/Profile';
 import { addButton, addLabel, PALETTE } from '../ui/SceneUI';
 import { rightEdgeX } from '../ui/ScreenMetrics';
 import { pinTopLeft } from '../ui/SafeLayout';
+import { SyncBadge } from './SyncBadge';
 import { Track } from '../track/Track';
 
 const { ccclass, property } = _decorator;
@@ -35,6 +36,7 @@ export class Lobby extends Component {
 
   private hint: Label | null = null;
   private readonly leaderboard = new LeaderboardPanel();
+  private readonly syncBadge = new SyncBadge();
 
   protected start(): void {
     Save.load();
@@ -47,6 +49,9 @@ export class Lobby extends Component {
       this.showHint(PRIVACY_GUEST_TEXT);
     } else {
       void Profile.refresh();
+      // 进厅补发一次待同步结算（配置晚发布时金币延迟到账，这里给玩家一个可见提示）。
+      this.syncBadge.mount(this.node);
+      void this.syncBadge.drain();
     }
     void Track.flush();
     const sideX = rightEdgeX(130);

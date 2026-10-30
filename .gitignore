@@ -8,10 +8,14 @@
 /packages/
 /.editor/
 /.meta-cache/
+/.preview/
 /node_modules/
 
 # 云函数本地依赖：由各函数 package.json 声明，云端安装，不入库
 /cloudfunctions/*/node_modules/
+
+# 编辑器扩展（本地开发工具，非工程源码）
+/extensions/
 
 # Logs and OS files
 *.log

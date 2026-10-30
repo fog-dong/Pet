@@ -6,7 +6,8 @@
   },
   "scripts": {
     "build:cloud": "tsc -p cloudfunctions/tsconfig.build.json && node scripts/stamp-cloud-build.js",
-    "typecheck:cloud": "tsc -p cloudfunctions/tsconfig.json"
+    "typecheck:cloud": "tsc -p cloudfunctions/tsconfig.json",
+    "verify:idempotency": "node scripts/verify-idempotency.js"
   },
   "devDependencies": {
     "typescript": "^5.4.5"

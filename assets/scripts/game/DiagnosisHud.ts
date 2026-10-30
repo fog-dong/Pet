@@ -1,6 +1,7 @@
 // STATUS: implemented, W7 诊断小游戏共用倒计时与提示行（计时移到左上，避开微信胶囊）
 import { Label, Node } from 'cc';
 import { addLabel, PALETTE } from '../ui/SceneUI';
+import { leftEdgeX } from '../ui/ScreenMetrics';
 
 export class DiagnosisHud {
   private readonly timer: Label;
@@ -11,7 +12,7 @@ export class DiagnosisHud {
       size: 26,
       color: PALETTE.primary,
       width: 300,
-      x: -430,
+      x: leftEdgeX(150),
     });
     this.hint = addLabel(root, `${prefix}Hint`, hintText, -262, { size: 22, color: PALETTE.sub, width: 900 });
   }

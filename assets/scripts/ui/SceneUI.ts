@@ -72,7 +72,8 @@ export function addLabel(
   options: LabelOptions = {},
 ): Label {
   const size = options.size ?? 26;
-  const width = fitWidth(options.width ?? 960, 20);
+  // 720 帧下正文一列的可用宽度是 680；显式宽度仍按留白裁剪。
+  const width = fitWidth(options.width ?? 640, 20);
   const node = createNode(parent, name, y, width, size + 12);
   node.setPosition(options.x ?? 0, y, 0);
   const label = node.addComponent(Label);

@@ -1,4 +1,4 @@
-// STATUS: implemented, W10-3 隐私弹窗控件（面板与正文宽度按可视宽度派生，1280 帧下与既有字面量等值）
+// STATUS: implemented, W11-3 隐私弹窗控件（面板/正文/双按钮宽度全部按可视宽度派生，720 帧下 660/280）
 import { Button, Color, Graphics, Mask, Node, ScrollView, UITransform } from 'cc';
 import { LEGAL_DOCS } from '../config/LegalConfig';
 import { addLabel, addRect, createNode, PALETTE } from './SceneUI';
@@ -13,12 +13,17 @@ export function panelH(): number {
   return Math.min(580, Math.max(360, screenHeight() - 120));
 }
 
-/** 按钮统一 320×76，高于 44×44 的最小可点热区。 */
+/** 按钮统一 76 高、宽随面板收；高于 44×44 的最小可点热区。 */
 export const BUTTON_Y = -220;
 
-/** 左右两枚按钮的偏移：320 宽 + 140 内边距，1280 帧下等于既有的 ±190。 */
+/** 两枚按钮并排：宽度取面板半幅减 50，720 帧下 280，1280 帧下仍是 320。 */
+export function dialogButtonW(): number {
+  return Math.min(320, panelW() / 2 - 50);
+}
+
+/** 左右两枚按钮的中心偏移：半宽 + 30 的间隙；1280 帧下等于既有的 ±190。 */
 export function buttonX(): number {
-  return panelW() / 2 - 300;
+  return dialogButtonW() / 2 + 30;
 }
 
 const SCROLL_H = 270;
@@ -33,10 +38,15 @@ export function addDialogButton(
   color: Color,
   onClick: () => void,
 ): Button {
-  const node = addRect(parent, name, BUTTON_Y, 320, 76, color, x);
+  const node = addRect(parent, name, BUTTON_Y, dialogButtonW(), 76, color, x);
   const button = node.addComponent(Button);
   button.transition = Button.Transition.NONE;
-  addLabel(node, `${name}Label`, text, 0, { size: 28, width: 292 }).color = new Color(255, 255, 255, 255);
+  addLabel(node, `${name}Label`, text, 0, { size: 28, width: dialogButtonW() - 28 }).color = new Color(
+    255,
+    255,
+    255,
+    255,
+  );
   node.on(Button.EventType.CLICK, onClick);
   return button;
 }

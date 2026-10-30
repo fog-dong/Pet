@@ -3,6 +3,7 @@ import type { Label, Node } from 'cc';
 import type { CaseConfigItem } from '../config/CaseConfig';
 import { addButton, addLabel, PALETTE } from '../ui/SceneUI';
 import { Choice, addChoiceRow, paintChoices } from '../ui/ChoiceRow';
+import { fitRow, leftEdgeX, screenWidth } from '../ui/ScreenMetrics';
 import { Hospital } from './Hospital';
 
 export interface TreatmentHandlers {
@@ -39,25 +40,36 @@ export function buildTreatmentLayout(
     size: 21,
     color: PALETTE.sub,
   });
-  addLabel(root, 'MedicineLabel', '药品', 185, { size: 22, color: PALETTE.sub, x: -560, width: 100 });
-  addLabel(root, 'BedLabel', '床位', 95, { size: 22, color: PALETTE.sub, x: -560, width: 100 });
-  addLabel(root, 'TimeLabel', '时间', 5, { size: 22, color: PALETTE.sub, x: -560, width: 100 });
+  // 竖屏：左侧留一列行名（96 宽），右侧 560 宽的区间均分给三组选项，行与行共用同一列宽。
+  const rowRight = screenWidth() / 2 - 32;
+  const slot = fitRow(
+    Math.max(item.treatment.medicine.length, item.treatment.bed.length, item.treatment.time.length),
+    rowRight - 560,
+    rowRight,
+  );
+  const rowLabelX = leftEdgeX(48);
+  addLabel(root, 'MedicineLabel', '药品', 185, { size: 22, color: PALETTE.sub, x: rowLabelX, width: 96 });
+  addLabel(root, 'BedLabel', '床位', 95, { size: 22, color: PALETTE.sub, x: rowLabelX, width: 96 });
+  addLabel(root, 'TimeLabel', '时间', 5, { size: 22, color: PALETTE.sub, x: rowLabelX, width: 96 });
   const medicines = addChoiceRow(root, 'Medicine', item.treatment.medicine, {
     y: 185,
-    x0: -340,
-    gap: 340,
+    x0: slot.x0,
+    gap: slot.step,
+    width: slot.width,
     onClick: handlers.onMedicine,
   });
   const beds = addChoiceRow(root, 'Bed', item.treatment.bed, {
     y: 95,
-    x0: -170,
-    gap: 340,
+    x0: slot.x0,
+    gap: slot.step,
+    width: slot.width,
     onClick: handlers.onBed,
   });
   const times = addChoiceRow(root, 'Time', item.treatment.time, {
     y: 5,
-    x0: -170,
-    gap: 340,
+    x0: slot.x0,
+    gap: slot.step,
+    width: slot.width,
     onClick: handlers.onTime,
   });
   const status = addLabel(root, 'Status', '', -90, {

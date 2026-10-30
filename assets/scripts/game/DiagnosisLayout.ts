@@ -1,6 +1,7 @@
 // STATUS: implemented, W4 诊断页布局与文案（三种小游戏共用）
 import { Label, Node } from 'cc';
 import { addLabel, PALETTE } from '../ui/SceneUI';
+import { leftEdgeX } from '../ui/ScreenMetrics';
 import type { DiagnosisKind } from './DiagnosisSequence';
 
 export const DIAGNOSIS_NAME: Record<DiagnosisKind, string> = {
@@ -26,7 +27,7 @@ export function buildDiagnosisLayout(root: Node, petName: string, breed: string)
     size: 24, color: PALETTE.sub,
   });
   const step = addLabel(root, 'DiagnosisStep', '', 288, {
-    size: 24, color: PALETTE.primary, width: 300, x: -430,
+    size: 24, color: PALETTE.primary, width: 300, x: leftEdgeX(150),
   });
   const hint = addLabel(root, 'Hint', '', -262, {
     size: 24, color: PALETTE.sub, width: 900,

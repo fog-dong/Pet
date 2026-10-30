@@ -40,6 +40,9 @@ export function addChoiceRow(
     if (!label) {
       throw new Error(`choice label missing: ${name}`);
     }
+    // 竖屏一行三枚只有 ~170 宽，字号跟着收一档，避免四个字被裁边。
+    label.fontSize = width >= 150 ? 28 : 22;
+    label.lineHeight = Math.round(label.fontSize * 1.4);
     return { value, node: button.node, label };
   });
 }

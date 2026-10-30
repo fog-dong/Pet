@@ -6,8 +6,9 @@ import { screenHeight, screenWidth } from '../ui/ScreenMetrics';
 
 export const LAB_ITEM_W = 200;
 export const LAB_ITEM_H = 64;
-export const LAB_COL_LEFT = -330;
-export const LAB_COL_RIGHT = 330;
+/** 720 帧下左右列各贴边 30：卡片 200 宽时占 -330..-130 与 130..330，留出中间拖拽通道。 */
+export const LAB_COL_LEFT = -230;
+export const LAB_COL_RIGHT = 230;
 export const LAB_HIT_RADIUS = 36;
 export const LAB_COL_TOP = 200;
 const LAB_COL_SPAN = 400;

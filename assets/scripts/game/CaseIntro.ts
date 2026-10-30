@@ -34,12 +34,13 @@ export class CaseIntro extends Component {
       size: 24,
       color: PALETTE.sub,
     });
-    addLabel(root, 'Story', item.story, 50, { size: 26, width: 620, x: -160 });
+    // 竖屏正文只能占左侧一列：右侧留给缩小的立绘，避免文字压在角色上。
+    addLabel(root, 'Story', item.story, 50, { size: 26, width: 520, x: -80 });
     addLabel(root, 'Symptoms', `症状：${item.symptoms.join(' · ')}`, -20, {
       size: 24,
       color: PALETTE.sub,
-      width: 620,
-      x: -160,
+      width: 520,
+      x: -80,
     });
     // 医疗虚构免责固定句：每个病例都会经过这一屏，文案只在 LegalConfig 维护。
     addLabel(root, 'MedicalNotice', MEDICAL_DISCLAIMER_TEXT, -200, {
@@ -84,7 +85,9 @@ export class CaseIntro extends Component {
       if (!this.isValid) {
         return;
       }
-      CharacterView.mount(this.node, rightEdgeX(130), 80).showPet(petId, 'sick');
+      const view = CharacterView.mount(this.node, rightEdgeX(72), 80);
+      view.node.setScale(0.6, 0.6, 1);
+      view.showPet(petId, 'sick');
     });
   }
 }

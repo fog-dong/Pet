@@ -1,4 +1,4 @@
-// STATUS: implemented, W9-5 大厅：游客模式关云端 + 关于面板（免责/适龄/客服）入口
+// STATUS: implemented, W11-3 大厅（场景资源标签改挂 Widget，右侧按钮列按可视宽度贴边）
 import { _decorator, Button, Component, Label } from 'cc';
 import { CaseConfig } from '../config/CaseConfig';
 import { CharacterConfig } from '../config/CharacterConfig';
@@ -19,26 +19,24 @@ import { openPrivacyDialog } from './PrivacyDialog';
 import { Profile } from '../net/Profile';
 import { addButton, addLabel, PALETTE } from '../ui/SceneUI';
 import { rightEdgeX } from '../ui/ScreenMetrics';
+import { pinTopLeft } from '../ui/SafeLayout';
 import { Track } from '../track/Track';
 
 const { ccclass, property } = _decorator;
 
 @ccclass('Lobby')
 export class Lobby extends Component {
-  @property(Label)
-  coinsLabel: Label | null = null;
-
-  @property(Label)
-  heartsLabel: Label | null = null;
-
-  @property(Button)
-  startButton: Button | null = null;
+  @property(Label) coinsLabel: Label | null = null;
+  @property(Label) heartsLabel: Label | null = null;
+  @property(Button) startButton: Button | null = null;
 
   private hint: Label | null = null;
   private readonly leaderboard = new LeaderboardPanel();
 
   protected start(): void {
     Save.load();
+    // 场景里的两枚资源标签仍是 1280 时代的绝对坐标（x=-440），竖屏下改挂 Widget 贴左上角。
+    pinTopLeft([this.coinsLabel?.node ?? null, this.heartsLabel?.node ?? null], 24, 24);
     this.refreshStats();
     if (PrivacyState.isGuest()) {
       // 游客：不拉云资料、不碰排行榜，本地单局照常。

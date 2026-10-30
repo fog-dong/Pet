@@ -9,7 +9,7 @@ const PANEL_H = 600;
 const VIEW_H = 380;
 const CARD_H = 96;
 
-/** 面板与卡片宽度贴合可视宽度；1280 帧下等于既有的 1040/960/920。 */
+/** 面板与卡片宽度贴合可视宽度：720 帧下是 660/580/540。 */
 function codexPanelW(): number {
   return fitWidth(1040, 30);
 }

@@ -31,3 +31,21 @@ export function alignBottom(node: Node, margin: number, x = 0): void {
   widget.horizontalCenter = x;
   widget.alignMode = Widget.AlignMode.ALWAYS;
 }
+
+/**
+ * 一排贴左上角的节点：场景文件里遗留的绝对坐标（例如 -440）在 720 帧下会出屏，
+ * 改挂 Widget 后随可视宽度自适应；top 为首行外边距，gap 为行距。
+ */
+export function pinTopLeft(nodes: readonly (Node | null)[], left: number, top: number, gap = 60): void {
+  nodes.forEach((node, index) => {
+    if (!node) {
+      return;
+    }
+    const widget = node.getComponent(Widget) ?? node.addComponent(Widget);
+    widget.isAlignLeft = true;
+    widget.left = left;
+    widget.isAlignTop = true;
+    widget.top = top + index * gap;
+    widget.alignMode = Widget.AlignMode.ALWAYS;
+  });
+}

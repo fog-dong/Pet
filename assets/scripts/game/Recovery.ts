@@ -9,7 +9,7 @@ import { goState } from '../core/SceneFlow';
 import { adButtonText } from '../cache/AdQuota';
 import { adFailHint, canOfferAd, showAd } from '../net/AdGateway';
 import { addButton, addLabel, addProgressBar, PALETTE, setButtonState } from '../ui/SceneUI';
-import { rightEdgeX } from '../ui/ScreenMetrics';
+import { fitWidth, rightEdgeX } from '../ui/ScreenMetrics';
 
 const { ccclass } = _decorator;
 
@@ -39,13 +39,14 @@ export class Recovery extends Component {
       size: 30,
       color: PALETTE.sub,
     });
-    this.redraw = addProgressBar(root, 'RecoveryBar', 120, 720, 44);
+    this.redraw = addProgressBar(root, 'RecoveryBar', 120, fitWidth(720, 40), 44);
     this.redraw(0);
     this.hint = addLabel(root, 'Hint', `预计 ${this.seconds} 秒康复完成`, 50, {
       size: 24,
       color: PALETTE.sub,
     });
-    this.speedButton = addButton(root, 'AdSpeedButton', '', -70, () => void this.speedUp(), PALETTE.accent, 480);
+    // 竖屏立绘缩到 0.6 并贴右缘，给 400 宽的加速按钮留出通道。
+    this.speedButton = addButton(root, 'AdSpeedButton', '', -70, () => void this.speedUp(), PALETTE.accent, 400);
     this.refreshSpeed();
     addButton(root, 'AdoptButton', '进入领养', -190, () => void this.finish(), PALETTE.primary);
     this.mountPet(item.petId);
@@ -72,7 +73,8 @@ export class Recovery extends Component {
       if (!this.isValid) {
         return;
       }
-      const view = CharacterView.mount(this.node, rightEdgeX(130), -30);
+      const view = CharacterView.mount(this.node, rightEdgeX(72), -30);
+      view.node.setScale(0.6, 0.6, 1);
       view.showPet(petId, 'sick');
       this.petView = view;
     });

@@ -4,6 +4,7 @@ import type { CaseConfigItem } from '../config/CaseConfig';
 import { AuscultationLayout, buildLayout } from '../config/AuscultationConfig';
 import { CharacterConfig } from '../config/CharacterConfig';
 import { addLabel, hexToColor, PALETTE } from '../ui/SceneUI';
+import { rightEdgeX } from '../ui/ScreenMetrics';
 import { AuscultationView, SpotView } from './AuscultationView';
 import { AuscultationFinish, judgeStars } from './AuscultationScore';
 import { Track } from '../track/Track';
@@ -45,7 +46,7 @@ export class Auscultation extends Component {
     this.timerLabel = addLabel(this.node, 'TimerLabel', '', 330, {
       size: 28,
       color: PALETTE.primary,
-      x: 440,
+      x: rightEdgeX(150),
     });
     this.paintTimer(Math.ceil(this.timeLeft / 1000));
     this.paintProgress();

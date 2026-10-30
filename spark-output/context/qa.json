@@ -1,0 +1,66 @@
+{
+  "skill": "qa",
+  "generated_at": "2026-10-31T00:00:00+08:00",
+  "project_name": "萌宠救助日记",
+  "target": "Lobby（assets/scripts/ui/LobbyScene.ts / LobbyChrome.ts / Lobby.ts）",
+  "review_mode": "auto",
+  "deviations": [
+    {
+      "id": "qa-1",
+      "dimension": "responsive",
+      "severity": "blocker",
+      "resolved": true,
+      "design_source": "docs/plan/W16-视觉与交互重构方案.md §2.2 五层模型：单相机 + 单 Canvas，层级靠 siblingIndex",
+      "implementation": "PageFade 常驻层自建 Canvas + Camera(priority=100, DEPTH_ONLY)，visibility 含 UI_2D，与主 UI 同层",
+      "delta": "整屏 UI 被两台 orthoHeight 不同的相机各绘一次 → 放大 / 错位 / 重叠",
+      "suggestion": "淡出层独占 Layers.Enum.UI_3D(8388608)，主相机 visibility 不含该层",
+      "location": "assets/scripts/core/PageFade.ts:124",
+      "relates_to_check_finding": null
+    },
+    {
+      "id": "qa-2",
+      "dimension": "spacing",
+      "severity": "minor",
+      "resolved": false,
+      "design_source": "W16 §2.1：资源条随内容自适应，数字区留余量",
+      "implementation": "addPill(parent, name, 0, 200, 64, ...) 固定宽 200，数字 label 固定宽 116",
+      "delta": "999+ 时数字顶到色点 / 胶囊右缘",
+      "suggestion": "宽度取 max(200, labelWidth + 96)，数字区右对齐 + Layout 自适应",
+      "location": "assets/scripts/ui/LobbyChrome.ts:40",
+      "relates_to_check_finding": null
+    },
+    {
+      "id": "qa-3",
+      "dimension": "spacing",
+      "severity": "minor",
+      "resolved": false,
+      "design_source": "W16 §2.2 交互件层：等宽等高、按网格排布",
+      "implementation": "MENU_X=115 + index%2 / index<2 手工算 x、y，按钮 214×78",
+      "delta": "视觉已等宽等高，但增删项需手改坐标，无容器约束",
+      "suggestion": "包一层 Layout(GRID, resizeMode=CHILDREN)，按钮只设 size + spacing",
+      "location": "assets/scripts/ui/LobbyChrome.ts:54",
+      "relates_to_check_finding": null
+    },
+    {
+      "id": "qa-4",
+      "dimension": "assets",
+      "severity": "minor",
+      "resolved": false,
+      "design_source": "W16 大厅视觉分区：医生为画面重心，约占屏高 1/4（约 300px）",
+      "implementation": "CharacterView.mount(doctorSlot, 0, 40, 240)",
+      "delta": "边长 240 vs ~300（−20%）",
+      "suggestion": "边长改 296，doctorSlot.y 由 10 下调至约 −10，保持脚不压前台桌",
+      "location": "assets/scripts/ui/Lobby.ts:66",
+      "relates_to_check_finding": null
+    }
+  ],
+  "summary": {
+    "total": 4,
+    "blocker": 1,
+    "major": 0,
+    "minor": 3,
+    "pass_dimensions": ["color", "typography", "radius-shadow", "interaction-states", "state-coverage", "accessibility"],
+    "check_findings_resolved": 0,
+    "check_findings_unresolved": 0
+  }
+}

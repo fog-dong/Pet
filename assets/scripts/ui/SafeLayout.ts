@@ -51,11 +51,16 @@ export function pinTopLeft(nodes: readonly (Node | null)[], left: number, top: n
     if (!node) {
       return;
     }
-    const widget = node.getComponent(Widget) ?? node.addComponent(Widget);
-    widget.isAlignLeft = true;
-    widget.left = left;
-    widget.isAlignTop = true;
-    widget.top = top + index * gap;
-    widget.alignMode = Widget.AlignMode.ALWAYS;
+    pinTopLeftAt(node, left, top + index * gap);
   });
+}
+
+/** 单个节点贴安全区左上角；横向并排的 HUD 用它逐个定位。 */
+export function pinTopLeftAt(node: Node, left: number, top: number): void {
+  const widget = node.getComponent(Widget) ?? node.addComponent(Widget);
+  widget.isAlignLeft = true;
+  widget.left = left;
+  widget.isAlignTop = true;
+  widget.top = top;
+  widget.alignMode = Widget.AlignMode.ALWAYS;
 }

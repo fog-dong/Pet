@@ -1,0 +1,14 @@
+{
+  "ver": "1.2.0",
+  "importer": "directory",
+  "imported": true,
+  "uuid": "49c1301d-857e-423f-8707-ff22cea30e52",
+  "files": [],
+  "subMetas": {},
+  "userData": {
+    "isBundle": true,
+    "bundleConfigID": "ui-subpackage",
+    "bundleName": "ui",
+    "priority": 3
+  }
+}

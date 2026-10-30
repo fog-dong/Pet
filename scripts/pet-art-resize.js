@@ -1,17 +1,16 @@
-// STATUS: implemented, W16 立绘缩放（预乘 alpha 区域平均，等比铺进 320 方图）
+// STATUS: implemented, W16 素材缩放（预乘 alpha 区域平均，等比铺进指定画布）
 const CANVAS = 320;
-const CONTENT = 300;
 
-/** 区域平均缩放到 320 方图，预乘 alpha 采样避免透明边缘发灰。 */
-function toSquare(img, box) {
+/** 区域平均缩放到指定画布，等比适配并居中；padRatio 为四周留白占比。 */
+function toCanvas(img, box, width = CANVAS, height = CANVAS, padRatio = 0.03) {
   const src = img.data;
   const sw = img.width;
-  const scale = CONTENT / Math.max(box.w, box.h);
+  const scale = Math.min((width * (1 - padRatio * 2)) / box.w, (height * (1 - padRatio * 2)) / box.h);
   const dw = Math.max(1, Math.round(box.w * scale));
   const dh = Math.max(1, Math.round(box.h * scale));
-  const ox = Math.round((CANVAS - dw) / 2);
-  const oy = Math.round((CANVAS - dh) / 2);
-  const out = Buffer.alloc(CANVAS * CANVAS * 4);
+  const ox = Math.round((width - dw) / 2);
+  const oy = Math.round((height - dh) / 2);
+  const out = Buffer.alloc(width * height * 4);
   for (let y = 0; y < dh; y++) {
     const y0 = box.y + Math.floor((y * box.h) / dh);
     const y1 = Math.max(y0 + 1, box.y + Math.floor(((y + 1) * box.h) / dh));
@@ -35,7 +34,7 @@ function toSquare(img, box) {
         }
       }
       if (!n || sa <= 0) continue;
-      const o = ((oy + y) * CANVAS + ox + x) * 4;
+      const o = ((oy + y) * width + ox + x) * 4;
       out[o] = Math.min(255, Math.round(sr / sa));
       out[o + 1] = Math.min(255, Math.round(sg / sa));
       out[o + 2] = Math.min(255, Math.round(sb / sa));
@@ -45,4 +44,4 @@ function toSquare(img, box) {
   return out;
 }
 
-module.exports = { CANVAS, toSquare };
+module.exports = { CANVAS, toCanvas };

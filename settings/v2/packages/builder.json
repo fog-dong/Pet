@@ -25,6 +25,18 @@
             }
           }
         }
+      },
+      "ui-subpackage": {
+        "displayName": "ui 小游戏分包",
+        "configs": {
+          "miniGame": {
+            "configMode": "auto",
+            "preferredOptions": {
+              "isRemote": false,
+              "compressionType": "subpackage"
+            }
+          }
+        }
       }
     }
   }

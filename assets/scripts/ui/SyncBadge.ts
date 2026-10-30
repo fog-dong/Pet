@@ -1,5 +1,5 @@
 // STATUS: implemented, W14-2 大厅「结算待同步」提示（升级当场补发并刷新；配置晚发布时金币延迟到账可见化）
-import type { Label, Node } from 'cc';
+import { Color, Label, Node } from 'cc';
 import { countPendingCases } from '../cache/PendingSync';
 import {
   PRIVACY_SYNCING_TEXT,
@@ -9,23 +9,33 @@ import {
 import type { CloudSyncStart } from '../core/BootCloud';
 import { flushPending } from '../net/SyncCaseResult';
 import { pendingBadgeText } from '../net/SyncPolicy';
-import { addLabel, PALETTE } from './SceneUI';
+import { makeLabel } from './FontKit';
+import { addPill } from './PanelKit';
+import { COLORS } from './Tokens';
 import { Track } from '../track/Track';
 
 /** 只做展示与补发尝试：玩家不需要点，队列在启动、进厅、下局结算、游客升级后自动重试。 */
 export class SyncBadge {
   private label: Label | null = null;
+  private pill: Node | null = null;
 
   mount(parent: Node): void {
-    this.label = addLabel(parent, 'SyncBadge', '', -390, { size: 20, color: PALETTE.sub, width: 680 });
+    this.pill = addPill(parent, 'SyncBadge', -400, 620, 56, new Color(62, 50, 42, 190));
+    this.label = makeLabel(this.pill, 'SyncBadgeLabel', '', 0, {
+      size: 22,
+      width: 580,
+      color: COLORS.white,
+    });
     this.refresh();
   }
 
   refresh(): void {
-    if (!this.label) {
+    if (!this.label || !this.pill) {
       return;
     }
-    this.label.string = pendingBadgeText(countPendingCases());
+    const text = pendingBadgeText(countPendingCases());
+    this.pill.active = text.length > 0;
+    this.label.string = text;
   }
 
   async drain(): Promise<void> {

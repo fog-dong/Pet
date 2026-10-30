@@ -1,17 +1,21 @@
-// STATUS: implemented, W3 占位 UI 构建器（纯色 + Label，不依赖美术资源）
+// STATUS: implemented, W3 占位 UI 构建器（纯色 + Label，不依赖美术资源）；W16 P0 按钮/文字改由 UIButton / FontKit 渲染
 import { Button, Color, Graphics, Label, Node, UITransform } from 'cc';
 import { fitWidth } from './ScreenMetrics';
+import { makeLabel, TextOptions } from './FontKit';
+import { COLORS } from './Tokens';
+import { addUIButton, setUIButtonState } from './UIButton';
 
+/** 旧调用点仍按 PALETTE 取色；色值统一在 Tokens 里维护。 */
 export const PALETTE = {
-  panel: new Color(255, 255, 255, 240),
-  primary: new Color(238, 148, 92, 255),
-  secondary: new Color(139, 168, 157, 255),
-  text: new Color(74, 62, 54, 255),
-  sub: new Color(122, 110, 100, 255),
-  accent: new Color(226, 197, 143, 255),
+  panel: new Color(255, 252, 245, 240),
+  primary: COLORS.clay,
+  secondary: COLORS.sage,
+  text: COLORS.ink,
+  sub: COLORS.sub,
+  accent: COLORS.gold,
 };
 
-export interface LabelOptions {
+export interface LabelOptions extends TextOptions {
   size?: number;
   color?: Color;
   width?: number;
@@ -71,20 +75,9 @@ export function addLabel(
   y: number,
   options: LabelOptions = {},
 ): Label {
-  const size = options.size ?? 26;
   // 720 帧下正文一列的可用宽度是 680；显式宽度仍按留白裁剪。
   const width = fitWidth(options.width ?? 640, 20);
-  const node = createNode(parent, name, y, width, size + 12);
-  node.setPosition(options.x ?? 0, y, 0);
-  const label = node.addComponent(Label);
-  label.string = text;
-  label.fontSize = size;
-  label.lineHeight = Math.round(size * 1.4);
-  label.color = options.color ?? PALETTE.text;
-  label.horizontalAlign = Label.HorizontalAlign.CENTER;
-  label.verticalAlign = Label.VerticalAlign.CENTER;
-  label.overflow = Label.Overflow.RESIZE_HEIGHT;
-  return label;
+  return makeLabel(parent, name, text, y, { ...options, width });
 }
 
 export function addButton(
@@ -98,17 +91,7 @@ export function addButton(
   height = 86,
   x = 0,
 ): Button {
-  const node = addRect(parent, name, y, width, height, color, x);
-  const button = node.addComponent(Button);
-  button.transition = Button.Transition.NONE;
-  addLabel(node, `${name}Label`, text, 0, { size: 30, width: width - 24 }).color = new Color(
-    255,
-    255,
-    255,
-    255,
-  );
-  node.on(Button.EventType.CLICK, onClick);
-  return button;
+  return addUIButton(parent, name, text, onClick, { y, x, width, height, color });
 }
 
 /** 进度条：返回重绘函数，入参 0-1。 */
@@ -136,15 +119,5 @@ export function addProgressBar(
 
 /** 置灰或恢复按钮：广告次数用尽时按钮不可点，文案同步提示原因。 */
 export function setButtonState(button: Button, enabled: boolean, text?: string, color = PALETTE.secondary): void {
-  button.interactable = enabled;
-  const node = button.node;
-  const size = node.getComponent(UITransform)?.contentSize;
-  paintRect(node, size?.width ?? 340, size?.height ?? 86, enabled ? color : new Color(198, 190, 182, 255));
-  const label = node.getChildByName(`${node.name}Label`)?.getComponent(Label);
-  if (label) {
-    if (text) {
-      label.string = text;
-    }
-    label.color = enabled ? new Color(255, 255, 255, 255) : new Color(122, 114, 106, 255);
-  }
+  setUIButtonState(button, enabled, text, color);
 }

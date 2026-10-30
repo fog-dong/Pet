@@ -14,9 +14,8 @@ import { PrivacyState } from '../cache/PrivacyState';
 import { openCustomerService, supportFallback } from '../net/Support';
 import { Track } from '../track/Track';
 import { addLabel, addRect, PALETTE } from './SceneUI';
-import { addDialogButton, buttonX, panelH, panelW } from './PrivacyDialogKit';
+import { addDialogButton, buttonX, panelCenterY, panelH, panelW } from './PrivacyDialogKit';
 import { openPrivacyEntry } from './PrivacyDialog';
-import { attachSafeArea } from './SafeLayout';
 import { screenHeight, screenWidth } from './ScreenMetrics';
 
 let overlay: Node | null = null;
@@ -36,16 +35,17 @@ export function openAboutPanel(parent: Node): void {
   Track.track('about_panel_open');
   overlay = addRect(parent, 'AboutOverlay', 0, screenWidth(), screenHeight(), new Color(0, 0, 0, 170));
   overlay.addComponent(BlockInputEvents);
+  overlay.setSiblingIndex(parent.children.length - 1);
   const textW = panelW() - 120;
-  const panel = addRect(overlay, 'AboutPanel', 0, panelW(), panelH(), PALETTE.panel);
-  attachSafeArea(panel);
-  addLabel(panel, 'AboutTitle', GAME_NAME, 235, { size: 32 });
-  addLabel(panel, 'AboutAge', AGE_RATING_TEXT, 170, { size: 26 });
-  addLabel(panel, 'AboutMedical', MEDICAL_DISCLAIMER_TEXT, 100, { size: 22, width: textW });
-  addLabel(panel, 'AboutNotice', HEALTH_GAME_NOTICE_TEXT, 0, { size: 20, color: PALETTE.sub, width: textW });
-  const hint = addLabel(panel, 'AboutSupportHint', '', -70, { size: 20, color: PALETTE.sub, width: textW });
+  const panel = addRect(overlay, 'AboutPanel', panelCenterY(), panelW(), panelH(), PALETTE.panel);
+  const top = panelH() / 2;
+  addLabel(panel, 'AboutTitle', GAME_NAME, top - 55, { size: 32 });
+  addLabel(panel, 'AboutAge', AGE_RATING_TEXT, top - 125, { size: 26 });
+  addLabel(panel, 'AboutMedical', MEDICAL_DISCLAIMER_TEXT, top - 210, { size: 22, width: textW });
+  addLabel(panel, 'AboutNotice', HEALTH_GAME_NOTICE_TEXT, top - 295, { size: 20, color: PALETTE.sub, width: textW });
+  const hint = addLabel(panel, 'AboutSupportHint', '', top - 360, { size: 20, color: PALETTE.sub, width: textW });
   // 游客期不主动重弹隐私窗，但这里始终保留升级入口；同意后本行就地变成只读入口。
-  const privacyRow = addRect(panel, 'AboutPrivacy', -140, panelW() - 100, 56, new Color(247, 241, 232, 255));
+  const privacyRow = addRect(panel, 'AboutPrivacy', top - 420, panelW() - 100, 56, new Color(247, 241, 232, 255));
   const privacyText = addLabel(privacyRow, 'AboutPrivacyLabel', '', 0, { size: 22, width: panelW() - 150 });
   privacyText.string = PrivacyState.accepted() ? PRIVACY_ENTRY_DONE : PRIVACY_ENTRY_TODO;
   privacyRow.addComponent(Button).transition = Button.Transition.NONE;

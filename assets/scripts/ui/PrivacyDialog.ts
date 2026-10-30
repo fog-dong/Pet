@@ -7,8 +7,7 @@ import type { CloudSyncStart } from '../core/BootCloud';
 import { WxPrivacy } from '../net/Privacy';
 import { Track } from '../track/Track';
 import { addLabel, addRect, createNode, PALETTE, setButtonState } from './SceneUI';
-import { addDialogButton, buildDocScroll, buttonX, paintCheckBox, panelH, panelW } from './PrivacyDialogKit';
-import { attachSafeArea } from './SafeLayout';
+import { addDialogButton, buildDocScroll, buttonX, paintCheckBox, panelCenterY, panelH, panelW } from './PrivacyDialogKit';
 import { screenHeight, screenWidth } from './ScreenMetrics';
 
 export interface PrivacyDialogOptions {
@@ -26,13 +25,14 @@ let checked = false;
 
 function renderGate(panel: Node): void {
   body = createNode(panel, 'PrivacyBody', 0, panelW(), panelH());
-  buildDocScroll(body, 75);
+  // 标题占掉 panelH/2-55 那一行，滚动区顶边压到 210，避免正文压住标题。
+  buildDocScroll(body, 60);
   // 正文是滚动区：给一句可滑动的说明，避免玩家把遮罩边缘当成文字被截断。
-  addLabel(body, 'PrivacyScrollHint', '上下滑动可查看完整协议', -102, {
+  addLabel(body, 'PrivacyScrollHint', '上下滑动可查看完整协议', -106, {
     size: 19,
     color: PALETTE.sub,
   });
-  const row = addRect(body, 'PrivacyCheck', -155, panelW() - 100, 60, new Color(247, 241, 232, 255));
+  const row = addRect(body, 'PrivacyCheck', -168, panelW() - 100, 60, new Color(247, 241, 232, 255));
   paintCheckBox(row, checked);
   addLabel(row, 'CheckText', PRIVACY_CHECK_TEXT, 0, { size: 24, width: panelW() - 240, x: 60 });
   agreeButton = addDialogButton(body, 'PrivacyAgree', '请先勾选协议', -buttonX(), PALETTE.primary, () => {
@@ -79,8 +79,8 @@ function renderDeclined(panel: Node): void {
 
 function renderRead(panel: Node): void {
   body = createNode(panel, 'PrivacyReadBody', 0, panelW(), panelH());
-  buildDocScroll(body, 75);
-  addLabel(body, 'PrivacyScrollHint', '上下滑动可查看完整协议', -102, {
+  buildDocScroll(body, 60);
+  addLabel(body, 'PrivacyScrollHint', '上下滑动可查看完整协议', -108, {
     size: 19,
     color: PALETTE.sub,
   });
@@ -105,10 +105,11 @@ export function openPrivacyDialog(parent: Node, next: PrivacyDialogOptions): voi
   checked = false;
   overlay = addRect(parent, 'PrivacyOverlay', 0, screenWidth(), screenHeight(), new Color(0, 0, 0, 170));
   overlay.addComponent(BlockInputEvents);
-  // 面板必须四边 Widget + SafeArea 才会被收进安全区，只挂 SafeArea 时引擎静默跳过。
-  const panel = addRect(overlay, 'PrivacyPanel', 0, panelW(), panelH(), PALETTE.panel);
-  attachSafeArea(panel);
-  addLabel(panel, 'PrivacyTitle', '隐私保护与用户协议', 250, { size: 34 });
+  overlay.setSiblingIndex(parent.children.length - 1);
+  // 面板不再挂 SafeArea：四边 Widget 会被引擎改写成整屏，正文与按钮就贴到边上了。
+  // 改为按安全区算出下沿（距屏幕底 = 安全区 + 80），底部按钮再统一放 actionY。
+  const panel = addRect(overlay, 'PrivacyPanel', panelCenterY(), panelW(), panelH(), PALETTE.panel);
+  addLabel(panel, 'PrivacyTitle', '隐私保护与用户协议', panelH() / 2 - 55, { size: 34 });
   if (next.mode === 'gate') {
     renderGate(panel);
     return;

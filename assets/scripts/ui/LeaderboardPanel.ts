@@ -1,53 +1,50 @@
-// STATUS: implemented, W9-4 排行榜弹窗（分页 + 好友榜空壳 + 空状态；游客模式不发请求）
-import { BlockInputEvents, Button, Color, Label, Node } from 'cc';
+// STATUS: implemented, W9-4 排行榜弹窗（分页 + 好友榜空壳；游客模式不发请求，骨架见 LeaderboardKit）
+import { Button, Label, Node, UITransform } from 'cc';
 import { PrivacyState } from '../cache/PrivacyState';
 import { Net } from '../net/Net';
 import { fetchLeaderboard, LeaderboardPage, LeaderboardType } from '../net/Leaderboard';
-import { addButton, addLabel, addRect, PALETTE, setButtonState } from './SceneUI';
+import { PALETTE, setButtonState } from './SceneUI';
 import { renderLeaderboardRows } from './LeaderboardRows';
-import { fitWidth, screenHeight, screenWidth } from './ScreenMetrics';
+import { buildLeaderboardChrome } from './LeaderboardKit';
+import { fitWidth } from './ScreenMetrics';
 
-const PANEL_H = 620;
-const PAGE_SIZE = 5;
+const PAGE_SIZE = 8;
+const ROW_H = 56;
 
 export class LeaderboardPanel {
   private overlay: Node | null = null;
-  private panel: Node | null = null;
-  private panelW = 900;
+  private rowHost: Node | null = null;
   private rows: Node | null = null;
   private hint: Label | null = null;
   private prevButton: Button | null = null;
   private nextButton: Button | null = null;
+  private panelW = fitWidth(900, 30);
   private type: LeaderboardType = 'weekly';
   private page = 1;
   private pages = 1;
   private loading = false;
+
   open(parent: Node): void {
     if (this.overlay) {
       return;
     }
-    const width = fitWidth(900, 30);
-    const overlay = addRect(parent, 'LeaderboardOverlay', 0, screenWidth(), screenHeight(), new Color(0, 0, 0, 140));
-    overlay.addComponent(BlockInputEvents);
-    const panel = addRect(overlay, 'LeaderboardPanel', 0, width, PANEL_H, PALETTE.panel);
-    this.overlay = overlay;
-    this.panel = panel;
-    this.panelW = width;
-    addLabel(panel, 'LeaderboardTitle', '排 行 榜', 250, { size: 36 });
-    addButton(panel, 'LeaderboardWeekly', '本周榜', 186, () => void this.switchType('weekly'), PALETTE.accent, 220, 64, -130);
-    addButton(panel, 'LeaderboardFriends', '好友榜', 186, () => void this.switchType('friends'), PALETTE.secondary, 220, 64, 130);
-    this.hint = addLabel(panel, 'LeaderboardHint', '', -212, { size: 22, color: PALETTE.sub, width: width - 120 });
-    const navX = width / 2 - 170;
-    this.prevButton = addButton(panel, 'LeaderboardPrev', '上一页', -262, () => void this.turn(-1), PALETTE.secondary, 190, 64, -navX);
-    addButton(panel, 'LeaderboardClose', '关闭', -262, () => this.close(), PALETTE.primary, 190, 64, 0);
-    this.nextButton = addButton(panel, 'LeaderboardNext', '下一页', -262, () => void this.turn(1), PALETTE.secondary, 190, 64, navX);
+    const chrome = buildLeaderboardChrome(parent, {
+      onType: (type) => void this.switchType(type),
+      onTurn: (delta) => this.turn(delta),
+      onClose: () => this.close(),
+    });
+    this.overlay = chrome.overlay;
+    this.rowHost = chrome.rowHost;
+    this.hint = chrome.hint;
+    this.prevButton = chrome.prev;
+    this.nextButton = chrome.next;
     void this.load();
   }
 
   close(): void {
     this.overlay?.destroy();
     this.overlay = null;
-    this.panel = null;
+    this.rowHost = null;
     this.rows = null;
     this.hint = null;
     this.prevButton = null;
@@ -80,17 +77,11 @@ export class LeaderboardPanel {
     this.renderRows(null, '加载中…');
     if (PrivacyState.isGuest()) {
       // 游客不发起任何云端请求，面板只说明原因。
-      this.loading = false;
-      this.renderRows(null, '游客模式下排行榜暂不可用');
-      this.setHint('在「隐私与协议」中同意后可开启排行榜。');
-      this.refreshNav();
+      this.finish(null, '游客模式下排行榜暂不可用', '在「隐私与协议」中同意后可开启排行榜。');
       return;
     }
     if (!Net.ready) {
-      this.loading = false;
-      this.renderRows(null, '离线模式，排行榜暂不可用');
-      this.setHint('');
-      this.refreshNav();
+      this.finish(null, '离线模式，排行榜暂不可用', '');
       return;
     }
     const data = await fetchLeaderboard(this.type, this.page, PAGE_SIZE);
@@ -106,6 +97,13 @@ export class LeaderboardPanel {
     this.pages = Math.max(1, Math.ceil(data.total / data.pageSize));
     this.renderRows(data, this.emptyText(data));
     this.setHint(this.footerText(data));
+    this.refreshNav();
+  }
+
+  private finish(data: null, empty: string, hint: string): void {
+    this.loading = false;
+    this.renderRows(data, empty);
+    this.setHint(hint);
     this.refreshNav();
   }
 
@@ -125,12 +123,15 @@ export class LeaderboardPanel {
   }
 
   private renderRows(data: LeaderboardPage | null, empty: string): void {
-    if (!this.panel) {
+    if (!this.rowHost) {
       this.rows?.destroy();
       this.rows = null;
       return;
     }
-    this.rows = renderLeaderboardRows(this.panel, this.rows, data, empty, this.panelW);
+    this.rows = renderLeaderboardRows(this.rowHost, this.rows, data, empty, this.panelW, ROW_H);
+    // 内容高度按行数撑开，行数超过可视区才能真的滚动。
+    const transform = this.rowHost.getComponent(UITransform);
+    transform?.setContentSize(transform.contentSize.width, Math.max(180, (data?.entries.length ?? 1) * ROW_H));
   }
 
   private refreshNav(): void {

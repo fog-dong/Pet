@@ -25,6 +25,8 @@ export class ChoicePanel {
     const width = fitWidth(900, 30);
     const height = Math.min(PANEL_HEIGHT, screenHeight() - 120);
     const overlay = addRect(parent, 'ChoiceOverlay', 0, screenWidth(), screenHeight(), new Color(40, 32, 26, 120));
+    // 弹层永远置顶：页面后续再添加提示条 / 角标也不会盖在遮罩上面。
+    overlay.setSiblingIndex(parent.children.length - 1);
     overlay.addComponent(BlockInputEvents);
     const panel = addRect(overlay, 'ChoicePanel', 0, width, height, PALETTE.panel);
     this.node = overlay;

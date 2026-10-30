@@ -2,7 +2,7 @@
 import { Button, Color, Graphics, Mask, Node, ScrollView, UITransform } from 'cc';
 import { LEGAL_DOCS } from '../config/LegalConfig';
 import { addLabel, addRect, createNode, PALETTE } from './SceneUI';
-import { fitWidth, screenHeight } from './ScreenMetrics';
+import { fitWidth, safeAreaBottom, screenHeight } from './ScreenMetrics';
 
 /** 面板宽度贴合可视宽度；高度受可视高度约束，短屏设备不会超出屏幕。 */
 export function panelW(): number {
@@ -10,11 +10,25 @@ export function panelW(): number {
 }
 
 export function panelH(): number {
-  return Math.min(580, Math.max(360, screenHeight() - 120));
+  // 640：标题 + 300 滚动区 + 勾选行 + 76 高按钮四段刚好排得下，不再互相压。
+  return Math.min(640, Math.max(360, screenHeight() - 120));
 }
 
 /** 按钮统一 76 高、宽随面板收；高于 44×44 的最小可点热区。 */
-export const BUTTON_Y = -250;
+export const BUTTON_H = 76;
+
+/** 面板底部按钮到面板下沿的留白。 */
+const ACTION_MARGIN = 58;
+
+/** 面板贴安全区上方的下沿：距屏幕下沿 = 安全区底部 + 80。 */
+export function panelCenterY(): number {
+  return safeAreaBottom() + 80 + panelH() / 2 - screenHeight() / 2;
+}
+
+/** 底部按钮在面板局部坐标里的 y；所有弹窗共用同一口径。 */
+export function actionY(): number {
+  return -panelH() / 2 + ACTION_MARGIN;
+}
 
 /** 两枚按钮并排：宽度取面板半幅减 50，720 帧下 280，1280 帧下仍是 320。 */
 export function dialogButtonW(): number {
@@ -39,7 +53,7 @@ export function addDialogButton(
   color: Color,
   onClick: () => void,
 ): Button {
-  const node = addRect(parent, name, BUTTON_Y, dialogButtonW(), 76, color, x);
+  const node = addRect(parent, name, actionY(), dialogButtonW(), BUTTON_H, color, x);
   const button = node.addComponent(Button);
   button.transition = Button.Transition.NONE;
   addLabel(node, `${name}Label`, text, 0, { size: 28, width: dialogButtonW() - 28 }).color = new Color(

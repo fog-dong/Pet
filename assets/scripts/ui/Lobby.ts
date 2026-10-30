@@ -1,4 +1,4 @@
-// STATUS: implemented, W9-4 大厅：展示存档并进入单局（游客模式关云端能力，可在厅内补同意）
+// STATUS: implemented, W9-5 大厅：游客模式关云端 + 关于面板（免责/适龄/客服）入口
 import { _decorator, Button, Component, Label } from 'cc';
 import { CaseConfig } from '../config/CaseConfig';
 import { CharacterConfig } from '../config/CharacterConfig';
@@ -14,6 +14,7 @@ import { Res } from '../core/Res';
 import { goState } from '../core/SceneFlow';
 import { Codex } from './CodexPanel';
 import { LeaderboardPanel } from './LeaderboardPanel';
+import { openAboutPanel } from './AboutPanel';
 import { openPrivacyDialog } from './PrivacyDialog';
 import { Profile } from '../net/Profile';
 import { addButton, addLabel, PALETTE } from '../ui/SceneUI';
@@ -49,6 +50,7 @@ export class Lobby extends Component {
     addButton(this.node, 'CodexButton', '图 鉴', 120, () => this.onCodexClick(), PALETTE.secondary, 260, 76, 470);
     addButton(this.node, 'LeaderboardButton', '排 行 榜', 210, () => this.onLeaderboardClick(), PALETTE.secondary, 260, 76, 470);
     addButton(this.node, 'PrivacyButton', '隐私与协议', 300, () => this.onPrivacyClick(), PALETTE.secondary, 260, 76, 470);
+    addButton(this.node, 'AboutButton', '关 于', 30, () => openAboutPanel(this.node), PALETTE.secondary, 260, 76, 470);
     void Res.loadBundle(CONFIG_BUNDLE)
       .then(() => CharacterConfig.load())
       .then(() => {

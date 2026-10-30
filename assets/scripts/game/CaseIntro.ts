@@ -1,7 +1,8 @@
-// STATUS: implemented, W3 病例介绍页
+// STATUS: implemented, W9-5 病例介绍页（含医疗虚构免责固定句）
 import { _decorator, Component, director } from 'cc';
 import { CaseConfig } from '../config/CaseConfig';
 import { CharacterConfig } from '../config/CharacterConfig';
+import { MEDICAL_DISCLAIMER_TEXT } from '../config/LegalConfig';
 import { CaseSession } from './CaseSession';
 import { CharacterView } from './CharacterView';
 import { GameState } from '../core/GameFSM';
@@ -38,6 +39,13 @@ export class CaseIntro extends Component {
       color: PALETTE.sub,
       width: 620,
       x: -160,
+    });
+    // 医疗虚构免责固定句：每个病例都会经过这一屏，文案只在 LegalConfig 维护。
+    addLabel(root, 'MedicalNotice', MEDICAL_DISCLAIMER_TEXT, -200, {
+      size: 18,
+      color: PALETTE.sub,
+      width: 440,
+      x: -400,
     });
     addButton(root, 'AcceptButton', '开始诊断', -120, () => {
       void goState(GameState.Diagnosis, 'Diagnosis');

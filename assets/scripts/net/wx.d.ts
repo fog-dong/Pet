@@ -51,6 +51,14 @@ interface WxPrivacyApiOptions {
   fail?: (error: unknown) => void;
 }
 
+/** 微信客服会话参数（小游戏 openCustomerServiceChat，基础库 2.22.1+）；url 来自公众平台客服配置。 */
+interface WxCustomerServiceOptions {
+  extInfo: { url: string };
+  scene?: string;
+  success?: () => void;
+  fail?: (error: unknown) => void;
+}
+
 interface WxApi {
   cloud: WxCloudApi;
   shareAppMessage(options: WxShareOptions): void;
@@ -58,6 +66,7 @@ interface WxApi {
   requirePrivacyAuthorize?(options: WxPrivacyApiOptions): void;
   onNeedPrivacyAuthorization?(callback: (resolve: WxPrivacyResolve, eventInfo?: unknown) => void): void;
   openPrivacyContract?(options: WxPrivacyApiOptions): void;
+  openCustomerServiceChat?(options: WxCustomerServiceOptions): void;
 }
 
 declare const wx: WxApi;

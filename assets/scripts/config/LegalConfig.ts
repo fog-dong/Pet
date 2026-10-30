@@ -1,4 +1,4 @@
-// STATUS: implemented, W8-5 隐私与协议文案入口（URL 为占位，提审前必须替换为真实 H5）
+// STATUS: implemented, W9-5 提审材料文案入口（协议 URL / 医疗免责 / 适龄提示 / 客服全在此文件，提审前只改这里）
 // 口径来源：docs/plan/15-性能优化发布与合规检查.md §6「隐私：最小采集、告知同意、可注销」
 
 /** 协议文本版本；文案或采集范围变更后必须递增，触发重新弹窗。 */
@@ -55,6 +55,35 @@ export const PRIVACY_DECLINE_TEXT =
 /** 游客模式说明：不同意也不退出游戏，只是关掉云端能力，本地单局照玩。 */
 export const PRIVACY_GUEST_TEXT =
   '需要同意隐私政策才能使用云端存档和排行榜，你仍可以以游客模式体验基础病例。';
+
+/** 医疗虚构免责固定句：与《提审检查清单》§2 口径逐字一致，场景内不得硬编码。 */
+export const MEDICAL_DISCLAIMER_TEXT =
+  '本游戏为虚构的宠物医院模拟玩法，所有诊断、用药与治疗均为游戏设定，不构成任何医疗或兽医建议。';
+
+/** 适龄提示 + 健康游戏忠告全文：启动页底部常驻，提审口径按平台要求整体展示。 */
+export const AGE_RATING_TEXT = '适龄提示：8+';
+export const HEALTH_GAME_NOTICE_TEXT =
+  '抵制不良游戏，拒绝盗版游戏。注意自我保护，谨防受骗上当。适度游戏益脑，沉迷游戏伤身。合理安排时间，享受健康生活。';
+
+export interface CustomerServiceConfig {
+  /** 占位为空串：运营在公众平台开通微信客服后填入官方下发的会话 URL。 */
+  readonly url: string;
+  /** 平台要求携带的来源场景描述。 */
+  readonly scene: string;
+  /** 未配置或调用失败时的兜底说明，保证不崩、不静默。 */
+  readonly fallbackText: string;
+}
+
+export const CUSTOMER_SERVICE: CustomerServiceConfig = {
+  url: '',
+  scene: '宠物医院小游戏-关于面板',
+  fallbackText: '客服系统配置中，可通过公众号留言反馈。',
+};
+
+/** 客服会话是否已配置真实 URL（提审前自检用）。 */
+export function customerServiceReady(): boolean {
+  return CUSTOMER_SERVICE.url.startsWith('https://');
+}
 
 /** 三个 URL 全部就位才算配置完成，用于提审前自检。 */
 export function legalUrlsReady(): boolean {

@@ -52,6 +52,17 @@ export class AuscultationView {
     }
   }
 
+  /** 画质切换：先收掉所有循环脉冲；high 档再给已发现的异常点恢复提示。 */
+  applyQuality(): void {
+    for (const spot of this.spots) {
+      Tween.stopAllByTarget(spot.node);
+      spot.node.setScale(Vec3.ONE);
+      if (!Quality.low && spot.resolved && spot.abnormal) {
+        this.pulse(spot);
+      }
+    }
+  }
+
   markFound(spot: SpotView): void {
     spot.resolved = true;
     this.paint(spot, SPOT_FOUND);

@@ -77,11 +77,24 @@ export async function syncCloud(): Promise<boolean> {
   // login 会建用户记录，云资料放在它之后拉一次，避免首次启动拿到空快照。
   void Profile.refresh();
 
+  await loadQuality();
+  return true;
+}
+
+/** 拉一次远程配置里的画质档位；失败保持当前档，不弹错、不影响玩法。 */
+async function loadQuality(): Promise<void> {
   const config = await Net.call<GetConfigData>('getConfig', { version: 0 });
   if (config.code === 0 && config.data) {
     Quality.set(config.data.configs.quality);
   } else {
     Track.track('boot_config_failed', { code: config.code });
   }
-  return true;
+}
+
+/** 回大厅时再拉一次：运营把 quality 改成 low 后不必重启，下一次进厅即生效。 */
+export async function refreshQuality(): Promise<void> {
+  if (!Net.ready) {
+    return;
+  }
+  await loadQuality();
 }

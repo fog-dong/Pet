@@ -20,6 +20,8 @@ export class CharacterView extends Component {
   private sickColor: Color = FALLBACK_COLOR;
   private recoveredColor: Color = FALLBACK_COLOR;
   private shape: CharacterShape = 'circle';
+  private currentMood: CharacterMood = 'idle';
+  private unsubscribe: (() => void) | null = null;
 
   /** 场景里挂一个角色位，返回可继续调 showPet / showDoctor 的组件。 */
   static mount(parent: Node, x: number, y: number): CharacterView {
@@ -31,6 +33,16 @@ export class CharacterView extends Component {
 
   protected onLoad(): void {
     this.build();
+  }
+
+  protected onEnable(): void {
+    // 画质档位可能在单局中途由远程配置切换：按当前心情重放一次，low 档会停在静态姿态。
+    this.unsubscribe = Quality.subscribe(() => this.playMood(this.currentMood));
+  }
+
+  protected onDisable(): void {
+    this.unsubscribe?.();
+    this.unsubscribe = null;
   }
 
   showPet(petId: string, mood: CharacterMood = 'idle'): void {
@@ -81,6 +93,7 @@ export class CharacterView extends Component {
 
   /** 美术到位后在这里替换成 Spine / Animation。 */
   private playMood(mood: CharacterMood): void {
+    this.currentMood = mood;
     if (this.statusLabel) {
       this.statusLabel.string = MOOD_ICON[mood];
     }

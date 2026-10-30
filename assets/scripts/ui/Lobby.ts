@@ -16,6 +16,7 @@ import { LeaderboardPanel } from './LeaderboardPanel';
 import { openAboutPanel } from './AboutPanel';
 import { openPrivacyEntry } from './PrivacyDialog';
 import { Profile } from '../net/Profile';
+import { refreshQuality } from '../core/BootCloud';
 import { addButton, addLabel, PALETTE } from '../ui/SceneUI';
 import { rightEdgeX } from '../ui/ScreenMetrics';
 import { pinTopLeft } from '../ui/SafeLayout';
@@ -45,6 +46,7 @@ export class Lobby extends Component {
       this.showHint(PRIVACY_GUEST_TEXT);
     } else {
       void Profile.refresh();
+      void refreshQuality();
       // 进厅补发一次待同步结算（配置晚发布时金币延迟到账，这里给玩家一个可见提示）。
       this.syncBadge.mount(this.node);
       void this.syncBadge.drain();

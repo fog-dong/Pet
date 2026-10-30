@@ -32,8 +32,8 @@ interface ConfigDoc {
   grayPercent?: number;
 }
 
-// 与 docs/plan/数据库初始化清单.md §5 的配置种子一致。
-const CONFIG_KEYS = ['cases', 'skus', 'ad_slots', 'activities', 'affection', 'collection'];
+// 与 docs/plan/数据库初始化清单.md §5 的配置种子一致；quality 为 W15-3 补入（画质远程开关）。
+const CONFIG_KEYS = ['cases', 'skus', 'ad_slots', 'activities', 'affection', 'collection', 'quality'];
 const MAX_CONFIG_DOCS = 100;
 
 function ok<T>(data: T): CloudResponse<T> {

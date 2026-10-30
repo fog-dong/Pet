@@ -3,6 +3,7 @@ import { _decorator, AudioSource, Color, Component, Label } from 'cc';
 import type { CaseConfigItem } from '../config/CaseConfig';
 import { AuscultationLayout, buildLayout } from '../config/AuscultationConfig';
 import { CharacterConfig } from '../config/CharacterConfig';
+import { Quality } from '../config/Quality';
 import { addLabel, hexToColor, PALETTE } from '../ui/SceneUI';
 import { rightEdgeX } from '../ui/ScreenMetrics';
 import { AuscultationView, SpotView } from './AuscultationView';
@@ -26,6 +27,16 @@ export class Auscultation extends Component {
   private lastSecond = -1;
   private running = false;
   private finished = false;
+  private unsubscribe: (() => void) | null = null;
+
+  protected onEnable(): void {
+    this.unsubscribe = Quality.subscribe(() => this.view?.applyQuality());
+  }
+
+  protected onDisable(): void {
+    this.unsubscribe?.();
+    this.unsubscribe = null;
+  }
 
   startWith(item: CaseConfigItem, onFinish: AuscultationFinish): void {
     this.item = item;

@@ -5,6 +5,7 @@ import { flushPending } from '../net/SyncCaseResult';
 import { retryPendingSave } from '../net/CloudSave';
 import { flushPendingAssist } from '../net/AssistSync';
 import { flushPendingAdEvents } from '../net/AdEvent';
+import { Profile } from '../net/Profile';
 import { Quality } from '../config/Quality';
 import { CLIENT_CHANNEL, CLIENT_VERSION } from '../config/EnvConfig';
 import { Track } from '../track/Track';
@@ -24,7 +25,7 @@ interface GetConfigData {
 }
 
 /**
- * 进入大厅后再跑：登录拿 token → 补发离线队列 → 拉远端配置。
+ * 进入大厅后再跑：登录拿 token → 补发离线队列 → 拉云资料 → 拉远端配置。
  * 全程不 await 场景加载，网络慢时玩家仍能进大厅看本地内容。
  */
 export async function syncCloud(): Promise<void> {
@@ -41,6 +42,8 @@ export async function syncCloud(): Promise<void> {
   void retryPendingSave();
   void flushPendingAssist();
   void flushPendingAdEvents();
+  // login 会建用户记录，云资料放在它之后拉一次，避免首次启动拿到空快照。
+  void Profile.refresh();
 
   const config = await Net.call<GetConfigData>('getConfig', { version: 0 });
   if (config.code === 0 && config.data) {

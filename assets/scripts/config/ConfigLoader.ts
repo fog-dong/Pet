@@ -1,7 +1,8 @@
 // STATUS: implemented, W4 配置读取：优先 cases 分包，其次内置 resources
 import { assetManager, JsonAsset, resources } from 'cc';
+import { CASES_BUNDLE } from './BundleConfig';
 
-export const CONFIG_BUNDLE = 'cases';
+export const CONFIG_BUNDLE = CASES_BUNDLE;
 
 /** 分包已加载则从分包读，否则退回归档在 resources 的旧路径。 */
 export function loadConfigJson<T>(path: string): Promise<T | null> {

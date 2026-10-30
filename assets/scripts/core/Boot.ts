@@ -9,6 +9,7 @@ import { syncCloud } from './BootCloud';
 import { CaseConfig } from '../config/CaseConfig';
 import { CharacterConfig } from '../config/CharacterConfig';
 import { CONFIG_BUNDLE } from '../config/ConfigLoader';
+import { BUNDLE_TIMEOUT_MS } from '../config/BundleConfig';
 import { CLOUD_ENV } from '../config/EnvConfig';
 import { DebugPanel } from '../ui/DebugPanel';
 import { addLabel, PALETTE } from '../ui/SceneUI';
@@ -16,7 +17,6 @@ import { Track } from '../track/Track';
 
 const { ccclass } = _decorator;
 const LOBBY_SCENE = 'Lobby';
-const BUNDLE_BUDGET_MS = 2500;
 
 /** 分包加载最多等这么久，超时就用内置病例兜底，避免低端机首屏黑屏。 */
 function withTimeout<T>(task: Promise<T>, ms: number): Promise<T | null> {
@@ -59,7 +59,7 @@ export class Boot extends Component {
     this.started = true;
 
     const loading = Res.loadBundle(CONFIG_BUNDLE);
-    const bundle = await withTimeout(loading, BUNDLE_BUDGET_MS);
+    const bundle = await withTimeout(loading, BUNDLE_TIMEOUT_MS);
     if (bundle === null) {
       Track.track('boot_cases_bundle_slow');
       // 超时后分包才到：释放这次引用，交给下次场景切换回收。

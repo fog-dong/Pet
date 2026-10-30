@@ -5,5 +5,10 @@
   "uuid": "324f1573-1471-4b5e-afff-d459950fd80e",
   "files": [],
   "subMetas": {},
-  "userData": {}
+  "userData": {
+    "isBundle": true,
+    "bundleConfigID": "art-subpackage",
+    "bundleName": "art",
+    "priority": 2
+  }
 }

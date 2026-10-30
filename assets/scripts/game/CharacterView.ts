@@ -1,4 +1,4 @@
-// STATUS: implemented, W3 角色展示（色块 + 名字 + 状态图标，纯 Cocos 绘制）
+// STATUS: implemented, W3 角色展示（色块 + 名字 + 状态图标，纯 Cocos 绘制）；W8 预留 art 分包入口
 import { _decorator, Color, Component, Graphics, Label, Node, tween, Tween, UITransform, Vec3 } from 'cc';
 import { CharacterConfig } from '../config/CharacterConfig';
 import { Quality } from '../config/Quality';
@@ -9,6 +9,8 @@ import type { CharacterMood, CharacterShape } from './CharacterLook';
 const { ccclass } = _decorator;
 
 export type { CharacterMood } from './CharacterLook';
+// 美术落地后由调用方取 art 分包贴图；art 缺失时本组件继续画色块。
+export { loadArtBundle, releaseArtBundle } from './ArtBundle';
 
 @ccclass('CharacterView')
 export class CharacterView extends Component {

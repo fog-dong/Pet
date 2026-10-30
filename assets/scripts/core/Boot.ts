@@ -11,10 +11,10 @@ import { CaseConfig } from '../config/CaseConfig';
 import { CharacterConfig } from '../config/CharacterConfig';
 import { CONFIG_BUNDLE } from '../config/ConfigLoader';
 import { BUNDLE_TIMEOUT_MS } from '../config/BundleConfig';
-import { AGE_RATING_TEXT, HEALTH_GAME_NOTICE_TEXT, LEGAL_VERSION, legalUrlsReady } from '../config/LegalConfig';
+import { AGE_RATING_TEXT, GAME_NAME, HEALTH_GAME_NOTICE_TEXT, LEGAL_VERSION, legalUrlsReady } from '../config/LegalConfig';
 import { openPrivacyDialog } from '../ui/PrivacyDialog';
 import { addLabel, createNode, PALETTE } from '../ui/SceneUI';
-import { alignBottom, attachSafeArea } from '../ui/SafeLayout';
+import { alignBottom, alignTop, attachSafeArea } from '../ui/SafeLayout';
 import { fitWidth, screenHeight, screenWidth } from '../ui/ScreenMetrics';
 import { Track } from '../track/Track';
 
@@ -23,6 +23,7 @@ const LOBBY_SCENE = 'Lobby';
 
 /** 合规两行距安全区底边：忠告 48、适龄 88；两行都必须常驻 ≥ SPLASH_MIN_MS 才允许进大厅。 */
 const SPLASH_MIN_MS = 3000;
+const SPLASH_NAME_TOP = 48;
 const LEGAL_NOTICE_BOTTOM = 48;
 const LEGAL_AGE_BOTTOM = 88;
 
@@ -84,10 +85,12 @@ export class Boot extends Component {
     await this.enterLobby();
   }
 
-  /** 合规两行挂到 Canvas 下才能安全区对齐：BootNode 没有 UITransform，Widget 拿不到父级尺寸。 */
+  /** 合成三要素：名称贴顶、忠告与适龄贴底，截图首图必须同屏。 */
   private addSplashLegal(): void {
     const root = createNode(this.node.parent ?? this.node, 'BootSplashLegal', 0, screenWidth(), screenHeight());
     attachSafeArea(root);
+    const name = addLabel(root, 'BootSplashName', GAME_NAME, 0, { size: 40, color: PALETTE.panel, width: fitWidth(1100, 90) });
+    alignTop(name.node, SPLASH_NAME_TOP);
     const notice = addLabel(root, 'BootSplashNotice', HEALTH_GAME_NOTICE_TEXT, 0, { size: 18, color: PALETTE.accent, width: fitWidth(1100, 90) });
     alignBottom(notice.node, LEGAL_NOTICE_BOTTOM);
     const age = addLabel(root, 'BootSplashAge', AGE_RATING_TEXT, 0, { size: 22, color: PALETTE.accent, width: fitWidth(1100, 90) });

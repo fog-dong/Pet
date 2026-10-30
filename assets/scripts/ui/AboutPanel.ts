@@ -4,6 +4,7 @@ import {
   AGE_RATING_TEXT,
   CUSTOMER_SERVICE,
   customerServiceReady,
+  GAME_NAME,
   HEALTH_GAME_NOTICE_TEXT,
   MEDICAL_DISCLAIMER_TEXT,
   PRIVACY_ENTRY_DONE,
@@ -38,7 +39,7 @@ export function openAboutPanel(parent: Node): void {
   const textW = panelW() - 120;
   const panel = addRect(overlay, 'AboutPanel', 0, panelW(), panelH(), PALETTE.panel);
   attachSafeArea(panel);
-  addLabel(panel, 'AboutTitle', '关 于', 235, { size: 34 });
+  addLabel(panel, 'AboutTitle', GAME_NAME, 235, { size: 32 });
   addLabel(panel, 'AboutAge', AGE_RATING_TEXT, 170, { size: 26 });
   addLabel(panel, 'AboutMedical', MEDICAL_DISCLAIMER_TEXT, 100, { size: 22, width: textW });
   addLabel(panel, 'AboutNotice', HEALTH_GAME_NOTICE_TEXT, 0, { size: 20, color: PALETTE.sub, width: textW });

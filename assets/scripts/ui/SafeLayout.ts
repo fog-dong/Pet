@@ -32,6 +32,16 @@ export function alignBottom(node: Node, margin: number, x = 0): void {
   widget.alignMode = Widget.AlignMode.ALWAYS;
 }
 
+/** 贴安全区顶边 margin 像素、横向居中（可偏移 x）；ALWAYS 模式保证转屏与 resize 后重算。 */
+export function alignTop(node: Node, margin: number, x = 0): void {
+  const widget = node.getComponent(Widget) ?? node.addComponent(Widget);
+  widget.isAlignTop = true;
+  widget.isAlignHorizontalCenter = true;
+  widget.top = margin;
+  widget.horizontalCenter = x;
+  widget.alignMode = Widget.AlignMode.ALWAYS;
+}
+
 /**
  * 一排贴左上角的节点：场景文件里遗留的绝对坐标（例如 -440）在 720 帧下会出屏，
  * 改挂 Widget 后随可视宽度自适应；top 为首行外边距，gap 为行距。

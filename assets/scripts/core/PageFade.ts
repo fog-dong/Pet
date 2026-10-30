@@ -119,11 +119,13 @@ function ensureRoot(): boolean {
     camera.far = 2000;
     camera.clearFlags = Camera.ClearFlag.DEPTH_ONLY;
     camera.priority = 100;
-    camera.visibility = Layers.Enum.UI_2D | Layers.Enum.DEFAULT;
+    // 独立图层 + 只渲染这一层：否则这台相机也会把主 Canvas 的 UI 再画一遍，
+    // 两个不同 orthoHeight 的副本叠在一起，按钮/装饰会错位重叠。
+    camera.visibility = Layers.Enum.UI_3D;
     canvas.cameraComponent = camera;
     canvas.alignCanvasWithScreen = true;
     const quad = new Node('FadeQuad');
-    quad.layer = Layers.Enum.UI_2D;
+    quad.layer = Layers.Enum.UI_3D;
     quad.parent = node;
     quad.addComponent(UITransform).setContentSize(2400, 2400);
     const graphics = quad.addComponent(Graphics);

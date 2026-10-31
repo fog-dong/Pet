@@ -1,4 +1,4 @@
-// STATUS: implemented, W16 领养页布局（头部宠物卡 + 暖粉好感度条 + 三种腾位路径）
+// STATUS: implemented, W16 领养页布局（头部宠物卡 + 暖粉好感度条 + 三种腾位路径）；W17-3 达标跳跃/未达标休息
 import { Node, UITransform } from 'cc';
 import { adButtonText } from '../cache/AdQuota';
 import { CharacterConfig } from '../config/CharacterConfig';
@@ -44,6 +44,8 @@ function buildHeader(body: Node, state: AdoptionState): void {
   const visual = PetVisual.mount(card, 180, false);
   visual.node.setPosition(-CARD_W / 2 + 120, 20, 0);
   visual.apply(state.petId);
+  // 好感达标 → 开心跳跃；还没攒够 → 趴着休息，和「稍后再说」的语义一致。
+  visual.playState(state.affection >= state.threshold ? 'happy' : 'sleep');
   addLabel(card, 'PetName', pet ? pet.name : '待领养', 106, { size: 34, width: 320, x: 96 });
   addLabel(card, 'PetBreed', pet ? `${pet.breed} · 已救助` : '已救助', 64, {
     size: 22,

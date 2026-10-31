@@ -1,11 +1,13 @@
-// STATUS: implemented, W9-5 病例介绍页（含医疗虚构免责固定句）；W16 P1 诊室场景 + 软垫 + 纸卡 + 彩色分诊 chip
+// STATUS: implemented, W9-5 病例介绍页（含医疗虚构免责固定句）；W16 P1 诊室场景 + 软垫 + 纸卡 + 彩色分诊 chip；W17-3 接诊按品种叫声
 import { _decorator, Color, Component, Node } from 'cc';
+import { speciesCue } from '../config/AudioConfig';
 import { CaseConfig } from '../config/CaseConfig';
 import { CharacterConfig } from '../config/CharacterConfig';
 import { COPY } from '../config/CopyText';
 import { MEDICAL_DISCLAIMER_TEXT } from '../config/LegalConfig';
 import { CaseSession } from './CaseSession';
 import { CharacterView } from './CharacterView';
+import { Sfx } from './Sfx';
 import { GameState } from '../core/GameFSM';
 import { goState } from '../core/SceneFlow';
 import { fadeToScene } from '../core/PageFade';
@@ -115,6 +117,7 @@ export class CaseIntro extends Component {
   private mountPet(petId: string): void {
     const view = CharacterView.mount(this.node, 0, PET_Y, 220);
     view.showPet(petId, 'sick');
+    this.cry(petId);
     // 标题行已写宠物名，分诊 chip 已写等级，立绘角标再画一遍就叠字了。
     view.hideBadges();
     // 配置没就绪时先画兜底色块，加载完再重绘，别让进页有一段时间没有宠物。
@@ -122,8 +125,14 @@ export class CaseIntro extends Component {
       void CharacterConfig.load().then(() => {
         if (this.isValid) {
           view.showPet(petId, 'sick');
+          this.cry(petId);
         }
       });
     }
+  }
+
+  /** 接诊按品种轻轻叫一声；配置或音频缺失时 Sfx 静默跳过，不影响进页。 */
+  private cry(petId: string): void {
+    Sfx.play(speciesCue(CharacterConfig.petById(petId)?.species));
   }
 }

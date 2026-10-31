@@ -1,24 +1,25 @@
-// STATUS: implemented, W3 角色展示（art 贴图 + 名字 + 心情图标，缺图走占位兜底）
-import { _decorator, Component, Label, Node, Tween, tween, UITransform, Vec3 } from 'cc';
+// STATUS: implemented, W3 角色展示（art 贴图 + 名字 + 心情图标，缺图走占位兜底）；W17-3 行为状态下沉到 PetVisual
+import { _decorator, Component, Label, Node, UITransform } from 'cc';
 import { CharacterConfig } from '../config/CharacterConfig';
 import { Quality } from '../config/Quality';
 import { addLabel } from '../ui/SceneUI';
-import { CLEAN_TINT, mixColor, MOOD_ICON, SICK_TINT } from './CharacterLook';
-import type { CharacterMood } from './CharacterLook';
+import { MOOD_ICON, stateTint } from './CharacterLook';
+import type { PetState } from './CharacterLook';
 import { PetVisual } from './PetVisual';
 
 const { ccclass } = _decorator;
 
 const BODY_SIZE = 150;
 
-export type { CharacterMood } from './CharacterLook';
+export type { PetState } from './CharacterLook';
 
 @ccclass('CharacterView')
 export class CharacterView extends Component {
   private visual: PetVisual | null = null;
   private nameLabel: Label | null = null;
   private statusLabel: Label | null = null;
-  private currentMood: CharacterMood = 'idle';
+  private currentState: PetState = 'idle';
+  private ratio = 0;
   private unsubscribe: (() => void) | null = null;
   private bodySize = BODY_SIZE;
 
@@ -40,8 +41,8 @@ export class CharacterView extends Component {
   }
 
   protected onEnable(): void {
-    // 画质档位可能在单局中途由远程配置切换：按当前心情重放一次，low 档会停在静态姿态。
-    this.unsubscribe = Quality.subscribe(() => this.playMood(this.currentMood));
+    // 画质档位可能在单局中途由远程配置切换：按当前状态重播一次，low 档会停在静态姿态。
+    this.unsubscribe = Quality.subscribe(() => this.playState(this.currentState));
   }
 
   protected onDisable(): void {
@@ -49,13 +50,12 @@ export class CharacterView extends Component {
     this.unsubscribe = null;
   }
 
-  showPet(petId: string, mood: CharacterMood = 'idle'): void {
+  showPet(petId: string, state: PetState = 'idle'): void {
     this.build();
     const pet = CharacterConfig.petById(petId);
     this.setTitle(pet ? `${pet.name} · ${pet.breed}` : '未知宠物');
     this.visual?.apply(pet ? petId : '');
-    this.visual?.setTint(mood === 'sick' ? SICK_TINT : CLEAN_TINT);
-    this.playMood(mood);
+    this.playState(state);
   }
 
   /** 医生立绘与宠物共用一套加载与占位逻辑，没出图时同样显示「暂缺图片」。 */
@@ -64,12 +64,12 @@ export class CharacterView extends Component {
     const doctor = CharacterConfig.doctorById(doctorId);
     this.setTitle(doctor ? `${doctor.name} · ${doctor.role}` : '未知医生');
     this.visual?.apply(doctor ? doctorId : '');
-    this.visual?.setTint(CLEAN_TINT);
-    this.playMood('idle');
+    this.playState('idle');
   }
 
-  playIdle(): void {
-    this.playMood('idle');
+  /** 康复完成 / 进入领养页后的开心跳跃。 */
+  playHappy(): void {
+    this.playState('happy');
   }
 
   /** 页面自己已经给出名字/状态（大厅、接诊页）时关掉立绘角标，避免叠字。 */
@@ -83,47 +83,20 @@ export class CharacterView extends Component {
     }
   }
 
-  playSick(): void {
-    this.visual?.setTint(SICK_TINT);
-    this.playMood('sick');
-  }
-
-  playRecovered(): void {
-    this.visual?.setTint(CLEAN_TINT);
-    this.playMood('recovered');
-  }
-
-  /** 康复进度：贴图从「生病灰调」逐渐提亮回原色。 */
+  /** 康复进度：贴图从「生病灰调」逐渐提亮回原色，姿态保持在康复摇尾档。 */
   setRecoveryProgress(ratio: number): void {
-    this.visual?.setTint(mixColor(SICK_TINT, CLEAN_TINT, ratio));
+    this.ratio = ratio;
+    this.visual?.setTint(stateTint(this.currentState, ratio));
   }
 
-  /** 美术到位后在这里替换成 Spine / Animation。 */
-  private playMood(mood: CharacterMood): void {
-    this.currentMood = mood;
+  /** 位移与帧序列由 PetVisual 里的行为层执行，这里只管角标和色调。 */
+  private playState(state: PetState): void {
+    this.currentState = state;
     if (this.statusLabel) {
-      this.statusLabel.string = MOOD_ICON[mood];
+      this.statusLabel.string = MOOD_ICON[state];
     }
-    const content = this.visual?.contentNode;
-    if (!content) {
-      return;
-    }
-    Tween.stopAllByTarget(content);
-    content.setScale(Vec3.ONE);
-    if (mood === 'sick') {
-      content.setScale(new Vec3(0.94, 0.94, 1));
-      return;
-    }
-    if (Quality.low) {
-      return;
-    }
-    const amplitude = mood === 'recovered' ? 1.06 : 1.03;
-    tween(content)
-      .to(1.1, { scale: new Vec3(amplitude, amplitude, 1) })
-      .to(1.1, { scale: Vec3.ONE })
-      .union()
-      .repeatForever()
-      .start();
+    this.visual?.setTint(stateTint(state, this.ratio));
+    this.visual?.playState(state);
   }
 
   private build(): void {

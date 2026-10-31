@@ -1,9 +1,10 @@
-// STATUS: implemented, W3 治疗页（药品/床位/时间分配，兜底交给 TreatmentFallback）
+// STATUS: implemented, W3 治疗页（药品/床位/时间分配，兜底交给 TreatmentFallback）；W17-3 治疗成功播欢快叫声
 import { _decorator, Component } from 'cc';
 import type { CaseConfigItem } from '../config/CaseConfig';
 import { CaseSession } from './CaseSession';
 import { Hospital } from './Hospital';
 import { judgeTreatment, treatmentThreshold } from './CaseScore';
+import { Sfx } from './Sfx';
 import { TreatmentFallback } from './TreatmentFallback';
 import { TreatmentLayout, buildTreatmentLayout, renderTreatment } from './TreatmentLayout';
 import { GameState } from '../core/GameFSM';
@@ -156,6 +157,7 @@ export class Treatment extends Component {
     const threshold = treatmentThreshold(item.severity);
     if (score >= threshold) {
       this.panel.close();
+      Sfx.play('treatOk');
       void goState(GameState.Recovery, 'Recovery');
       return;
     }

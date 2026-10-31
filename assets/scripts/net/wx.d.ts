@@ -53,6 +53,18 @@ interface WxImageElement {
   onerror: ((error?: unknown) => void) | null;
 }
 
+/** 云存储下载下来的音频走原生播放器：只用到一次性短音效。 */
+interface WxInnerAudioContext {
+  src: string;
+  volume: number;
+  loop: boolean;
+  play(): void;
+  stop(): void;
+  destroy(): void;
+  onError(callback: (error?: unknown) => void): void;
+  onEnded(callback: () => void): void;
+}
+
 interface WxShareOptions {
   title: string;
   imageUrl?: string;
@@ -103,6 +115,7 @@ interface WxApi {
   cloud: WxCloudApi;
   env?: { USER_DATA_PATH: string };
   createImage?(): WxImageElement;
+  createInnerAudioContext?(): WxInnerAudioContext;
   getFileSystemManager?(): WxFileSystemManager;
   shareAppMessage(options: WxShareOptions): void;
   createRewardedVideoAd?(options: { adUnitId: string }): WxRewardedVideoAd;

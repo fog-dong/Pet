@@ -1,7 +1,9 @@
-// STATUS: implemented, W3 康复页（进度 + 广告加速 + 好感度结算）
+// STATUS: implemented, W3 康复页（进度 + 广告加速 + 好感度结算）；W17-3 康复摇尾姿态 + 每 25% 轻响
 import { _decorator, Button, Component, Label } from 'cc';
 import { CaseSession } from './CaseSession';
 import { CharacterView } from './CharacterView';
+import { RecoveryMilestones } from './RecoveryMilestones';
+import { Sfx } from './Sfx';
 import { CharacterConfig } from '../config/CharacterConfig';
 import { GameState } from '../core/GameFSM';
 import { goState } from '../core/SceneFlow';
@@ -25,6 +27,7 @@ export class Recovery extends Component {
   private done = false;
   private boosted = false;
   private shownSecond = -1;
+  private readonly milestones = new RecoveryMilestones();
 
   protected start(): void {
     const item = CaseSession.current;
@@ -79,13 +82,13 @@ export class Recovery extends Component {
     // 立绘居中放在标题与进度条之间：贴右缘会压住 400 宽的加速按钮。
     const view = CharacterView.mount(this.node, 0, 255);
     view.node.setScale(0.62, 0.62, 1);
-    view.showPet(petId, 'sick');
+    view.showPet(petId, 'recover');
     this.petView = view;
     // 配置没就绪时先画兜底色块，加载完再重绘，别让进页有一段时间没有宠物。
     if (!CharacterConfig.ready) {
       void CharacterConfig.load().then(() => {
         if (this.isValid) {
-          view.showPet(petId, 'sick');
+          view.showPet(petId, 'recover');
         }
       });
     }
@@ -100,6 +103,9 @@ export class Recovery extends Component {
     this.redraw?.(ratio);
     this.petView?.setRecoveryProgress(ratio);
     this.updateCountdown();
+    if (this.milestones.update(ratio)) {
+      Sfx.play('recoverTick');
+    }
     if (ratio >= 1) {
       this.complete();
     }
@@ -123,7 +129,8 @@ export class Recovery extends Component {
       return;
     }
     this.done = true;
-    this.petView?.playRecovered();
+    // 康复完成：换成领养页同款开心跳跃；100% 那一档的轻响在同一帧由里程碑触发。
+    this.petView?.playHappy();
     this.setHint('康复完成，可以进入领养');
     // 分母用本局计划时长（正常 20s / 加速 12s）：自然走完 2 星，看广告减半 3 星。
     CaseSession.finishRecovery(Date.now() - this.startedAt, this.seconds * 1000);

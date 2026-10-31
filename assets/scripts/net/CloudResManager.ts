@@ -59,6 +59,18 @@ class CloudResManagerImpl {
     return this.byKey.get(key) ?? null;
   }
 
+  /** 按前缀取一组条目（行为帧序列 pet_{name}_{state}_1..n）；无清单返回空数组。 */
+  entriesWithPrefix(prefix: string): ResourceEntry[] {
+    const matched: ResourceEntry[] = [];
+    this.byKey.forEach((entry, key) => {
+      if (key.startsWith(prefix)) {
+        matched.push(entry);
+      }
+    });
+    matched.sort((a, b) => (a.key === b.key ? 0 : a.key < b.key ? -1 : 1));
+    return matched;
+  }
+
   /** 优先命中本地缓存；未命中才下载。返回本地路径，失败为 null。 */
   async ensure(key: string): Promise<string | null> {
     const entry = this.entry(key);

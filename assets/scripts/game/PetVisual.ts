@@ -1,8 +1,9 @@
-// STATUS: implemented, W16 宠物立绘（Sprite 贴图 + 地面阴影 + 缺图兜底占位）
-import { _decorator, Color, Component, Graphics, Label, Node, Sprite, SpriteFrame, Tween, tween, UITransform, Vec3 } from 'cc';
-import { Quality } from '../config/Quality';
-import { addLabel, PALETTE } from '../ui/SceneUI';
-import { loadPetFrame } from './PetAssetManager';
+// STATUS: implemented, W16 宠物立绘（贴图 + 阴影 + 缺图占位）；W17-3 挂五档行为状态机与帧序列
+import { _decorator, Color, Component, Label, Node, Sprite, SpriteFrame, Tween, UITransform } from 'cc';
+import { artName, loadPetFrame } from './PetAssetManager';
+import { PetBehavior } from './PetBehavior';
+import type { PetState } from './CharacterLook';
+import { buildPlaceholder, buildShadow } from './PetVisualChrome';
 
 const { ccclass } = _decorator;
 
@@ -18,8 +19,10 @@ export class PetVisual extends Component {
   private art: Sprite | null = null;
   private placeholder: Node | null = null;
   private placeholderLabel: Label | null = null;
+  private behavior: PetBehavior | null = null;
   private tint: Color = CLEAN_TINT;
   private token = 0;
+  private petId = '';
 
   /** 在 parent 下建一个 size 见方的宠物位；content 节点留给外层做呼吸缩放。 */
   static mount(parent: Node, size: number, withShadow = true): PetVisual {
@@ -38,6 +41,7 @@ export class PetVisual extends Component {
   /** 先显示占位，贴图到位后原地替换；连续调用以最后一次为准。 */
   apply(petId: string): void {
     const token = ++this.token;
+    this.petId = petId;
     if (this.placeholderLabel) {
       this.placeholderLabel.string = '加载中…';
     }
@@ -55,6 +59,17 @@ export class PetVisual extends Component {
     });
   }
 
+  /**
+   * 播放行为状态：位移始终有，帧序列只在云存储清单里存在时才播。
+   * 低画质档由 PetBehavior 内部收尾为静态姿态，不跑循环。
+   */
+  playState(state: PetState): void {
+    if (!this.behavior) {
+      this.behavior = new PetBehavior(this);
+    }
+    this.behavior.play(state, artName(this.petId));
+  }
+
   setTint(color: Color): void {
     this.tint = color;
     if (this.art) {
@@ -63,6 +78,7 @@ export class PetVisual extends Component {
   }
 
   protected onDestroy(): void {
+    this.behavior?.stop();
     if (this.shadow) {
       Tween.stopAllByTarget(this.shadow);
     }
@@ -74,63 +90,20 @@ export class PetVisual extends Component {
   private setup(size: number, withShadow: boolean): void {
     // 阴影先建，保证画在角色下面。
     if (withShadow) {
-      this.buildShadow(size);
+      this.shadow = buildShadow(this.node, size);
     }
     const content = new Node('Content');
     content.parent = this.node;
     content.setPosition(0, size * 0.04, 0);
     content.addComponent(UITransform).setContentSize(size * ART_RATIO, size * ART_RATIO);
     this.content = content;
-    this.buildPlaceholder(size * ART_RATIO);
+    const placeholder = buildPlaceholder(content, size * ART_RATIO);
+    this.placeholder = placeholder.node;
+    this.placeholderLabel = placeholder.label;
   }
 
-  /** 阴影是独立节点：横向轻微呼吸，制造 2.5D 的贴地感。 */
-  private buildShadow(size: number): void {
-    const node = new Node('Shadow');
-    node.parent = this.node;
-    node.setPosition(0, -size * 0.42, 0);
-    node.addComponent(UITransform).setContentSize(size, size * 0.16);
-    const graphics = node.addComponent(Graphics);
-    graphics.fillColor = new Color(0, 0, 0, 38);
-    graphics.ellipse(0, 0, size * 0.28, size * 0.07);
-    graphics.fill();
-    this.shadow = node;
-    if (Quality.low) {
-      return;
-    }
-    tween(node)
-      .to(1.1, { scale: new Vec3(1.06, 1, 1) })
-      .to(1.1, { scale: Vec3.ONE })
-      .union()
-      .repeatForever()
-      .start();
-  }
-
-  /** 缺图兜底：两层圆角矩形叠出柔和过渡；小尺寸缩略图只画色块，不塞文字。 */
-  private buildPlaceholder(artSize: number): void {
-    const node = new Node('Placeholder');
-    node.parent = this.content;
-    node.addComponent(UITransform).setContentSize(artSize, artSize);
-    const width = artSize * 0.9;
-    const height = artSize * 0.72;
-    const radius = Math.min(width, height) * 0.18;
-    const graphics = node.addComponent(Graphics);
-    graphics.fillColor = new Color(226, 220, 211, 255);
-    graphics.roundRect(-width / 2, -height / 2, width, height, radius);
-    graphics.fill();
-    graphics.fillColor = new Color(240, 236, 229, 255);
-    graphics.roundRect(-width / 2 + 6, -height / 2 + height * 0.44, width - 12, height * 0.46, radius * 0.7);
-    graphics.fill();
-    this.placeholder = node;
-    // 图鉴缩略图只有 72 见方，字号跟着缩到 14 仍然可读；大立绘用 20。
-    this.placeholderLabel = addLabel(node, 'PlaceholderText', '加载中…', -height * 0.06, {
-      size: artSize < 120 ? 14 : 20,
-      color: PALETTE.sub,
-      width,
-    });
-  }
-
-  private showFrame(frame: SpriteFrame): void {
+  /** 行为帧与静态立绘共用这条显示路径：占位一次销毁，之后只换 spriteFrame。 */
+  showFrame(frame: SpriteFrame): void {
     if (this.placeholder) {
       this.placeholder.destroy();
       this.placeholder = null;

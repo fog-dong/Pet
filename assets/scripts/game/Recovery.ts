@@ -7,6 +7,7 @@ import { GameState } from '../core/GameFSM';
 import { goState } from '../core/SceneFlow';
 import { adButtonText } from '../cache/AdQuota';
 import { adFailHint, canOfferAd, showAd } from '../net/AdGateway';
+import { mountBackButton } from '../ui/BackButton';
 import { addButton, addLabel, addProgressBar, PALETTE, setButtonState } from '../ui/SceneUI';
 import { fitWidth } from '../ui/ScreenMetrics';
 
@@ -50,6 +51,12 @@ export class Recovery extends Component {
     this.refreshSpeed();
     addButton(root, 'AdoptButton', '进入领养', -330, () => void this.finish(), PALETTE.primary);
     this.mountPet(item.petId);
+    mountBackButton(root, () => this.abandon(), true);
+  }
+
+  private abandon(): void {
+    CaseSession.abort();
+    void goState(GameState.Lobby, 'Lobby');
   }
 
   private refreshSpeed(): void {

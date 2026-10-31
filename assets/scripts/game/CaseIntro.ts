@@ -9,6 +9,7 @@ import { CharacterView } from './CharacterView';
 import { GameState } from '../core/GameFSM';
 import { goState } from '../core/SceneFlow';
 import { fadeToScene } from '../core/PageFade';
+import { mountBackButton } from '../ui/BackButton';
 import { addDecor, mountBackdrop } from '../ui/Backdrop';
 import { addCard, addPill } from '../ui/PanelKit';
 import { addButton, addLabel, PALETTE } from '../ui/SceneUI';
@@ -46,6 +47,9 @@ export class CaseIntro extends Component {
 
     const root = this.node;
     mountBackdrop(root, 'room');
+    mountBackButton(root, () => {
+      void goState(GameState.Lobby, 'Lobby');
+    });
     addLabel(root, 'PageTitle', '接 诊', 548, { size: 44 });
     addLabel(root, 'PetName', `${item.petName}（${item.breed}）`, 486, { size: 34 });
     // 宠物坐在软垫上：软垫先挂，宠物后挂，脚底压住垫子上沿。
@@ -74,18 +78,6 @@ export class CaseIntro extends Component {
         }
         CaseSession.start(next);
         void fadeToScene('CaseIntro');
-      },
-      PALETTE.secondary,
-      440,
-      80,
-    );
-    addButton(
-      root,
-      'BackButton',
-      '返回大厅',
-      -468,
-      () => {
-        void goState(GameState.Lobby, 'Lobby');
       },
       PALETTE.secondary,
       440,

@@ -24,9 +24,10 @@ export const FSM_WHITELIST: Readonly<Record<GameState, readonly GameState[]>> = 
   [GameState.Login]: [GameState.Lobby, GameState.Offline, GameState.Fatal],
   [GameState.Lobby]: [GameState.CaseIntro, GameState.Adoption, GameState.Offline],
   [GameState.CaseIntro]: [GameState.Diagnosis, GameState.Lobby],
-  [GameState.Diagnosis]: [GameState.Treatment, GameState.Diagnosis, GameState.Result],
-  [GameState.Treatment]: [GameState.Recovery, GameState.Treatment, GameState.Result],
-  [GameState.Recovery]: [GameState.Adoption, GameState.Result],
+  // W18：每个子页都有返回按钮，进行中放弃确认后直接回大厅（不结算奖励）。
+  [GameState.Diagnosis]: [GameState.Treatment, GameState.Diagnosis, GameState.Result, GameState.Lobby],
+  [GameState.Treatment]: [GameState.Recovery, GameState.Treatment, GameState.Result, GameState.Lobby],
+  [GameState.Recovery]: [GameState.Adoption, GameState.Result, GameState.Lobby],
   [GameState.Adoption]: [GameState.Result, GameState.Recovery, GameState.Lobby],
   [GameState.Result]: [GameState.Lobby, GameState.CaseIntro],
   [GameState.Offline]: [GameState.Login, GameState.Lobby],

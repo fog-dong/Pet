@@ -7,7 +7,7 @@ import { Track } from '../track/Track';
 import { buildCaseSync } from './CloudPayload';
 import { newSessionId } from './SessionId';
 import { trackDiagnosis, trackRecovery, trackTreatment } from './CaseTrack';
-import { affectionGain, recoverySeconds, recoveryStars, treatmentStars } from './CaseScore';
+import { affectionGain, medicineMatches, recoverySeconds, recoveryStars, treatmentStars } from './CaseScore';
 import { CaseReward, DiagnosisResult, RecoveryResult, TreatmentResult, emptyReward, settleCase, trackCaseComplete } from './CaseSettle';
 
 export class CaseSessionStore {
@@ -21,6 +21,8 @@ export class CaseSessionStore {
   private retryCount = 0;
   private affection = 0;
   private sid = '';
+  /** 住院床位已占用且尚未在结算/放弃时归还；二次确认放弃靠它避免漏床。 */
+  private bedHeld = false;
   adopted = false;
 
   get current(): CaseConfigItem | null {
@@ -47,6 +49,7 @@ export class CaseSessionStore {
     this.reward = null;
     this.retryCount = 0;
     this.affection = 0;
+    this.bedHeld = false;
     this.adopted = false;
     Save.load();
     Save.markSeen(item.petId);
@@ -74,10 +77,32 @@ export class CaseSessionStore {
     trackDiagnosis(this.item ? this.item.caseId : '', this.diagnosis);
   }
 
-  finishTreatment(medicine: string, bed: string, time: string, score: number): void {
+  finishTreatment(medicines: string[], bed: string, time: string, score: number): void {
     const success = treatmentStars(score, this.item ? this.item.severity : 'normal') > 0;
-    this.treatment = { medicine, bed, time, score, success };
+    this.treatment = { medicines, bed, time, score, success };
+    this.bedHeld = success && bed === '住院';
     trackTreatment(this.item ? this.item.caseId : '', this.treatment);
+  }
+
+  /** 二次确认放弃：归还本局占用的住院床位并清空上下文，不结算任何奖励。 */
+  abort(): void {
+    const item = this.item;
+    if (this.bedHeld) {
+      Hospital.freeBed();
+      this.bedHeld = false;
+    }
+    Track.track('case_abandon', { caseId: item ? item.caseId : '' });
+    this.item = null;
+    this.sid = '';
+    this.startedAt = 0;
+    this.diagnosisStartedAt = 0;
+    this.diagnosis = null;
+    this.treatment = null;
+    this.recovery = null;
+    this.reward = null;
+    this.retryCount = 0;
+    this.affection = 0;
+    this.adopted = false;
   }
 
   /** 康复结束即按 06 §2.1 的来源累计好感度，领养页据此判断门槛。 */
@@ -92,7 +117,7 @@ export class CaseSessionStore {
     this.affection = affectionGain(
       this.diagnosis ? this.diagnosis.stars : 0,
       treatment ? treatment.score : 0,
-      !!treatment && treatment.medicine === item.treatment.correct.medicine,
+      !!treatment && medicineMatches(treatment.medicines, item.treatment.correct.medicine),
       stars >= 2,
     );
     Hospital.addAffection(item.petId, this.affection);
@@ -147,6 +172,8 @@ export class CaseSessionStore {
       });
     }
     trackCaseComplete(item, this.reward);
+    // settleCase 已归还住院床位，会话侧同步清标记，避免后续重复 freeBed。
+    this.bedHeld = false;
     return this.reward;
   }
 }

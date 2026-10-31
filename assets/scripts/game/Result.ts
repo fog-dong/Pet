@@ -6,6 +6,7 @@ import { GameState } from '../core/GameFSM';
 import { goState } from '../core/SceneFlow';
 import { pushHint, pushSave } from '../net/CloudSave';
 import { flushPending, syncCaseResult } from '../net/SyncCaseResult';
+import { mountBackButton } from '../ui/BackButton';
 import { mountBackdrop } from '../ui/Backdrop';
 import { addButton, addLabel, PALETTE } from '../ui/SceneUI';
 import { showStars } from '../ui/StarRow';
@@ -81,6 +82,9 @@ export class Result extends Component {
       520,
       112,
     );
+    mountBackButton(root, () => {
+      void goState(GameState.Lobby, 'Lobby');
+    });
     void this.playStars(reward);
     void this.sync(reward);
   }

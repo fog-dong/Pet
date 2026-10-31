@@ -6,6 +6,7 @@ import { GameState } from '../core/GameFSM';
 import { goState } from '../core/SceneFlow';
 import { adFailHint, showAd } from '../net/AdGateway';
 import { Track } from '../track/Track';
+import { mountBackButton } from '../ui/BackButton';
 import { addLabel, PALETTE, setButtonState } from '../ui/SceneUI';
 import { renderAdoptionBody } from '../ui/AdoptionView';
 import { assistHint, requestAssist } from './AdoptionActions';
@@ -29,9 +30,15 @@ export class Adoption extends Component {
       return;
     }
     this.petId = item.petId;
-    addLabel(this.node, 'PageTitle', '领 养', 500, { size: 44 });
+    addLabel(this.node, 'PageTitle', '领 养', 560, { size: 44 });
     this.hint = addLabel(this.node, 'Hint', '', 120, { size: 22, color: PALETTE.sub, width: 1000 });
     this.render();
+    mountBackButton(this.node, () => this.abandon(), true);
+  }
+
+  private abandon(): void {
+    CaseSession.abort();
+    void this.leaveToLobby();
   }
 
   private render(): void {

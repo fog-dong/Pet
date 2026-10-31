@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "pets": [
     {
       "petId": "pet_orange_cat",
@@ -7,7 +7,9 @@
       "breed": "橘猫",
       "species": "cat",
       "baseLook": { "color": "#F2A65A", "shape": "circle" },
-      "colors": { "sick": "#A8A29A", "idle": "#F2A65A", "recovered": "#F7C89B" }
+      "colors": { "sick": "#A8A29A", "idle": "#F2A65A", "recovered": "#F7C89B" },
+      "traits": ["粘人", "贪吃"],
+      "message": "把它带回家后，它每天都会蹲在门口等你下班。"
     },
     {
       "petId": "pet_tabby_cat",
@@ -15,7 +17,9 @@
       "breed": "狸花猫",
       "species": "cat",
       "baseLook": { "color": "#8C8375", "shape": "circle" },
-      "colors": { "sick": "#A8A29A", "idle": "#8C8375", "recovered": "#BDB2A1" }
+      "colors": { "sick": "#A8A29A", "idle": "#8C8375", "recovered": "#BDB2A1" },
+      "traits": ["机警", "慢热"],
+      "message": "它不轻易靠近人，但你伸手时，它会慢慢把脑袋凑过来。"
     },
     {
       "petId": "pet_ragdoll",
@@ -23,7 +27,9 @@
       "breed": "布偶猫",
       "species": "cat",
       "baseLook": { "color": "#D8CFE8", "shape": "circle" },
-      "colors": { "sick": "#A8A29A", "idle": "#D8CFE8", "recovered": "#EFE6FA" }
+      "colors": { "sick": "#A8A29A", "idle": "#D8CFE8", "recovered": "#EFE6FA" },
+      "traits": ["傲娇", "爱干净"],
+      "message": "别看它总是一副高冷样，你转身时它已经跟到门口了。"
     },
     {
       "petId": "pet_shiba",
@@ -31,7 +37,9 @@
       "breed": "柴犬",
       "species": "dog",
       "baseLook": { "color": "#D9A05B", "shape": "square" },
-      "colors": { "sick": "#A8A29A", "idle": "#D9A05B", "recovered": "#F0C089" }
+      "colors": { "sick": "#A8A29A", "idle": "#D9A05B", "recovered": "#F0C089" },
+      "traits": ["活泼", "护食"],
+      "message": "它会把最爱的玩具叼到你脚边，然后假装只是路过。"
     },
     {
       "petId": "pet_corgi",
@@ -39,7 +47,9 @@
       "breed": "柯基",
       "species": "dog",
       "baseLook": { "color": "#E8956B", "shape": "square" },
-      "colors": { "sick": "#A8A29A", "idle": "#E8956B", "recovered": "#F8BE9B" }
+      "colors": { "sick": "#A8A29A", "idle": "#E8956B", "recovered": "#F8BE9B" },
+      "traits": ["胆小", "爱撒娇"],
+      "message": "它害怕打雷，但只要你坐在旁边，它就能睡得很安稳。"
     },
     {
       "petId": "pet_golden",
@@ -47,7 +57,9 @@
       "breed": "金毛",
       "species": "dog",
       "baseLook": { "color": "#E3B261", "shape": "square" },
-      "colors": { "sick": "#A8A29A", "idle": "#E3B261", "recovered": "#F6D79C" }
+      "colors": { "sick": "#A8A29A", "idle": "#E3B261", "recovered": "#F6D79C" },
+      "traits": ["憨厚", "粘人"],
+      "message": "它会把整个身子靠在你腿上，好像这样就能留住你。"
     },
     {
       "petId": "pet_lop_rabbit",
@@ -55,7 +67,9 @@
       "breed": "垂耳兔",
       "species": "rabbit",
       "baseLook": { "color": "#EFE7DC", "shape": "circle" },
-      "colors": { "sick": "#A8A29A", "idle": "#EFE7DC", "recovered": "#FFF7EE" }
+      "colors": { "sick": "#A8A29A", "idle": "#EFE7DC", "recovered": "#FFF7EE" },
+      "traits": ["安静", "胆小"],
+      "message": "它很安静，只在你叫它名字的时候轻轻动一下耳朵。"
     },
     {
       "petId": "pet_budgie",
@@ -63,7 +77,9 @@
       "breed": "虎皮鹦鹉",
       "species": "bird",
       "baseLook": { "color": "#7FB7C9", "shape": "circle" },
-      "colors": { "sick": "#A8A29A", "idle": "#7FB7C9", "recovered": "#B3DCE8" }
+      "colors": { "sick": "#A8A29A", "idle": "#7FB7C9", "recovered": "#B3DCE8" },
+      "traits": ["好奇", "爱叫"],
+      "message": "它会把学会的第一句“你好”留给你。"
     }
   ]
 }

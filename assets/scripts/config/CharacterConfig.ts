@@ -17,6 +17,10 @@ export interface PetConfigItem {
   species: PetSpecies;
   baseLook: { color: string; shape: LookShape };
   colors: PetColors;
+  /** 领养页性格标签；缺省时由 AdoptionNote 的占位池兜底。 */
+  traits?: string[];
+  /** 领养寄语；缺省时按 petId 稳定选一句占位文案。 */
+  message?: string;
 }
 
 export interface DoctorConfigItem {

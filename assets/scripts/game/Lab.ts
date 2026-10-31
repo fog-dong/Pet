@@ -6,12 +6,13 @@ import { buildResult } from './AuscultationScore';
 import {
   buildColumn,
   buildDragLayer,
-  drawPair,
   LabCard,
   LAB_COL_LEFT,
   LAB_COL_RIGHT,
   resolveLab,
+  shakeCard,
 } from './LabView';
+import { drawPair } from './LabLines';
 import { LabDrag } from './LabDrag';
 import { DiagnosisHud } from './DiagnosisHud';
 import { mountPetAvatar } from './PetPortrait';
@@ -98,6 +99,9 @@ export class Lab extends Component {
   private mismatch(sample: LabCard, reagent: LabCard): void {
     this.mistakes += 1;
     this.trackAction(sample, reagent, 'miss');
+    // 线已由 LabDrag 清掉，这里给两张卡片左右摇晃，明确“连错了”。
+    shakeCard(sample.node);
+    shakeCard(reagent.node);
     this.hud?.setHint('这个试剂不匹配，再看看颜色');
     if (this.mistakes >= MAX_MISTAKES) {
       this.finish(false);

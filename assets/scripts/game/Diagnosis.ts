@@ -13,6 +13,7 @@ import { GameState } from '../core/GameFSM';
 import { goState } from '../core/SceneFlow';
 import { Save } from '../cache/Save';
 import { Track } from '../track/Track';
+import { mountBackButton } from '../ui/BackButton';
 import { ChoicePanel } from '../ui/ChoicePanel';
 import { screenHeight, screenWidth } from '../ui/ScreenMetrics';
 
@@ -55,7 +56,14 @@ export class Diagnosis extends Component {
     this.step = layout.step;
     this.inspection = buildInspection(this.node, () => void this.onInspection());
     refreshInspection(this.inspection);
+    // 小游戏在跑，返回必须先二次确认；确认后清会话回大厅。
+    mountBackButton(this.node, () => this.abandon(), true);
     this.startGame(0);
+  }
+
+  private abandon(): void {
+    CaseSession.abort();
+    void goState(GameState.Lobby, 'Lobby');
   }
 
   private startGame(index: number): void {

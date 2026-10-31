@@ -8,6 +8,7 @@ import {
   buildMarker,
   paintClue,
   paintHit,
+  paintLesions,
   resolveLesions,
   XRAY_START_Y,
   XrayLesion,
@@ -44,6 +45,8 @@ export class Xray extends Component {
     const root = this.node;
     this.hud = new DiagnosisHud(root, 'Xray', setHint ?? (() => undefined));
     this.board = buildFilm(root);
+    // 病灶先挂，放大镜后挂，镜片透明中心才能压住红晕而不遮住它。
+    paintLesions(this.board, this.lesions);
     this.marker = buildMarker(this.board);
     bindXrayDrag(this.marker, {
       active: () => !this.finished,
@@ -91,7 +94,7 @@ export class Xray extends Component {
       this.mistakes += 1;
       this.timeLeft = Math.max(0, this.timeLeft - PENALTY_MS);
       this.hud?.paint(this.timeLeft);
-      this.hud?.setHint('再对比一下左右两侧');
+      this.hud?.setHint('放大镜没盖住病灶，再找找发红的区域');
       marker.setPosition(0, XRAY_START_Y, 0);
       this.trackAction('miss');
       return;

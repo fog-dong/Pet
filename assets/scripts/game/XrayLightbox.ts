@@ -1,22 +1,21 @@
-// STATUS: implemented, W17 拍片灯箱（木质边框 + 深灰内衬 + 浅蓝半透明胶片 + 噪点，替掉旧椭圆占位）
+// STATUS: implemented, W18 拍片灯箱（深色胶片 + 白色骨骼简笔画 + 噪点；红色病灶由 XrayBoard 叠加）
 import { Color, Graphics, Node } from 'cc';
 import { createBox, paintRound, sliceNode } from '../ui/PanelKit';
 
 const WOOD = new Color(196, 158, 118, 255);
-const BACKLIGHT = new Color(44, 49, 58, 255);
-const FILM = new Color(206, 228, 242, 142);
-const BODY = new Color(255, 255, 255, 34);
-const SPINE = new Color(255, 255, 255, 44);
-const RIB = new Color(255, 255, 255, 26);
+const BACKLIGHT = new Color(8, 11, 16, 255);
+const FILM = new Color(16, 22, 30, 255);
+const BONE = new Color(232, 240, 246, 214);
+const BONE_SOFT = new Color(232, 240, 246, 74);
 
-/** 灯箱：外木框、内深灰板、最上层半透明胶片；返回最外层节点，病灶/标记仍以它为坐标系。 */
+/** 灯箱：外木框、深色背板、近黑胶片；返回最外层节点，骨廓/病灶/放大镜都以它为坐标系。 */
 export function buildLightbox(parent: Node, name: string, width: number, height: number): Node {
   const frame = createBox(parent, name, 0, width, height);
   paintRound(frame, width, height, 24, WOOD);
   sliceNode(frame, 'ui_panel_wood', WOOD);
 
-  const backW = width - 28;
-  const backH = height - 28;
+  const backW = width - 24;
+  const backH = height - 24;
   const back = createBox(frame, 'XrayBacklight', 0, backW, backH);
   paintRound(back, backW, backH, 18, BACKLIGHT);
 
@@ -24,50 +23,56 @@ export function buildLightbox(parent: Node, name: string, width: number, height:
   const filmH = height - 68;
   const film = createBox(frame, 'XrayFilm', 0, filmW, filmH);
   const graphics = paintRound(film, filmW, filmH, 14, FILM);
-  paintBody(graphics, filmW, filmH);
+  paintBones(graphics, filmW, filmH);
   paintNoise(graphics, filmW, filmH);
   return frame;
 }
 
-/** 侧位胸片式剪影：肩宽腹窄的躯干 + 脊柱带 + 四根肋骨弧，不用椭圆/十字这类冷几何。 */
-function paintBody(graphics: Graphics, w: number, h: number): void {
-  const halfW = w * 0.3;
-  const top = h * 0.22;
-  const bottom = -h * 0.36;
-  graphics.fillColor = BODY;
-  graphics.moveTo(-halfW * 0.55, top);
-  graphics.bezierCurveTo(-halfW * 1.02, top - h * 0.03, -halfW * 1.12, -h * 0.02, -halfW * 0.85, -h * 0.18);
-  graphics.bezierCurveTo(-halfW * 0.62, bottom + h * 0.02, -halfW * 0.3, bottom, 0, bottom);
-  graphics.bezierCurveTo(halfW * 0.3, bottom, halfW * 0.62, bottom + h * 0.02, halfW * 0.85, -h * 0.18);
-  graphics.bezierCurveTo(halfW * 1.12, -h * 0.02, halfW * 1.02, top - h * 0.03, halfW * 0.55, top);
-  graphics.bezierCurveTo(halfW * 0.22, top + h * 0.02, -halfW * 0.22, top + h * 0.02, -halfW * 0.55, top);
-  graphics.fill();
-
-  graphics.strokeColor = SPINE;
-  graphics.lineWidth = 10;
-  graphics.moveTo(-halfW * 0.75, top - h * 0.06);
-  graphics.bezierCurveTo(-halfW * 0.25, top - h * 0.01, halfW * 0.25, top - h * 0.01, halfW * 0.75, top - h * 0.06);
-  graphics.stroke();
-
-  // 肋骨从脊柱向两侧下扫，比横贯躯干的平行弧更像胸片。
-  graphics.strokeColor = RIB;
+/** 正位胸片简笔画：椎体链 + 锁骨 + 六对肋骨 + 骨盆弧，全部白色半透明线条。 */
+function paintBones(graphics: Graphics, w: number, h: number): void {
+  const spineTop = h * 0.3;
+  const halfW = w * 0.34;
+  // 椎体链：一节节圆角块比一条直线更像片子。
+  graphics.fillColor = BONE;
+  for (let i = 0; i < 7; i += 1) {
+    const y = spineTop - i * (h * 0.082);
+    graphics.roundRect(-10, y - 12, 20, 24, 6);
+    graphics.fill();
+  }
+  // 锁骨：从颈根向两侧展开。
+  graphics.strokeColor = BONE;
+  graphics.lineWidth = 6;
+  for (const sign of [-1, 1]) {
+    graphics.moveTo(sign * 12, spineTop + 8);
+    graphics.bezierCurveTo(sign * 76, spineTop + 18, sign * halfW * 0.82, spineTop + 4, sign * halfW * 0.98, spineTop - 22);
+    graphics.stroke();
+  }
+  // 肋骨：贴着椎体向外下扫，左右各 6 根。
   graphics.lineWidth = 4;
-  for (let i = 0; i < 4; i += 1) {
-    const y = top - h * 0.04 - i * h * 0.075;
-    const reach = halfW * (0.86 - i * 0.05);
+  for (let i = 0; i < 6; i += 1) {
+    const y = spineTop - 16 - i * (h * 0.082);
+    const reach = halfW * (1 - i * 0.07);
     for (const sign of [-1, 1]) {
-      graphics.moveTo(sign * halfW * 0.06, y);
-      graphics.bezierCurveTo(
-        sign * halfW * 0.42,
-        y + h * 0.015,
-        sign * reach * 0.85,
-        y - h * 0.04,
-        sign * reach,
-        y - h * 0.13,
-      );
+      graphics.moveTo(sign * 12, y);
+      graphics.bezierCurveTo(sign * 78, y + 14, sign * reach * 0.9, y - 6, sign * reach, y - 52);
       graphics.stroke();
     }
   }
+  // 骨盆与软组织：软线勾边，避免整张片子只有骨架。
+  graphics.strokeColor = BONE_SOFT;
+  graphics.lineWidth = 5;
+  for (const sign of [-1, 1]) {
+    graphics.moveTo(0, -h * 0.34);
+    graphics.bezierCurveTo(sign * halfW * 0.5, -h * 0.36, sign * halfW * 0.92, -h * 0.22, sign * halfW * 0.8, -h * 0.02);
+    graphics.stroke();
+  }
+  // 心影：偏左的淡白团块，让画面有层次。
+  graphics.fillColor = new Color(232, 240, 246, 34);
+  graphics.moveTo(-10, h * 0.02);
+  graphics.bezierCurveTo(-70, h * 0.05, -96, -h * 0.12, -58, -h * 0.22);
+  graphics.bezierCurveTo(-30, -h * 0.28, 6, -h * 0.2, 4, -h * 0.06);
+  graphics.bezierCurveTo(4, -h * 0.02, 0, 0, -10, h * 0.02);
+  graphics.fill();
 }
 
 /** 固定种子的胶片噪点：每次进场景颗粒分布一致，不会闪烁。 */

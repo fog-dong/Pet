@@ -1,5 +1,5 @@
-// STATUS: implemented, W4 化验视图（样本/试剂卡片 + 拖拽连线与命中判定）
-import { Color, Graphics, Node, UITransform, Vec3 } from 'cc';
+// STATUS: implemented, W18 化验视图（卡片/列布局 + 矩形命中 + 左右摇晃反馈）
+import { Color, Graphics, Node, Tween, tween, UITransform, Vec3 } from 'cc';
 import type { CaseConfigItem, CaseLabPair } from '../config/CaseConfig';
 import { addLabel, addRect } from '../ui/SceneUI';
 import { screenHeight, screenWidth } from '../ui/ScreenMetrics';
@@ -9,13 +9,13 @@ export const LAB_ITEM_H = 64;
 /** 720 帧下左右列各贴边 30：卡片 200 宽时占 -330..-130 与 130..330，留出中间拖拽通道。 */
 export const LAB_COL_LEFT = -230;
 export const LAB_COL_RIGHT = 230;
-export const LAB_HIT_RADIUS = 36;
 export const LAB_COL_TOP = 200;
 const LAB_COL_SPAN = 400;
 const LAB_COL_MAX_GAP = 96;
+/** 手指落点允许比卡片外扩 18，避免边缘松手白拖。 */
+const LAB_HIT_PAD = 18;
 
 const CLEAR = new Color(0, 0, 0, 0);
-const LINE = new Color(226, 197, 143, 220);
 
 export interface LabCard {
   name: string;
@@ -82,52 +82,38 @@ export function buildCard(
   return node;
 }
 
+/** 全屏透明画布：只负责画线，不挂触摸监听，不会抢卡片的手势。 */
 export function buildDragLayer(parent: Node): Graphics | null {
   const node = addRect(parent, 'LabDragLayer', 0, screenWidth(), screenHeight(), CLEAR);
   node.setSiblingIndex(parent.children.length - 1);
   return node.getComponent(Graphics);
 }
 
-export function clearDrag(layer: Graphics | null): void {
-  layer?.clear();
-}
-
-export function drawDrag(layer: Graphics, fromWorld: Vec3, toWorld: Vec3): void {
-  const node = layer.node;
-  const from = toLocal(node, fromWorld);
-  const to = toLocal(node, toWorld);
-  layer.clear();
-  layer.strokeColor = LINE;
-  layer.lineWidth = 4;
-  layer.moveTo(from.x, from.y);
-  layer.lineTo(to.x, to.y);
-  layer.stroke();
-}
-
-/** 正确配对后保留一条静态连线（每对一张独立 Graphics，互不覆盖）。 */
-export function drawPair(parent: Node, fromWorld: Vec3, toWorld: Vec3): void {
-  const node = addRect(parent, 'LabPairLine', 0, screenWidth(), screenHeight(), CLEAR);
-  node.setSiblingIndex(parent.children.length - 2);
-  const graphics = node.getComponent(Graphics);
-  if (!graphics) {
-    return;
-  }
-  const from = toLocal(node, fromWorld);
-  const to = toLocal(node, toWorld);
-  graphics.strokeColor = new Color(127, 183, 126, 235);
-  graphics.lineWidth = 6;
-  graphics.moveTo(from.x, from.y);
-  graphics.lineTo(to.x, to.y);
-  graphics.stroke();
-}
-
-/** 世界坐标 → 卡片局部坐标，判断手指是否落在卡片圆形热区内。 */
-export function containsPoint(card: Node, world: Vec3): boolean {
+/** 矩形命中：含 18 的外扩边距，比原来的 36 半径圆覆盖整张 200×64 卡片。 */
+export function isInsideCard(card: Node, world: Vec3): boolean {
   const local = toLocal(card, world);
-  return Math.hypot(local.x, local.y) <= LAB_HIT_RADIUS;
+  const size = card.getComponent(UITransform)?.contentSize;
+  const halfW = (size?.width ?? LAB_ITEM_W) / 2 + LAB_HIT_PAD;
+  const halfH = (size?.height ?? LAB_ITEM_H) / 2 + LAB_HIT_PAD;
+  return Math.abs(local.x) <= halfW && Math.abs(local.y) <= halfH;
 }
 
-function toLocal(node: Node, world: Vec3): Vec3 {
+/** 配对失败反馈：卡片左右摇晃三次后回原位。 */
+export function shakeCard(node: Node): void {
+  const base = node.position;
+  Tween.stopAllByTarget(node);
+  node.setPosition(base.x, base.y, 0);
+  tween(node)
+    .to(0.05, { position: new Vec3(base.x + 14, base.y, 0) })
+    .to(0.05, { position: new Vec3(base.x - 14, base.y, 0) })
+    .to(0.05, { position: new Vec3(base.x + 10, base.y, 0) })
+    .to(0.05, { position: new Vec3(base.x - 10, base.y, 0) })
+    .to(0.06, { position: new Vec3(base.x, base.y, 0) })
+    .start();
+}
+
+/** 世界坐标 → 节点局部坐标，全链路统一走 UITransform.convertToNodeSpaceAR。 */
+export function toLocal(node: Node, world: Vec3): Vec3 {
   const transform = node.getComponent(UITransform);
   return transform ? transform.convertToNodeSpaceAR(world) : world;
 }

@@ -9,6 +9,7 @@ import { TreatmentLayout, buildTreatmentLayout, renderTreatment } from './Treatm
 import { GameState } from '../core/GameFSM';
 import { goState } from '../core/SceneFlow';
 import { Track } from '../track/Track';
+import { mountBackButton } from '../ui/BackButton';
 import { ChoicePanel } from '../ui/ChoicePanel';
 
 const { ccclass } = _decorator;
@@ -17,7 +18,7 @@ const { ccclass } = _decorator;
 export class Treatment extends Component {
   private item: CaseConfigItem | null = null;
   private layout: TreatmentLayout | null = null;
-  private selectedMedicine = '';
+  private selectedMedicines: string[] = [];
   private selectedBed = '';
   private selectedTime = '';
   private readonly panel = new ChoicePanel();
@@ -25,7 +26,7 @@ export class Treatment extends Component {
     {
       root: () => this.node,
       requiredMedicine: () => (this.item ? this.item.treatment.correct.medicine : ''),
-      onMedicineReady: (name) => this.selectMedicine(name),
+      onMedicineReady: (name) => this.addMedicine(name),
       onBedReady: () => this.selectBed('住院'),
       onOutpatient: () => this.selectBed('门诊'),
       status: (text) => this.status(text),
@@ -42,7 +43,7 @@ export class Treatment extends Component {
     }
     this.item = item;
     this.layout = buildTreatmentLayout(this.node, item, {
-      onMedicine: (value) => this.selectMedicine(value),
+      onMedicine: (value) => this.toggleMedicine(value),
       onBed: (value) => this.selectBed(value),
       onTime: (value) => {
         this.selectedTime = value;
@@ -51,20 +52,38 @@ export class Treatment extends Component {
       onConfirm: () => this.confirm(),
     });
     this.render();
+    mountBackButton(this.node, () => this.abandon(), true);
+  }
+
+  private abandon(): void {
+    CaseSession.abort();
+    void goState(GameState.Lobby, 'Lobby');
   }
 
   protected onDestroy(): void {
     this.panel.close();
   }
 
-  private selectMedicine(value: string): void {
-    if (Hospital.medicineCount(value) <= 0) {
-      this.selectedMedicine = '';
+  /** 药品多选：再点一次取消；库存为 0 时不进入选中集合。 */
+  private toggleMedicine(value: string): void {
+    const index = this.selectedMedicines.indexOf(value);
+    if (index >= 0) {
+      this.selectedMedicines.splice(index, 1);
       this.render();
+      return;
+    }
+    if (Hospital.medicineCount(value) <= 0) {
       this.fallback.medicineShortage(value, false);
       return;
     }
-    this.selectedMedicine = value;
+    this.selectedMedicines.push(value);
+    this.render();
+  }
+
+  private addMedicine(value: string): void {
+    if (value && !this.selectedMedicines.includes(value)) {
+      this.selectedMedicines.push(value);
+    }
     this.render();
   }
 
@@ -80,7 +99,7 @@ export class Treatment extends Component {
   private render(): void {
     if (this.layout) {
       renderTreatment(this.layout, {
-        medicine: this.selectedMedicine,
+        medicines: this.selectedMedicines,
         bed: this.selectedBed,
         time: this.selectedTime,
       });
@@ -92,37 +111,46 @@ export class Treatment extends Component {
     if (!item) {
       return;
     }
-    if (!this.selectedMedicine || !this.selectedBed || !this.selectedTime) {
-      this.status('请先把药品、床位、时间都选好');
+    if (this.selectedMedicines.length === 0 || !this.selectedBed || !this.selectedTime) {
+      this.status('请至少选择一种药品，并把床位和时间都选好');
       return;
     }
     if (this.selectedBed === '住院' && !Hospital.bedFree) {
       this.fallback.bedShortage();
       return;
     }
-    if (!Hospital.useMedicine(this.selectedMedicine)) {
-      this.selectedMedicine = '';
-      this.render();
-      this.fallback.medicineShortage(item.treatment.correct.medicine, false);
-      return;
+    // 多选药品按事务扣库存：任何一味不足就全部退回，避免半扣。
+    const used: string[] = [];
+    for (const name of this.selectedMedicines) {
+      if (!Hospital.useMedicine(name)) {
+        for (const done of used) {
+          Hospital.addMedicine(done, 1);
+        }
+        this.fallback.medicineShortage(name, false);
+        return;
+      }
+      used.push(name);
     }
     if (this.selectedBed === '住院' && !Hospital.admitBed()) {
-      Hospital.addMedicine(this.selectedMedicine, 1);
+      for (const done of used) {
+        Hospital.addMedicine(done, 1);
+      }
       this.fallback.bedShortage();
       return;
     }
     const score = judgeTreatment(
-      { medicine: this.selectedMedicine, bed: this.selectedBed, time: this.selectedTime },
+      { medicines: this.selectedMedicines, bed: this.selectedBed, time: this.selectedTime },
       item.treatment.correct,
     );
     Track.track('treatment_allocate', {
       caseId: item.caseId,
-      medicine: this.selectedMedicine,
+      medicines: this.selectedMedicines.join('+'),
+      medicineCount: this.selectedMedicines.length,
       bed: this.selectedBed,
       time: this.selectedTime,
       result: score,
     });
-    CaseSession.finishTreatment(this.selectedMedicine, this.selectedBed, this.selectedTime, score);
+    CaseSession.finishTreatment([...this.selectedMedicines], this.selectedBed, this.selectedTime, score);
     this.render();
     // 05 §3：危重病例必须 3/3 全对才进康复，普通/紧急 2/3 即可。
     const threshold = treatmentThreshold(item.severity);
@@ -134,7 +162,8 @@ export class Treatment extends Component {
     if (this.selectedBed === '住院') {
       Hospital.freeBed();
     }
-    this.selectedMedicine = '';
+    this.selectedMedicines = [];
+    this.render();
     this.fallback.failure(score, item.treatment.correct.medicine, threshold);
   }
 

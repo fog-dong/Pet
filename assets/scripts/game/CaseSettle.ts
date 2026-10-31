@@ -13,7 +13,8 @@ export interface DiagnosisResult {
 }
 
 export interface TreatmentResult {
-  medicine: string;
+  /** 药品多选：记录本局实际使用的一组药，结算/上报都按数组口径。 */
+  medicines: string[];
   bed: string;
   time: string;
   score: number;

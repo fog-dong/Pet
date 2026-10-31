@@ -22,7 +22,9 @@ function clampInt(value: number, min: number, max: number): number {
 /** 服务端能核对的只有药 / 床两项；时间选项不在冻结入参里（见 D13）。 */
 function verifiedScore(item: CaseConfigItem, treatment: TreatmentInput): number {
   const correct = item.treatment?.correct ?? {};
-  const medicineOk = correct.medicine !== undefined && treatment.medicineUsed.includes(correct.medicine) ? 1 : 0;
+  // W18：药品支持多选，客户端口径是“恰好选中对症药”才得分，多选错药记 0。
+  const used = Array.isArray(treatment.medicineUsed) ? treatment.medicineUsed : [];
+  const medicineOk = correct.medicine !== undefined && used.length === 1 && used[0] === correct.medicine ? 1 : 0;
   const bedOk = correct.bed !== undefined && treatment.bedUsed === (correct.bed === '住院') ? 1 : 0;
   return medicineOk + bedOk;
 }
@@ -78,9 +80,11 @@ export function computeCase(
   const severity = item.severity ?? 'normal';
   const threshold = treatmentThreshold(severity);
   const stars = treatmentStars(treatmentScore, severity);
+  const used = Array.isArray(treatment.medicineUsed) ? treatment.medicineUsed : [];
   const medicineOk =
     typeof item.treatment?.correct?.medicine === 'string' &&
-    treatment.medicineUsed.includes(item.treatment.correct.medicine);
+    used.length === 1 &&
+    used[0] === item.treatment.correct.medicine;
   return {
     stars: totalStars(diagnosisStars, stars, RECOVERY_STARS_FALLBACK),
     diagnosisStars,

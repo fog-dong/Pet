@@ -19,7 +19,8 @@ export function trackTreatment(caseId: string, result: TreatmentResult): void {
     success: result.success,
     score: result.score,
     bed: result.bed,
-    medicine: result.medicine,
+    medicine: result.medicines.join('+'),
+    medicineCount: result.medicines.length,
   });
 }
 

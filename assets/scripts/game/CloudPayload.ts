@@ -30,7 +30,7 @@ export function buildCaseSync(input: CaseSnapshot): CaseSyncInput {
     },
     treatment: {
       result: treatment.success ? (treatment.score >= 3 ? 'success' : 'partial') : 'fail',
-      medicineUsed: treatment.medicine ? [treatment.medicine] : [],
+      medicineUsed: treatment.medicines,
       bedUsed: treatment.bed === '住院',
       healing: treatment.score,
     },

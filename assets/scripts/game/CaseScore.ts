@@ -2,7 +2,7 @@
 import type { CaseRewardConfig, TreatmentCorrect } from '../config/CaseConfig';
 
 export interface TreatmentPlan {
-  medicine: string;
+  medicines: readonly string[];
   bed: string;
   time: string;
 }
@@ -26,10 +26,18 @@ export function treatmentThreshold(severity: string): number {
   return severity === 'critical' ? 3 : 2;
 }
 
+/**
+ * 药品允许多选：只有“恰好选中对症药”才拿药分；多选了别的药视为用错药，0 分。
+ * 服务端 syncCaseResult/formula.ts 用同一口径复核 medicineUsed。
+ */
+export function medicineMatches(used: readonly string[], correct: string): boolean {
+  return !!correct && used.length === 1 && used[0] === correct;
+}
+
 /** 治疗 3 选：药 / 床 / 时间各 1 分。 */
 export function judgeTreatment(plan: TreatmentPlan, correct: TreatmentCorrect): number {
   return (
-    (plan.medicine === correct.medicine ? 1 : 0) +
+    (medicineMatches(plan.medicines, correct.medicine) ? 1 : 0) +
     (plan.bed === correct.bed ? 1 : 0) +
     (plan.time === correct.time ? 1 : 0)
   );

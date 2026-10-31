@@ -1,6 +1,6 @@
 // STATUS: implemented, W16 P0 统一按钮（九宫格底 + 软投影 + 按下 0.95 回弹 + 禁用态，无贴图自动降级）
 import { Button, Color, Label, Node, Tween, tween, UITransform, Vec3 } from 'cc';
-import { makeLabel } from './FontKit';
+import { makeLabel, centerLabel } from './FontKit';
 import { addShadow, createBox, paintRound, sliceNode } from './PanelKit';
 import { COLORS, DURATION, RADIUS } from './Tokens';
 
@@ -42,8 +42,13 @@ export function decorateButton(button: Button, text: string, options: UIButtonOp
     label.string = text;
     label.fontSize = options.fontSize ?? 34;
     label.color = COLORS.white;
+    centerLabel(label, width - 24, height - 16);
   } else {
-    makeLabel(node, `${node.name}Label`, text, 0, { size: options.fontSize ?? 34, color: COLORS.white });
+    const created = makeLabel(node, `${node.name}Label`, text, 0, {
+      size: options.fontSize ?? 34,
+      color: COLORS.white,
+    });
+    centerLabel(created, width - 24, height - 16);
   }
   if (!decorated.has(node) && node.parent) {
     decorated.add(node);
@@ -63,7 +68,12 @@ function createButton(parent: Node, name: string, text: string, options: UIButto
   addShadow(parent, node, width, height, options.radius ?? RADIUS.button, 4, 52);
   const button = node.addComponent(Button);
   button.transition = Button.Transition.NONE;
-  makeLabel(node, `${name}Label`, text, 0, { size: options.fontSize ?? 30, width: width - 24, color: COLORS.white });
+  const label = makeLabel(node, `${name}Label`, text, 0, {
+    size: options.fontSize ?? 30,
+    width: width - 24,
+    color: COLORS.white,
+  });
+  centerLabel(label, width - 24, height - 16);
   bindPress(node);
   paint(button, options);
   return button;

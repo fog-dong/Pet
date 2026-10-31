@@ -56,7 +56,9 @@ export function makeLabel(
   const node = new Node(name);
   node.parent = parent;
   node.setPosition(options.x ?? 0, y, 0);
-  node.addComponent(UITransform).setContentSize(width, size + 12);
+  const transform = node.addComponent(UITransform);
+  transform.setContentSize(width, size + 12);
+  transform.setAnchorPoint(0.5, 0.5);
   const label = node.addComponent(Label);
   label.string = text;
   label.fontSize = size;
@@ -67,4 +69,19 @@ export function makeLabel(
   label.overflow = Label.Overflow.RESIZE_HEIGHT;
   applyUiFont(label);
   return label;
+}
+
+/**
+ * 按钮文字专用：锚点/位置/尺寸三者显式对齐到父容器中心，
+ * 用 SHRINK 代替 RESIZE_HEIGHT，长文案只缩字号，不会把节点顶偏。
+ */
+export function centerLabel(label: Label, width: number, height: number): void {
+  const node = label.node;
+  const transform = node.getComponent(UITransform) ?? node.addComponent(UITransform);
+  transform.setAnchorPoint(0.5, 0.5);
+  transform.setContentSize(width, height);
+  node.setPosition(0, 0, 0);
+  label.horizontalAlign = Label.HorizontalAlign.CENTER;
+  label.verticalAlign = Label.VerticalAlign.CENTER;
+  label.overflow = Label.Overflow.SHRINK;
 }

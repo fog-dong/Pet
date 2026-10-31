@@ -8,7 +8,7 @@
   使用方式（详见 chain-protocol §九）：
     1. 读取本模板原文
     2. 扫描项目目录 `spark-output/context/*.json`，构造 STATE 对象
-    3. 将本文件中唯一占位符 `/*__SPARK_STATE_INJECT__*/{"project":"萌宠救助日记","generated_at":"2026-10-30T16:30:06.329Z","contexts":{"qa":{"done":true,"summary":"9 维还原度核查：1 blocker 已修（双相机重复渲染），3 minor 待排期","fields":{"target":"Lobby","review_mode":"auto","total":4,"blocker":1,"major":0,"minor":3}}}}` 替换为 STATE JSON
+    3. 将本文件中唯一占位符 `/*__SPARK_STATE_INJECT__*/{"project":"萌宠救助日记","generated_at":"2026-10-31T11:49:07.003Z","contexts":{"qa":{"done":true,"summary":"7 条 deviations · blocker 1 / major 2 / minor 4（产物过期 Blocker 已重建解决）","fields":{}}}}` 替换为 STATE JSON
     4. 写入 `spark-output/dashboard.html`（覆盖式）
 
   STATE 形态：

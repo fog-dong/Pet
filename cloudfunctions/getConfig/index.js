@@ -6,8 +6,9 @@ exports.main = main;
 // API: getConfig, see docs/plan/接口冻结清单.md §2.10
 const cloud = require("wx-server-sdk");
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
-// 与 docs/plan/数据库初始化清单.md §5 的配置种子一致；quality 为 W15-3 补入（画质远程开关）。
-const CONFIG_KEYS = ['cases', 'skus', 'ad_slots', 'activities', 'affection', 'collection', 'quality'];
+// 与 docs/plan/数据库初始化清单.md §5 的配置种子一致；quality 为 W15-3 补入（画质远程开关），
+// resource_manifest 为 W17-2 补入（云存储资源清单）。
+const CONFIG_KEYS = ['cases', 'skus', 'ad_slots', 'activities', 'affection', 'collection', 'quality', 'resource_manifest'];
 const MAX_CONFIG_DOCS = 100;
 function ok(data) {
     return { code: 0, msg: 'ok', data, serverTime: Date.now() };

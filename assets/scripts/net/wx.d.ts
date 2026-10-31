@@ -5,12 +5,52 @@ interface WxCloudCallResult {
   result?: unknown;
 }
 
+interface WxCloudDownloadResult {
+  tempFilePath: string;
+  statusCode?: number;
+}
+
 interface WxCloudApi {
   init(options: { env: string; traceUser?: boolean }): void;
   callFunction(options: {
     name: string;
     data?: Record<string, unknown>;
   }): Promise<WxCloudCallResult>;
+  downloadFile(options: { fileID: string }): Promise<WxCloudDownloadResult>;
+}
+
+interface WxFileStat {
+  size: number;
+}
+
+interface WxFileInfoResult {
+  size: number;
+  digest?: string;
+}
+
+/** 小游戏文件系统最小声明：只覆盖资源缓存需要的同步/回调接口。 */
+interface WxFileSystemManager {
+  accessSync(path: string): void;
+  mkdirSync(path: string, recursive?: boolean): void;
+  statSync(path: string): WxFileStat;
+  unlinkSync(path: string): void;
+  copyFileSync(srcPath: string, destPath: string): void;
+  saveFileSync(tempFilePath: string, filePath?: string): string;
+  getFileInfo(options: {
+    filePath: string;
+    digestAlgorithm?: 'md5' | 'sha1';
+    success?: (result: WxFileInfoResult) => void;
+    fail?: (error: unknown) => void;
+  }): void;
+}
+
+/** wx.createImage 返回的图片对象：本地路径也能直接给 src。 */
+interface WxImageElement {
+  src: string;
+  width: number;
+  height: number;
+  onload: (() => void) | null;
+  onerror: ((error?: unknown) => void) | null;
 }
 
 interface WxShareOptions {
@@ -61,6 +101,9 @@ interface WxCustomerServiceOptions {
 
 interface WxApi {
   cloud: WxCloudApi;
+  env?: { USER_DATA_PATH: string };
+  createImage?(): WxImageElement;
+  getFileSystemManager?(): WxFileSystemManager;
   shareAppMessage(options: WxShareOptions): void;
   createRewardedVideoAd?(options: { adUnitId: string }): WxRewardedVideoAd;
   requirePrivacyAuthorize?(options: WxPrivacyApiOptions): void;

@@ -1,5 +1,6 @@
 // STATUS: implemented, W11-2 隐私同意后的云同步入口（游客模式不初始化云端；补同意后返回云端是否就绪）
 import { Net } from '../net/Net';
+import { CloudResManager } from '../net/CloudResManager';
 import { Session } from '../net/Session';
 import { flushPending } from '../net/SyncCaseResult';
 import { retryPendingSave } from '../net/CloudSave';
@@ -81,11 +82,13 @@ export async function syncCloud(): Promise<boolean> {
   return true;
 }
 
-/** 拉一次远程配置里的画质档位；失败保持当前档，不弹错、不影响玩法。 */
+/** 拉一次远程配置里的画质档位与资源清单；失败保持当前档，不弹错、不影响玩法。 */
 async function loadQuality(): Promise<void> {
   const config = await Net.call<GetConfigData>('getConfig', { version: 0 });
   if (config.code === 0 && config.data) {
     Quality.set(config.data.configs.quality);
+    // 资源清单只落内存/本地副本，不在这里下载；真正用图时由 CloudResManager 按需拉取。
+    CloudResManager.setManifest(config.data.configs.resource_manifest);
   } else {
     Track.track('boot_config_failed', { code: config.code });
   }

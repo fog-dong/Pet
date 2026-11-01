@@ -1,4 +1,4 @@
-// STATUS: implemented, W12-3 服务端结算用例（首通倍率 / 二刷 / 并发只写一次 / 主键唯一）
+// STATUS: implemented, W12-3 服务端结算用例（首通倍率 / 二刷 / 并发只写一次 / 主键唯一）；W20-4 期望值对齐 W18-1 星级口径
 // API: seedCaseFixture / createSettleCases(ctx) → [{ title, run }]
 'use strict';
 
@@ -6,7 +6,7 @@ const CASE_ID = 'case_cat_cold';
 const SESSION_ONE = 'session-fixed-0001';
 const START_COINS = 100;
 const START_HEARTS = 5;
-/** 与服务端公式对齐的期望值：base 60 金币 / 2 爱心，2 星 → 首通 72 / 3 爱心，二刷 48 / 2 爱心。 */
+/** 与服务端公式对齐的期望值（W18-1 口径）：base 60 金币 / 2 爱心，全对 3 星 → 首通 90 / 2 爱心，二刷 60 / 2 爱心。 */
 const CASE_FIXTURE = {
   version: 1,
   cases: [{
@@ -24,7 +24,7 @@ function caseEvent(caseSessionId) {
     caseSessionId,
     caseId: CASE_ID,
     diagnosis: { type: 'auscultation', stars: 3, mistakes: 0, durationMs: 18000 },
-    // 药正确 + 床正确 → verified=2，healing=3 只加 1 → 3 分；康复字段缺失按 1 星 → 总星 (3+3+1)/3 ≈ 2。
+    // 药正确 + 床正确 → verified=2，healing=3 夹在 verified+1=3 → 治疗 3 星；诊断 3 星 → 03 §8.2 全对 3 星。
     treatment: { result: 'success', medicineUsed: ['健胃药'], bedUsed: false, healing: 3 },
     durationMs: 42000,
   };
@@ -62,19 +62,19 @@ function createSettleCases(ctx) {
     const second = await fn.main(caseEvent('session-fixed-0002'));
     show('首通', first);
     show('二刷', second);
-    check('首通 firstClear=true、2 星、72 金币', first.data && first.data.result.firstClear === true
-      && first.data.result.stars === 2 && first.data.rewards.coins === 72,
+    check('首通 firstClear=true、3 星、90 金币', first.data && first.data.result.firstClear === true
+      && first.data.result.stars === 3 && first.data.rewards.coins === 90,
     first.data ? `firstClear=${first.data.result.firstClear} stars=${first.data.result.stars} coins=${first.data.rewards.coins}` : '无数据');
-    check('二刷 firstClear=false 且不再乘 1.5（48 金币）', second.data && second.data.result.firstClear === false
-      && second.data.rewards.coins === 48,
+    check('二刷 firstClear=false 且不再乘 1.5（60 金币）', second.data && second.data.result.firstClear === false
+      && second.data.rewards.coins === 60,
     second.data ? `firstClear=${second.data.result.firstClear} coins=${second.data.rewards.coins}` : '无数据');
-    check('两局合计只加一次首通倍率：金币 100+72+48=220、爱心 5+2+2=9',
-      coinsOf(sdk, 'user_settle_twice') === 220
+    check('两局合计只加一次首通倍率：金币 100+90+60=250、爱心 5+2+2=9',
+      coinsOf(sdk, 'user_settle_twice') === 250
       && sdk.fieldOf('users', 'user_settle_twice', 'resources').hearts === 9,
     `coins=${coinsOf(sdk, 'user_settle_twice')} hearts=${sdk.fieldOf('users', 'user_settle_twice', 'resources').hearts}`);
-    check('pets_cases 两局各 1 条、caseStars 记最高星 2',
+    check('pets_cases 两局各 1 条、caseStars 记最高星 3',
       sdk.count('pets_cases') === 2
-      && sdk.fieldOf('users', 'user_settle_twice', 'flags').caseStars[CASE_ID] === 2,
+      && sdk.fieldOf('users', 'user_settle_twice', 'flags').caseStars[CASE_ID] === 3,
     `行数=${sdk.count('pets_cases')}`);
   }
 
@@ -88,11 +88,11 @@ function createSettleCases(ctx) {
     const coins = coinsOf(sdk, 'user_settle_race');
     check('12 路同一单局全部 code=0', succeeded === 12, `实际 ${succeeded} 路`);
     check('并发只写 1 条 pets_cases', sdk.count('pets_cases') === 1, `实际 ${sdk.count('pets_cases')} 条`);
-    check('金币只增加一次（100+72=172），爱心只加一次（5+2=7）',
-      coins === 172 && sdk.fieldOf('users', 'user_settle_race', 'resources').hearts === 7,
+    check('金币只增加一次（100+90=190），爱心只加一次（5+2=7）',
+      coins === 190 && sdk.fieldOf('users', 'user_settle_race', 'resources').hearts === 7,
     `coins=${coins} hearts=${sdk.fieldOf('users', 'user_settle_race', 'resources').hearts}`);
     const replay = await fn.main(caseEvent(SESSION_ONE));
-    check('重放返回历史结果且不再入账', replay.code === 0 && replay.data.rewards.coins === 72 && coinsOf(sdk, 'user_settle_race') === 172);
+    check('重放返回历史结果且不再入账', replay.code === 0 && replay.data.rewards.coins === 90 && coinsOf(sdk, 'user_settle_race') === 190);
 
     let blocked = false;
     try {

@@ -1,4 +1,4 @@
-// STATUS: implemented, W9-6 顺序重试用例（W11-1 从 verify-idempotency.js 拆出；W12-3 改为服务端结算断言）
+// STATUS: implemented, W9-6 顺序重试用例（W11-1 从 verify-idempotency.js 拆出；W12-3 改为服务端结算断言；W20-4 期望值对齐 W18-1 星级口径）
 // API: createSequentialCases(ctx) → [{ title, run }]
 'use strict';
 
@@ -27,12 +27,12 @@ function createSequentialCases(ctx) {
     }
     const same = calls.every((r) => JSON.stringify(r.data) === JSON.stringify(calls[0].data) && r.code === calls[0].code);
     check('三次都 code=0 且返回一致', same && calls[0].code === 0, `code=${calls.map((r) => r.code).join(',')}`);
-    check('第 1 次发奖：firstClear=true、2 星、72 金币 / 2 爱心',
-      calls[0].data.result.firstClear === true && calls[0].data.result.stars === 2
-      && calls[0].data.rewards.coins === 72 && calls[0].data.rewards.hearts === 2,
+    check('第 1 次发奖：firstClear=true、3 星、90 金币 / 2 爱心',
+      calls[0].data.result.firstClear === true && calls[0].data.result.stars === 3
+      && calls[0].data.rewards.coins === 90 && calls[0].data.rewards.hearts === 2,
     `firstClear=${calls[0].data.result.firstClear} stars=${calls[0].data.result.stars}`);
-    check('只第一次发奖：金币 100+72=172、爱心 5+2=7',
-      calls[2].data.resources.coins === 172 && calls[2].data.resources.hearts === 7,
+    check('只第一次发奖：金币 100+90=190、爱心 5+2=7',
+      calls[2].data.resources.coins === 190 && calls[2].data.resources.hearts === 7,
     `coins=${calls[2].data.resources.coins} hearts=${calls[2].data.resources.hearts}`);
     check('只写 1 条 pets_cases（重复上报不落第二行）', sdk.count('pets_cases') === 1, `实际 ${sdk.count('pets_cases')} 条`);
     results.push('    注：结算已在服务端完成（W12-3），重放命中 pets_cases 现有文档，回放历史结果且不再入账。');

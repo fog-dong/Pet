@@ -17,14 +17,13 @@ import { Profile } from '../net/Profile';
 import { Track } from '../track/Track';
 import { buildLobbyMenu, HudHandle } from './LobbyChrome';
 import { LobbyMenuHost, openLobbyMenu } from './LobbyMenu';
+import { lobbyDoctorSize, lobbyDoctorY, lobbyHintY } from './LobbyLayout';
 import { mountLobbyScene } from './LobbyScene';
 import { LeaderboardPanel } from './LeaderboardPanel';
 import { addLabel, PALETTE } from './SceneUI';
 import { SyncBadge } from './SyncBadge';
 
 const { ccclass, property } = _decorator;
-
-const HINT_Y = -470;
 
 @ccclass('Lobby')
 export class Lobby extends Component {
@@ -63,7 +62,8 @@ export class Lobby extends Component {
       .then(() => {
         if (this.isValid && this.doctorSlot) {
           // 名字与心情角标在大厅没有信息量（角标还会压到主按钮上），统一关掉。
-          const doctor = CharacterView.mount(this.doctorSlot, 0, 40, 240);
+          // 医生站在前台后头，下半身被柜面切掉，地面阴影只会在台沿上留一块灰，索性不画。
+          const doctor = CharacterView.mount(this.doctorSlot, 0, lobbyDoctorY(), lobbyDoctorSize(), false);
           doctor.showDoctor('doc_director');
           doctor.hideBadges();
         }
@@ -122,7 +122,7 @@ export class Lobby extends Component {
   /** 常驻提示交给玩家看的，只放一层，避免多句叠字。 */
   showHint(text: string): void {
     if (!this.hint) {
-      this.hint = addLabel(this.node, 'LobbyHint', text, HINT_Y, {
+      this.hint = addLabel(this.node, 'LobbyHint', text, lobbyHintY(), {
         size: 24,
         color: PALETTE.sub,
         width: 620,

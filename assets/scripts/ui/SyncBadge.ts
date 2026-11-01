@@ -10,6 +10,7 @@ import type { CloudSyncStart } from '../core/BootCloud';
 import { flushPending } from '../net/SyncCaseResult';
 import { pendingBadgeText } from '../net/SyncPolicy';
 import { makeLabel } from './FontKit';
+import { lobbyBadgeY } from './LobbyLayout';
 import { addPill } from './PanelKit';
 import { COLORS } from './Tokens';
 import { Track } from '../track/Track';
@@ -19,8 +20,9 @@ export class SyncBadge {
   private label: Label | null = null;
   private pill: Node | null = null;
 
+  /** 排在大厅提示文案下方：角标与 LobbyHint 共用底部条带，不叠在同一行。 */
   mount(parent: Node): void {
-    this.pill = addPill(parent, 'SyncBadge', -400, 620, 56, new Color(62, 50, 42, 190));
+    this.pill = addPill(parent, 'SyncBadge', lobbyBadgeY(), 620, 56, new Color(62, 50, 42, 190));
     this.label = makeLabel(this.pill, 'SyncBadgeLabel', '', 0, {
       size: 22,
       width: 580,

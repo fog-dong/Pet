@@ -22,9 +22,10 @@ export class CharacterView extends Component {
   private ratio = 0;
   private unsubscribe: (() => void) | null = null;
   private bodySize = BODY_SIZE;
+  private withShadow = true;
 
   /** 场景里挂一个角色位，返回可继续调 showPet / showDoctor 的组件；size 决定立绘边长。 */
-  static mount(parent: Node, x: number, y: number, size = BODY_SIZE): CharacterView {
+  static mount(parent: Node, x: number, y: number, size = BODY_SIZE, withShadow = true): CharacterView {
     const node = new Node('CharacterView');
     // 先关掉再挂组件：onLoad 里的 build 要读到 mount 传进来的尺寸。
     node.active = false;
@@ -32,6 +33,7 @@ export class CharacterView extends Component {
     node.setPosition(x, y, 0);
     const view = node.addComponent(CharacterView);
     view.bodySize = size;
+    view.withShadow = withShadow;
     node.active = true;
     return view;
   }
@@ -105,7 +107,7 @@ export class CharacterView extends Component {
     }
     const size = this.bodySize;
     this.node.addComponent(UITransform).setContentSize(size + 90, size + 90);
-    this.visual = PetVisual.mount(this.node, size);
+    this.visual = PetVisual.mount(this.node, size, this.withShadow);
     const offset = size * 0.66;
     this.nameLabel = addLabel(this.node, 'Name', '', -offset, { size: 28, width: 300 });
     this.statusLabel = addLabel(this.node, 'Status', '', offset, { size: 30, width: 200 });

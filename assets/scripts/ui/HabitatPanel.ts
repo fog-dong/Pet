@@ -5,7 +5,7 @@ import { Save } from '../cache/Save';
 import { habitatList, runHabitatAction } from '../game/HabitatModel';
 import { addLabel, addRect, createNode, PALETTE } from './SceneUI';
 import { addCard, addDivider } from './PanelKit';
-import { fitWidth, screenHeight, screenWidth } from './ScreenMetrics';
+import { fitRow, fitWidth, screenHeight, screenWidth } from './ScreenMetrics';
 import { applyStats, buildHabitatRow, HABITAT_CARD_H, HabitatRow } from './HabitatRows';
 import { closeHabitatMenu, openHabitatMenu } from './HabitatMenu';
 import { showToast } from './Toast';
@@ -16,6 +16,8 @@ const PANEL_H = 780;
 /** 视口高度刻意留到 500：底部要空出 35px 给滚动提示，别让最后一张卡压着文字。 */
 const VIEW_H = 500;
 const EMPTY_TEXT = '小屋空荡荡的，快去救助一只吧';
+/** 领取入口的固定提示：服务端函数上线前不给任何本地兜底发币。 */
+const CLAIM_TEXT = '功能暂未开放';
 
 let overlay: Node | null = null;
 
@@ -49,9 +51,27 @@ export function openHabitatPanel(parent: Node, onResourcesChanged?: () => void):
       addLabel(panel, 'HabitatScrollHint', '上下拖动可以翻看全部宠物', -285, { size: 20, color: PALETTE.sub });
     }
   }
+  buildFooter(panel, width, parent);
+}
+
+/**
+ * 底部两枚按钮：离线收益只由服务端计时结算（G4 红线），`claimHabitat` 未部署前
+ * 客户端只做入口与提示，绝不本地铸币；右侧留关闭，主次同排不抢列表的视觉重心。
+ */
+function buildFooter(panel: Node, panelWidth: number, toastHost: Node): void {
+  const row = fitRow(2, -(panelWidth / 2 - 40), panelWidth / 2 - 40, 24);
+  addUIButton(panel, 'HabitatClaim', '离线收益 · 待领取', () => showToast(toastHost, CLAIM_TEXT), {
+    y: -340,
+    x: row.x0,
+    width: row.width,
+    height: 76,
+    color: COLORS.gold,
+    fontSize: 26,
+  });
   addUIButton(panel, 'HabitatClose', '关 闭', () => closeHabitatPanel(), {
     y: -340,
-    width: 300,
+    x: row.x0 + row.step,
+    width: row.width,
     height: 76,
     color: COLORS.sage,
     fontSize: 28,

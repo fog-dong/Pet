@@ -1,0 +1,252 @@
+{
+  "skill": "audit",
+  "generated_at": "2026-11-01T08:01:00.491Z",
+  "project_name": "萌宠救助日记",
+  "target": {
+    "type": "code",
+    "reference": "C:/Users/15181/Desktop/项目/pet（Cocos Creator 3.8 工程 + build/w18-lobby-menu.png 实测截图）",
+    "pages_audited": [
+      "Lobby.scene",
+      "CaseIntro.scene",
+      "Diagnosis.scene",
+      "Treatment.scene",
+      "Recovery.scene",
+      "Adoption.scene",
+      "Result.scene",
+      "图鉴面板 CodexPanel",
+      "医院面板 HospitalPanel"
+    ]
+  },
+  "audit_framework": [
+    "Nielsen-10",
+    "responsive",
+    "performance"
+  ],
+  "findings": [
+    {
+      "id": "audit-1",
+      "heuristic": "responsive",
+      "severity": "blocker",
+      "description": "大厅资源胶囊没有避让刘海/状态栏：pinTopLeftAt 的 top 是写死的 24，而 Widget 的对齐目标是父节点 UITransform（全屏），工程内 8 个场景的 cc.SafeArea 组件数实测全为 0，attachSafeArea() 只在启动页 Boot.ts 调用过一次。",
+      "evidence": "assets/scripts/ui/LobbyChrome.ts:44（pinTopLeftAt(pill, left, 24)）；grep cc.SafeArea assets/scenes/*.scene → 8 个场景全 0；assets/scripts/core/Boot.ts:89 唯一调用；对照 assets/scripts/ui/BackButton.ts:18 已正确减 safeAreaTop()",
+      "suggestion": "HUD 的 top 改为 24 + safeAreaTop()，与返回按钮同一口径；不给 Canvas 挂 SafeArea（Backdrop.ts 用 screenHeight() 铺满墙地，Canvas 一缩会露边）。同时把胶囊整体缩小一档：高 64→56、宽 200→176、字号 26→24。",
+      "effort": "quick-win"
+    },
+    {
+      "id": "audit-2",
+      "heuristic": "aesthetic",
+      "severity": "major",
+      "description": "大厅纵向被切成三段，中段和底段各有一块无信息空白：医生脚底（≈-44）与前台桌桌面（-90）之间悬空 46px，看起来站在空气上；桌底（-410）到屏幕底（-640）有 230px 空地板。",
+      "evidence": "LobbyScene.ts:30 doctorSlot(0,10) + Lobby.ts:66 CharacterView.mount(slot,0,40,240) → 立绘中心 59.6、脚底 -44、阴影 -51（PetVisualChrome.ts:10 -size*0.42）；LobbyScene.ts:31 addDecor(parent,'ui_desk',-250,640)（DECOR_ASPECT 2 → 高 320）→ 桌面 -90、桌底 -410；截图 build/w18-lobby-menu.png 目视确认两条空白带",
+      "suggestion": "医生 mount 的 y 由 40 改为 6，让阴影落在 -84.8（桌面 -90 上方 5px，脚部被桌沿遮 6px 形成正确纵深）；底部 230px 空带改为「已领养宠物散步带」，兼作小屋入口。",
+      "effort": "medium"
+    },
+    {
+      "id": "audit-3",
+      "heuristic": "consistency",
+      "severity": "major",
+      "description": "次级入口 3+2 排布不对称：首行 3 枚按 (200+20) 步长居中，次行 2 枚却用固定 ±115 且宽度换成 214，视觉上与首行三列完全不对齐；再新增第 6 枚会更乱。",
+      "evidence": "assets/scripts/ui/LobbyChrome.ts:9-15（MENU_W=200 / MENU_W_WIDE=214 / MENU_X=115 / MENU_ROW1=-210 / MENU_ROW2=-302）与 :55-73 的 inTop 分支；截图 build/w18-lobby-menu.png 中「隐私与协议」「关于」与首行不对齐",
+      "suggestion": "统一为 3+3 六枚等宽（200/gap 20），首行放玩法入口并把【我的小屋】置于 C 位（中间），次行放排行榜 + 两个合规入口并降一档明度。",
+      "effort": "quick-win"
+    },
+    {
+      "id": "audit-4",
+      "heuristic": "consistency",
+      "severity": "major",
+      "description": "六个子页的标题纵向锚点各写一个常数，而返回按钮走 safeAreaTop() 动态口径，两套规则混用；在 720×1559（iPhone 比例，FIXED_WIDTH 下设计高随屏幕变大）每页标题与返回按钮的间距都不一样。",
+      "evidence": "Adoption.ts:33 y=560、CaseIntro.ts:55 y=548、TreatmentLayout.ts:59 y=500、Recovery.ts:41 y=470、DiagnosisLayout.ts:32 与 Result.ts:44 各自常量；对照 BackButton.ts:18 screenHeight()/2-74-safeAreaTop()",
+      "suggestion": "抽一个 pageTitleY() = screenHeight()/2 - 120 - safeAreaTop() 放进 ScreenMetrics，六页统一引用。",
+      "effort": "quick-win"
+    },
+    {
+      "id": "audit-5",
+      "heuristic": "visibility",
+      "severity": "major",
+      "description": "长线目标缺失的技术成因：领养完成后系统里没有任何「宠物还在等我」的状态——存档只存 petId 字符串数组，状态机没有回到宠物身边的状态，大厅 5 个入口全是信息/合规类。",
+      "evidence": "assets/scripts/cache/SaveCodec.ts:3-19（petsAdopted: string[]，无 hunger/cleanliness/mood 等任何后续字段）；core/GameFSM.ts:5-35（GameState 与白名单无 Habitat）；ui/LobbyChrome.ts:18-24 LOBBY_MENU 五项；docs/plan/07-长线经营与数值节奏.md §2 只承认 4 个长线系统",
+      "suggestion": "按 W20 方案模块二新增 Habitat（承接 adoptedPets 三属性 + 每日回访理由），并把 07 §2 补为第 5 个长线系统（决策门 G1）。",
+      "effort": "major-rework"
+    },
+    {
+      "id": "audit-6",
+      "heuristic": "user-control",
+      "severity": "major",
+      "description": "玩家不能选择救谁：主按钮直接 random() 抽一例，收集期玩家即使知道「还差暹罗」也无法定向推进。",
+      "evidence": "assets/scripts/ui/Lobby.ts:112 const item = CaseConfig.random()；CaseConfig.ts:115-123 random 仅支持排除单个 caseId，不排除已通关/未领养",
+      "suggestion": "图鉴卡片上给「想看它」标记，主按钮改为优先抽取标记病例（无标记时仍随机），保持一键即玩的低门槛。",
+      "effort": "medium"
+    },
+    {
+      "id": "audit-7",
+      "heuristic": "recognition",
+      "severity": "major",
+      "description": "内容量与轮转策略共同造成重复感：实测 pets.json 只有 8 只、cases.json 只有 5 例，且纯随机抽取，第 6 局起必然反复遇到同一只宠物，图鉴推进缓慢。",
+      "evidence": "node 实测：pets.json pets.length=8（橘猫/狸花/布偶/柴犬/柯基/金毛/垂耳兔/虎皮鹦鹉）、cases.json cases.length=5、doctors.json=3；CaseConfig.ts:115-123 Math.random() 无状态",
+      "suggestion": "扩充到 20 只 / 24 例（模块三），同时把 random 改为三级优先：未通关 → 未领养 → 随机。",
+      "effort": "medium"
+    },
+    {
+      "id": "audit-8",
+      "heuristic": "performance",
+      "severity": "major",
+      "description": "图鉴一次性为每只宠物 mount 一个 PetVisual 并立即发起贴图加载，没有虚拟化；扩到 20 只后一次打开面板就是 20 个并发分包加载 + 20 个常驻 Sprite 节点。",
+      "evidence": "assets/scripts/ui/CodexPanel.ts:84-91 pets.forEach(...) 内 PetVisual.mount(card,72,false) + visual.apply(pet.petId)；content 高度 = pets.length*96（:80）全量建卡",
+      "suggestion": "按 ScrollView 可视区做窗口化复用（复用 6-8 张卡节点，滚动时换 petId），或分页；同时把 art 分包贴图加引用计数释放。",
+      "effort": "medium"
+    },
+    {
+      "id": "audit-9",
+      "heuristic": "visibility",
+      "severity": "minor",
+      "description": "大厅底部有两个互不相识的提示位：SyncBadge 胶囊在 y=-400、LobbyHint 文本在 y=-470，非游客且有待同步病历时会同屏出现两条深色提示。",
+      "evidence": "SyncBadge.ts:23 addPill(parent,'SyncBadge',-400,620,56,...)；Lobby.ts:27 HINT_Y=-470；Lobby.ts:52 与 :57 分别挂载，无互斥",
+      "suggestion": "合并为单一提示通道并定优先级（补发状态 > 玩法提示），位置下移到散步带上方。",
+      "effort": "quick-win"
+    },
+    {
+      "id": "audit-10",
+      "heuristic": "real-world-match",
+      "severity": "minor",
+      "description": "合规入口与玩法入口同层同权重：「隐私与协议」「关于」和「医院」「图鉴」用同一种绿色胶囊同样大小，玩家第一眼读到的是五个不知道点进去会怎样的按钮。",
+      "evidence": "LobbyChrome.ts:18-24 五项共用 COLORS.sage + 同一 height 78；截图 build/w18-lobby-menu.png",
+      "suggestion": "合规两项降为桌沿下方的小号文字链（或收进「关于」二级），把腾出的行给玩法入口。",
+      "effort": "quick-win"
+    },
+    {
+      "id": "audit-11",
+      "heuristic": "error-prevention",
+      "severity": "minor",
+      "description": "缺图不会报错但会成片出现「待补图」占位：art 分包实测只有 9 张 PNG，配置先扩到 20 只而不出图，图鉴与小屋会同时显示 12 个占位块。",
+      "evidence": "find assets/bundles/art -name '*.png' → 9 张；game/PetVisual.ts 加载失败置 '待补图'；game/PetAssetManager.ts:52-61 分包缺图回落云存储",
+      "suggestion": "配置扩充与出图清单同批提交；未出图品种在图鉴里显示剪影 + 「即将登场」，而不是灰色占位。",
+      "effort": "quick-win"
+    },
+    {
+      "id": "audit-12",
+      "heuristic": "flexibility",
+      "severity": "minor",
+      "description": "老玩家没有快路径：诊断小游戏类型完全由病例配置决定，同一病例重复遇到时仍是同一关同一难度，没有跳过或加速。",
+      "evidence": "config/CaseConfig.ts:72-76 diagnosisType / diagnosisTypes / diagnosisDifficulty 全配置驱动；game/Diagnosis.ts 无「已通关可加速」分支",
+      "suggestion": "对 bestStars 已达 3 星的病例给一次「跳过诊断直接接诊」选项（走同一结算，服务端仍重算奖励）。",
+      "effort": "medium"
+    },
+    {
+      "id": "audit-13",
+      "heuristic": "error-recovery",
+      "severity": "minor",
+      "description": "结算补发只有自动时机，玩家看不到手动重试：pending 队列在启动、进厅、下局结算时自动 flush，界面上没有「重试」入口，弱网玩家只能反复重开。",
+      "evidence": "net/CloudSave.ts:57-67 retryPendingSave；ui/SyncBadge.ts:41-47 drain() 只在 Lobby.start 调用一次；文案见 net/SyncPolicy.ts pendingBadgeText",
+      "suggestion": "SyncBadge 胶囊改为可点，点击即 drain() 并按结果刷新文案（成功→已到账，失败→保持弱网提示）。",
+      "effort": "quick-win"
+    },
+    {
+      "id": "audit-14",
+      "heuristic": "help-docs",
+      "severity": "minor",
+      "description": "首局没有任何目标引导：D1 的设计要求是「完成一次完整情感闭环」，但进厅后只有一句失败兜底文案，玩家不知道这一局要做什么、做好了会怎样。",
+      "evidence": "Lobby.ts:122-134 showHint 仅在无病例/合规场景被调用；docs/plan/07-长线经营与数值节奏.md §7 D1 行；工程内无 onboarding 相关文件（grep 无 tutorial/onboard 命中）",
+      "suggestion": "首局在接诊页给一条三步提示（听诊→选药→等康复），完成后在结算页点亮「第一次领养」徽章。",
+      "effort": "medium"
+    },
+    {
+      "id": "audit-15",
+      "heuristic": "responsive",
+      "severity": "minor",
+      "description": "主按钮宽度写死 520，不走 fitWidth；在 720 设计宽下左右各剩 100px 尚可，但与其他页统一用 fitWidth 收口的卡片/面板口径不一致。",
+      "evidence": "LobbyChrome.ts:77 decorateButton(button, text, { y:229, width:520, height:112 })；对照 ScreenMetrics.ts:40-42 fitWidth 与 CodexPanel.ts:15-18、LeaderboardKit.ts:32 的用法",
+      "suggestion": "主按钮宽度改 fitWidth(520, 100)，高度与字号一并进 Tokens 常量。",
+      "effort": "quick-win"
+    }
+  ],
+  "opportunities": [
+    {
+      "title": "大厅视觉重构 + 安全区口径归一（含小屋入口）",
+      "addresses_findings": [
+        "audit-1",
+        "audit-2",
+        "audit-3",
+        "audit-4",
+        "audit-9",
+        "audit-10",
+        "audit-15"
+      ],
+      "priority": "high",
+      "rationale": "7 个 finding 集中在同一屏（Lobby）与同一根因（顶部 inset 与纵向预算没有统一口径）。用户改版诉求第 1 条直接命中，且修完即可为小屋入口腾出 C 位与底部散步带。"
+    },
+    {
+      "title": "上线宠物小屋，把领养从终点改成起点",
+      "addresses_findings": [
+        "audit-5",
+        "audit-6",
+        "audit-14"
+      ],
+      "priority": "high",
+      "rationale": "留存结构性缺口：存档无后续状态、状态机无承接态、大厅无养成入口。需先过 W20 方案 §0 的 G1-G4 四个冻结文档决策门。"
+    },
+    {
+      "title": "内容库扩到 20 品种 / 24 病例 + 轮转去重",
+      "addresses_findings": [
+        "audit-7",
+        "audit-11",
+        "audit-6"
+      ],
+      "priority": "high",
+      "rationale": "收集玩法的上限由内容量决定；实测 8 宠物 / 5 病例 + 纯随机，第 6 局即出现重复。配置与出图必须同批提交，否则会成片显示待补图。"
+    },
+    {
+      "title": "喂养经济曲线与首日防卡死保护",
+      "addresses_findings": [
+        "audit-5",
+        "audit-13"
+      ],
+      "priority": "medium",
+      "rationale": "新增强制消耗点（喂食/洗澡）最大的风险是把 07 §5「回收点必须可延迟」变成卡点；需按 D1-D3 产出 1000-1400/日 反推成本上限，并保留免费抚摸路径。"
+    },
+    {
+      "title": "长列表虚拟化（图鉴与小屋共用）",
+      "addresses_findings": [
+        "audit-8"
+      ],
+      "priority": "medium",
+      "rationale": "内容从 8 扩到 20 后，CodexPanel 的全量 mount 模式从「勉强能用」变成明确性能问题，且小屋会复用同一套列表。"
+    },
+    {
+      "title": "提示位与错误恢复规范",
+      "addresses_findings": [
+        "audit-9",
+        "audit-13",
+        "audit-12"
+      ],
+      "priority": "low",
+      "rationale": "三条 minor 同属「系统如何跟玩家说话」：提示位互斥、补发可手动重试、老玩家可跳过已 3 星病例，属于细节优化包，不阻塞改版主线。"
+    }
+  ],
+  "summary": {
+    "total_findings": 15,
+    "by_severity": {
+      "blocker": 1,
+      "major": 7,
+      "minor": 7
+    },
+    "by_heuristic": {
+      "responsive": 2,
+      "aesthetic": 1,
+      "consistency": 2,
+      "visibility": 2,
+      "user-control": 1,
+      "recognition": 1,
+      "performance": 1,
+      "real-world-match": 1,
+      "error-prevention": 1,
+      "flexibility": 1,
+      "error-recovery": 1,
+      "help-docs": 1
+    },
+    "top_opportunities": [
+      "大厅视觉重构 + 安全区口径归一（含小屋入口）",
+      "上线宠物小屋，把领养从终点改成起点",
+      "内容库扩到 20 品种 / 24 病例 + 轮转去重"
+    ]
+  }
+}

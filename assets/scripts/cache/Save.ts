@@ -63,6 +63,16 @@ export class SaveStore {
     this.persist();
   }
 
+  /** 爱心消耗：不足时返回 false 且不动账，调用方据此提示。 */
+  spendHearts(amount: number): boolean {
+    if (amount <= 0 || this.data.hearts < amount) {
+      return false;
+    }
+    this.data.hearts -= amount;
+    this.persist();
+    return true;
+  }
+
   itemCount(itemId: string): number {
     return this.data.items[itemId] ?? 0;
   }

@@ -1,5 +1,5 @@
-// STATUS: implemented, W20-2 小屋成员卡片（现成立绘 + 三项属性条；缺图由 PetVisual 自带占位块顶上）
-import { Color, Node } from 'cc';
+// STATUS: implemented, W20-2 小屋成员卡片（现成立绘 + 三项属性条 + 轻点开互动菜单；缺图由 PetVisual 自带占位块顶上）
+import { Color, EventTouch, Node } from 'cc';
 import { HabitatPet } from '../cache/HabitatCodec';
 import { CharacterConfig } from '../config/CharacterConfig';
 import { PetVisual } from '../game/PetVisual';
@@ -12,8 +12,13 @@ const PORTRAIT = 104;
 /** 属性块：标签列宽 88 + 轨道 200，轨道左沿固定在 x=-44。 */
 const STAT_LEFT = -44;
 const STAT_WIDTH = 200;
+/** 列表要能上下拖，位移超过这个阈值算滚动而不是点选。 */
+const TAP_SLOP = 24;
 
 export interface HabitatRow {
+  entry: HabitatPet;
+  node: Node;
+  visual: PetVisual;
   stats: Record<'hunger' | 'cleanliness' | 'mood', StatRow>;
 }
 
@@ -22,6 +27,7 @@ export function buildHabitatRow(
   index: number,
   entry: HabitatPet,
   cardWidth: number,
+  onTap: (row: HabitatRow) => void,
 ): HabitatRow {
   const y = -(index * HABITAT_CARD_H) - HABITAT_CARD_H / 2;
   const card = addRect(parent, `HabitatCard_${entry.petId}`, y, cardWidth, HABITAT_CARD_H - 12, CARD_BG);
@@ -36,7 +42,9 @@ export function buildHabitatRow(
   });
   const stats = addStatColumns(card, `HabitatStat${index}`, STAT_LEFT, 4, STAT_WIDTH);
   applyStats(stats, entry);
-  return { stats };
+  const row: HabitatRow = { entry, node: card, visual, stats };
+  bindTap(card, () => onTap(row));
+  return row;
 }
 
 export function applyStats(
@@ -46,4 +54,20 @@ export function applyStats(
   stats.hunger.update(entry.hunger);
   stats.cleanliness.update(entry.cleanliness);
   stats.mood.update(entry.mood);
+}
+
+function bindTap(card: Node, onTap: () => void): void {
+  let startX = 0;
+  let startY = 0;
+  card.on(Node.EventType.TOUCH_START, (event: EventTouch) => {
+    const p = event.getUILocation();
+    startX = p.x;
+    startY = p.y;
+  });
+  card.on(Node.EventType.TOUCH_END, (event: EventTouch) => {
+    const p = event.getUILocation();
+    if (Math.abs(p.x - startX) + Math.abs(p.y - startY) < TAP_SLOP) {
+      onTap();
+    }
+  });
 }

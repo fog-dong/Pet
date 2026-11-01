@@ -40,7 +40,7 @@ export function openLobbyMenu(name: string, host: LobbyMenuHost): void {
     // 小屋要按 pets.json 的品种初始值补种缺失条目，先等角色表就绪再开面板。
     void CharacterConfig.load().then(() => {
       if (host.isValid) {
-        openHabitatPanel(host.node);
+        openHabitatPanel(host.node, () => host.refreshStats());
       }
     });
     return;

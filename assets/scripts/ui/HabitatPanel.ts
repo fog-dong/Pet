@@ -2,11 +2,13 @@
 import { BlockInputEvents, Color, Mask, Node, ScrollView, UITransform } from 'cc';
 import { HabitatPet } from '../cache/HabitatCodec';
 import { Save } from '../cache/Save';
-import { habitatList } from '../game/HabitatModel';
+import { habitatList, runHabitatAction } from '../game/HabitatModel';
 import { addLabel, addRect, createNode, PALETTE } from './SceneUI';
 import { addCard, addDivider } from './PanelKit';
 import { fitWidth, screenHeight, screenWidth } from './ScreenMetrics';
-import { buildHabitatRow, HABITAT_CARD_H } from './HabitatRows';
+import { applyStats, buildHabitatRow, HABITAT_CARD_H, HabitatRow } from './HabitatRows';
+import { closeHabitatMenu, openHabitatMenu } from './HabitatMenu';
+import { showToast } from './Toast';
 import { COLORS } from './Tokens';
 import { addUIButton } from './UIButton';
 
@@ -21,11 +23,12 @@ export function closeHabitatPanel(): void {
   if (!overlay) {
     return;
   }
+  closeHabitatMenu();
   overlay.destroy();
   overlay = null;
 }
 
-export function openHabitatPanel(parent: Node): void {
+export function openHabitatPanel(parent: Node, onResourcesChanged?: () => void): void {
   closeHabitatPanel();
   Save.load();
   const entries = habitatList();
@@ -41,7 +44,7 @@ export function openHabitatPanel(parent: Node): void {
   if (entries.length === 0) {
     addLabel(panel, 'HabitatEmpty', EMPTY_TEXT, 40, { size: 28, color: PALETTE.sub, width: width - 120 });
   } else {
-    buildList(panel, entries, width);
+    buildList(panel, entries, width, parent, onResourcesChanged);
     if (entries.length > 3) {
       addLabel(panel, 'HabitatScrollHint', '上下拖动可以翻看全部宠物', -285, { size: 20, color: PALETTE.sub });
     }
@@ -55,7 +58,13 @@ export function openHabitatPanel(parent: Node): void {
   });
 }
 
-function buildList(panel: Node, entries: readonly HabitatPet[], panelWidth: number): void {
+function buildList(
+  panel: Node,
+  entries: readonly HabitatPet[],
+  panelWidth: number,
+  toastHost: Node,
+  onResourcesChanged?: () => void,
+): void {
   const viewW = panelWidth - 80;
   const cardW = panelWidth - 120;
   const scrollNode = createNode(panel, 'HabitatScroll', 0, viewW, VIEW_H);
@@ -68,7 +77,7 @@ function buildList(panel: Node, entries: readonly HabitatPet[], panelWidth: numb
   transform.setAnchorPoint(0.5, 1);
   content.setPosition(0, VIEW_H / 2, 0);
   entries.forEach((entry, index) => {
-    buildHabitatRow(content, index, entry, cardW);
+    buildHabitatRow(content, index, entry, cardW, (row) => openRowMenu(row, toastHost, onResourcesChanged));
   });
 
   const scroll = scrollNode.addComponent(ScrollView);
@@ -76,4 +85,22 @@ function buildList(panel: Node, entries: readonly HabitatPet[], panelWidth: numb
   scroll.vertical = true;
   scroll.horizontal = false;
   scroll.brake = 0.72;
+}
+
+/** 点一行开互动菜单；成功就地刷新这一行的三条进度条与大厅资源 HUD。 */
+function openRowMenu(row: HabitatRow, toastHost: Node, onResourcesChanged?: () => void): void {
+  if (!overlay) {
+    return;
+  }
+  const host = overlay;
+  openHabitatMenu(host, row.entry, (action) => {
+    const outcome = runHabitatAction(row.entry.petId, action);
+    if (outcome.kind === 'done') {
+      applyStats(row.stats, outcome.entry);
+      if (onResourcesChanged) {
+        onResourcesChanged();
+      }
+    }
+    return outcome;
+  }, (text) => showToast(toastHost, text));
 }

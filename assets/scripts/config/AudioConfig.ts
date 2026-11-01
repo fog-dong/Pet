@@ -2,7 +2,16 @@
 // 分包归属沿用 W17-2 策略：短促的进度提示音进 art 分包，体积大的动物叫声只走云存储清单。
 import type { PetSpecies } from './CharacterConfig';
 
-export type AudioCue = 'catCry' | 'dogCry' | 'rabbitCry' | 'birdCry' | 'treatOk' | 'recoverTick';
+export type AudioCue =
+  | 'catCry'
+  | 'dogCry'
+  | 'rabbitCry'
+  | 'birdCry'
+  | 'treatOk'
+  | 'recoverTick'
+  | 'feed'
+  | 'bath'
+  | 'pet';
 
 export interface AudioDef {
   /** 云存储清单里的 key（resource_manifest.files[].key）。 */
@@ -21,6 +30,10 @@ export const AUDIO_TABLE: Record<AudioCue, AudioDef> = {
   birdCry: { cloudKey: 'sfx_bird_cry', bundlePath: '', essential: true, volume: 0.5 },
   treatOk: { cloudKey: 'sfx_treat_success', bundlePath: '', essential: true, volume: 0.7 },
   recoverTick: { cloudKey: 'sfx_recover_tick', bundlePath: 'audio/ui/recoverTick', essential: false, volume: 0.35 },
+  // W20-2 小屋三条互动音：素材未上传，Sfx 解析不到源就静默通过，等云存储清单补 key 即可出声。
+  feed: { cloudKey: 'sfx_feed', bundlePath: '', essential: false, volume: 0.5 },
+  bath: { cloudKey: 'sfx_bath', bundlePath: '', essential: false, volume: 0.5 },
+  pet: { cloudKey: 'sfx_pet', bundlePath: '', essential: false, volume: 0.45 },
 };
 
 const SPECIES_CUE: Record<PetSpecies, AudioCue> = {

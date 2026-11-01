@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "pets": [
     {
       "petId": "pet_orange_cat",
@@ -9,7 +9,10 @@
       "baseLook": { "color": "#F2A65A", "shape": "circle" },
       "colors": { "sick": "#A8A29A", "idle": "#F2A65A", "recovered": "#F7C89B" },
       "traits": ["粘人", "贪吃"],
-      "message": "把它带回家后，它每天都会蹲在门口等你下班。"
+      "message": "把它带回家后，它每天都会蹲在门口等你下班。",
+      "hunger": 55,
+      "cleanliness": 70,
+      "mood": 72
     },
     {
       "petId": "pet_tabby_cat",
@@ -19,7 +22,10 @@
       "baseLook": { "color": "#8C8375", "shape": "circle" },
       "colors": { "sick": "#A8A29A", "idle": "#8C8375", "recovered": "#BDB2A1" },
       "traits": ["机警", "慢热"],
-      "message": "它不轻易靠近人，但你伸手时，它会慢慢把脑袋凑过来。"
+      "message": "它不轻易靠近人，但你伸手时，它会慢慢把脑袋凑过来。",
+      "hunger": 68,
+      "cleanliness": 78,
+      "mood": 52
     },
     {
       "petId": "pet_ragdoll",
@@ -29,7 +35,75 @@
       "baseLook": { "color": "#D8CFE8", "shape": "circle" },
       "colors": { "sick": "#A8A29A", "idle": "#D8CFE8", "recovered": "#EFE6FA" },
       "traits": ["傲娇", "爱干净"],
-      "message": "别看它总是一副高冷样，你转身时它已经跟到门口了。"
+      "message": "别看它总是一副高冷样，你转身时它已经跟到门口了。",
+      "hunger": 64,
+      "cleanliness": 88,
+      "mood": 58
+    },
+    {
+      "petId": "pet_british",
+      "name": "奶豆",
+      "breed": "英国短毛猫",
+      "species": "cat",
+      "baseLook": { "color": "#9AA6B4", "shape": "circle" },
+      "colors": { "sick": "#A8A29A", "idle": "#9AA6B4", "recovered": "#C3CDD8" },
+      "traits": ["沉稳", "懒"],
+      "message": "它一天只挪三次窝，但每一次都挪到你身边。",
+      "hunger": 74,
+      "cleanliness": 76,
+      "mood": 58
+    },
+    {
+      "petId": "pet_american",
+      "name": "银宝",
+      "breed": "美国短毛猫",
+      "species": "cat",
+      "baseLook": { "color": "#B9BCC4", "shape": "circle" },
+      "colors": { "sick": "#A8A29A", "idle": "#B9BCC4", "recovered": "#DBDEE4" },
+      "traits": ["好奇", "顽皮"],
+      "message": "家里的纸团永远活不过一晚，它说那是它的猎物。",
+      "hunger": 70,
+      "cleanliness": 72,
+      "mood": 66
+    },
+    {
+      "petId": "pet_siamese",
+      "name": "阿棕",
+      "breed": "暹罗猫",
+      "species": "cat",
+      "baseLook": { "color": "#C9A98A", "shape": "circle" },
+      "colors": { "sick": "#A8A29A", "idle": "#C9A98A", "recovered": "#E2C9AE" },
+      "traits": ["话痨", "粘人"],
+      "message": "你说话它一定要回一句，好像真能聊明白。",
+      "hunger": 66,
+      "cleanliness": 70,
+      "mood": 78
+    },
+    {
+      "petId": "pet_maine",
+      "name": "大王",
+      "breed": "缅因猫",
+      "species": "cat",
+      "baseLook": { "color": "#8A6F5C", "shape": "circle" },
+      "colors": { "sick": "#A8A29A", "idle": "#8A6F5C", "recovered": "#B69B85" },
+      "traits": ["温柔", "大只"],
+      "message": "它是屋里最大的那个，却最喜欢钻进最小的纸盒。",
+      "hunger": 78,
+      "cleanliness": 68,
+      "mood": 62
+    },
+    {
+      "petId": "pet_calico",
+      "name": "花花",
+      "breed": "三花猫",
+      "species": "cat",
+      "baseLook": { "color": "#D9A05B", "shape": "circle" },
+      "colors": { "sick": "#A8A29A", "idle": "#D9A05B", "recovered": "#F0C48E" },
+      "traits": ["独立", "挑嘴"],
+      "message": "它挑食的脾气出了名，唯独你递过去的东西肯吃两口。",
+      "hunger": 56,
+      "cleanliness": 80,
+      "mood": 54
     },
     {
       "petId": "pet_shiba",
@@ -39,7 +113,10 @@
       "baseLook": { "color": "#D9A05B", "shape": "square" },
       "colors": { "sick": "#A8A29A", "idle": "#D9A05B", "recovered": "#F0C089" },
       "traits": ["活泼", "护食"],
-      "message": "它会把最爱的玩具叼到你脚边，然后假装只是路过。"
+      "message": "它会把最爱的玩具叼到你脚边，然后假装只是路过。",
+      "hunger": 72,
+      "cleanliness": 72,
+      "mood": 66
     },
     {
       "petId": "pet_corgi",
@@ -49,7 +126,10 @@
       "baseLook": { "color": "#E8956B", "shape": "square" },
       "colors": { "sick": "#A8A29A", "idle": "#E8956B", "recovered": "#F8BE9B" },
       "traits": ["胆小", "爱撒娇"],
-      "message": "它害怕打雷，但只要你坐在旁边，它就能睡得很安稳。"
+      "message": "它害怕打雷，但只要你坐在旁边，它就能睡得很安稳。",
+      "hunger": 70,
+      "cleanliness": 76,
+      "mood": 68
     },
     {
       "petId": "pet_golden",
@@ -59,7 +139,101 @@
       "baseLook": { "color": "#E3B261", "shape": "square" },
       "colors": { "sick": "#A8A29A", "idle": "#E3B261", "recovered": "#F6D79C" },
       "traits": ["憨厚", "粘人"],
-      "message": "它会把整个身子靠在你腿上，好像这样就能留住你。"
+      "message": "它会把整个身子靠在你腿上，好像这样就能留住你。",
+      "hunger": 74,
+      "cleanliness": 70,
+      "mood": 75
+    },
+    {
+      "petId": "pet_husky",
+      "name": "二黑",
+      "breed": "哈士奇",
+      "species": "dog",
+      "baseLook": { "color": "#A8B4C0", "shape": "square" },
+      "colors": { "sick": "#A8A29A", "idle": "#A8B4C0", "recovered": "#CFD9E2" },
+      "traits": ["拆家", "精力旺盛"],
+      "message": "它把沙发拆了还一脸理直气壮，可你一生气它就先服软。",
+      "hunger": 76,
+      "cleanliness": 62,
+      "mood": 80
+    },
+    {
+      "petId": "pet_collie",
+      "name": "闪电",
+      "breed": "边境牧羊犬",
+      "species": "dog",
+      "baseLook": { "color": "#4A4A52", "shape": "square" },
+      "colors": { "sick": "#A8A29A", "idle": "#4A4A52", "recovered": "#7C7C88" },
+      "traits": ["聪明", "敏感"],
+      "message": "它听得懂所有指令，只是挑自己愿意的那几句执行。",
+      "hunger": 70,
+      "cleanliness": 74,
+      "mood": 50
+    },
+    {
+      "petId": "pet_poodle",
+      "name": "糯米",
+      "breed": "泰迪",
+      "species": "dog",
+      "baseLook": { "color": "#C08457", "shape": "square" },
+      "colors": { "sick": "#A8A29A", "idle": "#C08457", "recovered": "#DFAE7F" },
+      "traits": ["粘人", "爱叫"],
+      "message": "门一响它就叫，其实只是想告诉全家：有人回来了。",
+      "hunger": 64,
+      "cleanliness": 70,
+      "mood": 76
+    },
+    {
+      "petId": "pet_bichon",
+      "name": "棉花糖",
+      "breed": "比熊",
+      "species": "dog",
+      "baseLook": { "color": "#F4F0E8", "shape": "square" },
+      "colors": { "sick": "#A8A29A", "idle": "#F4F0E8", "recovered": "#FFFDF7" },
+      "traits": ["温顺", "玻璃胃"],
+      "message": "它吃得少、爱得满，你摸一下它就愿意跟你一整天。",
+      "hunger": 58,
+      "cleanliness": 84,
+      "mood": 64
+    },
+    {
+      "petId": "pet_samoyed",
+      "name": "笑笑",
+      "breed": "萨摩耶",
+      "species": "dog",
+      "baseLook": { "color": "#FAF6EE", "shape": "square" },
+      "colors": { "sick": "#A8A29A", "idle": "#FAF6EE", "recovered": "#FFFFFF" },
+      "traits": ["自来熟", "撒手没"],
+      "message": "它在街上能跟每个人打招呼，回家才发现谁都没牵。",
+      "hunger": 72,
+      "cleanliness": 66,
+      "mood": 82
+    },
+    {
+      "petId": "pet_labrador",
+      "name": "大福",
+      "breed": "拉布拉多",
+      "species": "dog",
+      "baseLook": { "color": "#D8C69A", "shape": "square" },
+      "colors": { "sick": "#A8A29A", "idle": "#D8C69A", "recovered": "#EEE0BB" },
+      "traits": ["贪吃", "友善"],
+      "message": "它以为全世界最难的事，是把零食藏好不被它找到。",
+      "hunger": 60,
+      "cleanliness": 72,
+      "mood": 74
+    },
+    {
+      "petId": "pet_chihuahua",
+      "name": "豆丁",
+      "breed": "吉娃娃",
+      "species": "dog",
+      "baseLook": { "color": "#C89B72", "shape": "square" },
+      "colors": { "sick": "#A8A29A", "idle": "#C89B72", "recovered": "#E4BD93" },
+      "traits": ["警惕", "怕冷"],
+      "message": "它只有巴掌大，却把自己当成整个家的门卫。",
+      "hunger": 68,
+      "cleanliness": 78,
+      "mood": 46
     },
     {
       "petId": "pet_lop_rabbit",
@@ -69,7 +243,10 @@
       "baseLook": { "color": "#EFE7DC", "shape": "circle" },
       "colors": { "sick": "#A8A29A", "idle": "#EFE7DC", "recovered": "#FFF7EE" },
       "traits": ["安静", "胆小"],
-      "message": "它很安静，只在你叫它名字的时候轻轻动一下耳朵。"
+      "message": "它很安静，只在你叫它名字的时候轻轻动一下耳朵。",
+      "hunger": 66,
+      "cleanliness": 80,
+      "mood": 55
     },
     {
       "petId": "pet_budgie",
@@ -79,7 +256,10 @@
       "baseLook": { "color": "#7FB7C9", "shape": "circle" },
       "colors": { "sick": "#A8A29A", "idle": "#7FB7C9", "recovered": "#B3DCE8" },
       "traits": ["好奇", "爱叫"],
-      "message": "它会把学会的第一句“你好”留给你。"
+      "message": "它会把学会的第一句“你好”留给你。",
+      "hunger": 62,
+      "cleanliness": 68,
+      "mood": 70
     }
   ]
 }

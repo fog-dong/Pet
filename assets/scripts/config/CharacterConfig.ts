@@ -21,6 +21,13 @@ export interface PetConfigItem {
   traits?: string[];
   /** 领养寄语；缺省时按 petId 稳定选一句占位文案。 */
   message?: string;
+  /**
+   * G2 新增的三项属性初始值，与 10 §3.4 `pets` 集合同名字段一一对应。
+   * 这里是品种默认，不是个体的当前值——个体值只活在本地产存档（偏差 D19）。
+   */
+  hunger?: number;
+  cleanliness?: number;
+  mood?: number;
 }
 
 export interface DoctorConfigItem {

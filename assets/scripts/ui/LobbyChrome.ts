@@ -14,15 +14,20 @@ const PILL_GAP = 14;
 const MENU_W = 200;
 const MENU_GAP = 20;
 const MENU_H = 78;
+/** 小屋是长线回访入口，用雾蓝和其余次级入口分开，但不去抢主按钮的陶土色。 */
+const MENU_TINT: Record<string, Color> = { HabitatButton: COLORS.mist };
 
-/** 次级入口：首行三枚（医院 / 图鉴 / 排行榜），次行两枚（隐私 / 关于）；顺序即数组顺序。 */
+/** 次级入口：每行三枚，首行 C 位给宠物小屋（长线回访），次行排行榜/隐私/关于。 */
 export const LOBBY_MENU: ReadonlyArray<readonly [string, string]> = [
   ['HospitalButton', '医院'],
+  ['HabitatButton', '宠物小屋'],
   ['CodexButton', '图鉴'],
   ['LeaderboardButton', '排行榜'],
   ['PrivacyButton', '隐私与协议'],
   ['AboutButton', '关于'],
 ];
+
+const MENU_COLUMNS = 3;
 
 export interface HudHandle {
   set(coins: number, hearts: number): void;
@@ -54,20 +59,19 @@ function addResourcePill(parent: Node, name: string, color: Color, left: number)
 }
 
 export function buildLobbyMenu(parent: Node, onMenuClick: (name: string) => void): void {
-  // 首行三枚（医院 / 图鉴 / 排行榜），次行两枚（隐私 / 关于），两行共用同一套列心。
-  const topCount = LOBBY_MENU.length - 2;
+  // 每行三枚，行数随条目数自动增加，加一个入口不必再改布局代码。
   const nodes: Node[] = [];
   LOBBY_MENU.forEach(([name, text], index) => {
-    const inTop = index < topCount;
-    const slot = inTop ? index : index - topCount;
-    const columns = inTop ? topCount : 2;
+    const row = Math.floor(index / MENU_COLUMNS);
+    const slot = index % MENU_COLUMNS;
+    const columns = Math.min(MENU_COLUMNS, LOBBY_MENU.length - row * MENU_COLUMNS);
     const x = (slot - (columns - 1) / 2) * (MENU_W + MENU_GAP);
     const button = addUIButton(parent, name, text, () => onMenuClick(name), {
-      y: lobbyMenuRow(inTop ? 0 : 1),
+      y: lobbyMenuRow(row),
       x,
       width: MENU_W,
       height: MENU_H,
-      color: COLORS.sage,
+      color: MENU_TINT[name] ?? COLORS.sage,
       fontSize: 26,
     });
     nodes.push(button.node);

@@ -1,4 +1,6 @@
-// STATUS: implemented, W3 本地存档编解码（纯函数，无副作用）
+// STATUS: implemented, W3 本地存档编解码（纯函数，无副作用）；W20-2 增小屋条目，编解码拆到 HabitatCodec
+import { decodeHabitat, HabitatPet } from './HabitatCodec';
+
 export interface SaveData {
   coins: number;
   hearts: number;
@@ -6,6 +8,8 @@ export interface SaveData {
   petsAdopted: string[];
   /** 领养日期 yyyy-M-d，图鉴展示用。 */
   adoptedAt: Record<string, string>;
+  /** 已领养宠物的三项属性，只写本地（10 §3.4 偏差 D19）。 */
+  habitat: HabitatPet[];
   bestStars: Record<string, number>;
   casesDone: number;
   items: Record<string, number>;
@@ -32,6 +36,7 @@ export function emptySave(): SaveData {
     petsSeen: [],
     petsAdopted: [],
     adoptedAt: {},
+    habitat: [],
     bestStars: {},
     casesDone: 0,
     items: { ...DEFAULT_ITEMS },
@@ -97,6 +102,7 @@ export function decodeSave(raw: string | null): SaveData {
       petsSeen: toStringArray(parsed.petsSeen),
       petsAdopted: toStringArray(parsed.petsAdopted),
       adoptedAt: toStringMap(parsed.adoptedAt),
+      habitat: decodeHabitat(parsed.habitat),
       bestStars: toNumberMap(parsed.bestStars),
       casesDone: toNumber(parsed.casesDone, 0),
       items: parsed.items ? toNumberMap(parsed.items) : { ...DEFAULT_ITEMS },

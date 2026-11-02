@@ -16,7 +16,7 @@ export const COPY = {
   weakNetwork: '📡 信号有点弱，这局记录已经存好啦，稍后会自动同步~',
   pendingSync: '还有 {n} 份病历在路上，马上就到~',
   adUnavailable: '广告小助手暂时不在，先走免费的方式吧~',
-  habitatResting: '宠物们还在休息，晚点再来看看吧~',
+  habitatResting: '毛孩子们还在休息，晚点再来看看吧',
   habitatClaimed: '成功领取 {hours} 小时离线收益，获得 {coins} 金币',
   habitatClaimOffline: '云端还没接通，离线收益稍后再领~',
   habitatClaimFailed: '网络不太稳，离线收益没领到，待会儿再试一次~',

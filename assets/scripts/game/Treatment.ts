@@ -22,6 +22,7 @@ export class Treatment extends Component {
   private selectedMedicines: string[] = [];
   private selectedBed = '';
   private selectedTime = '';
+  private submitting = false;
   private readonly panel = new ChoicePanel();
   private readonly fallback = new TreatmentFallback(
     {
@@ -109,7 +110,7 @@ export class Treatment extends Component {
 
   private confirm(): void {
     const item = this.item;
-    if (!item) {
+    if (!item || this.submitting) {
       return;
     }
     if (this.selectedMedicines.length === 0 || !this.selectedBed || !this.selectedTime) {
@@ -120,6 +121,8 @@ export class Treatment extends Component {
       this.fallback.bedShortage();
       return;
     }
+    // goState 是异步翻页，旧页在下一帧才销毁，这期间连点会二次扣库存，故整段事务加锁。
+    this.submitting = true;
     // 多选药品按事务扣库存：任何一味不足就全部退回，避免半扣。
     const used: string[] = [];
     for (const name of this.selectedMedicines) {
@@ -127,6 +130,7 @@ export class Treatment extends Component {
         for (const done of used) {
           Hospital.addMedicine(done, 1);
         }
+        this.submitting = false;
         this.fallback.medicineShortage(name, false);
         return;
       }
@@ -136,6 +140,7 @@ export class Treatment extends Component {
       for (const done of used) {
         Hospital.addMedicine(done, 1);
       }
+      this.submitting = false;
       this.fallback.bedShortage();
       return;
     }
@@ -164,6 +169,7 @@ export class Treatment extends Component {
     if (this.selectedBed === '住院') {
       Hospital.freeBed();
     }
+    this.submitting = false;
     this.selectedMedicines = [];
     this.render();
     this.fallback.failure(score, item.treatment.correct.medicine, threshold);

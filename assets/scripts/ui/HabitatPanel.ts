@@ -3,24 +3,18 @@ import { BlockInputEvents, Color, Mask, Node, ScrollView, UITransform } from 'cc
 import { HabitatPet } from '../cache/HabitatCodec';
 import { Save } from '../cache/Save';
 import { habitatList, runHabitatAction } from '../game/HabitatModel';
-import { claimOfflineEarnings } from '../game/HabitatClaim';
 import { addLabel, addRect, createNode, PALETTE } from './SceneUI';
 import { addCard, addDivider } from './PanelKit';
-import { fitRow, fitWidth, screenHeight, screenWidth } from './ScreenMetrics';
+import { fitWidth, screenHeight, screenWidth } from './ScreenMetrics';
 import { applyStats, buildHabitatRow, HABITAT_CARD_H, HabitatRow } from './HabitatRows';
 import { closeHabitatMenu, openHabitatMenu } from './HabitatMenu';
-import { floatText } from './FloatText';
+import { buildHabitatFooter } from './HabitatFooter';
 import { showToast } from './Toast';
-import { COLORS } from './Tokens';
-import { addUIButton } from './UIButton';
 
 const PANEL_H = 780;
 /** 视口高度刻意留到 500：底部要空出 35px 给滚动提示，别让最后一张卡压着文字。 */
 const VIEW_H = 500;
 const EMPTY_TEXT = '小屋空荡荡的，快去救助一只吧';
-const CLAIM_LABEL = '离线收益 · 待领取';
-/** 飘字落在按钮上方，视线从按钮移到数字只需一小跳。 */
-const CLAIM_FLOAT_Y = -290;
 
 let overlay: Node | null = null;
 
@@ -54,50 +48,8 @@ export function openHabitatPanel(parent: Node, onResourcesChanged?: () => void):
       addLabel(panel, 'HabitatScrollHint', '上下拖动可以翻看全部宠物', -285, { size: 20, color: PALETTE.sub });
     }
   }
-  buildFooter(panel, width, parent, onResourcesChanged);
-}
-
-/**
- * 底部两枚按钮：离线收益只由服务端事务计时结算（G4 红线），客户端只发领取请求并照抄返回数额；
- * 右侧留关闭，主次同排不抢列表的视觉重心。
- */
-function buildFooter(panel: Node, panelWidth: number, toastHost: Node, onResourcesChanged?: () => void): void {
-  const row = fitRow(2, -(panelWidth / 2 - 40), panelWidth / 2 - 40, 24);
-  addUIButton(panel, 'HabitatClaim', CLAIM_LABEL, () => {
-    void claimReward(panel, toastHost, onResourcesChanged);
-  }, {
-    y: -340,
-    x: row.x0,
-    width: row.width,
-    height: 76,
-    color: COLORS.gold,
-    fontSize: 26,
-  });
-  addUIButton(panel, 'HabitatClose', '关 闭', () => closeHabitatPanel(), {
-    y: -340,
-    x: row.x0 + row.step,
-    width: row.width,
-    height: 76,
-    color: COLORS.sage,
-    fontSize: 28,
-  });
-}
-
-/** 领取结果一律给反馈：成功飘金币 + Toast，频控/断网只给 Toast，连点第二个请求静默吞掉。 */
-async function claimReward(panel: Node, toastHost: Node, onResourcesChanged?: () => void): Promise<void> {
-  const outcome = await claimOfflineEarnings();
-  if (outcome.kind === 'busy') {
-    return;
-  }
-  if (outcome.kind === 'granted') {
-    if (panel.isValid) {
-      floatText(panel, `+${outcome.coins} 金币`, 0, CLAIM_FLOAT_Y);
-    }
-    if (onResourcesChanged) {
-      onResourcesChanged();
-    }
-  }
-  showToast(toastHost, outcome.text);
+  // 底部两枚按钮（领取回执 + 关闭）在 HabitatFooter 里，本文件只管列表与遮罩。
+  buildHabitatFooter(panel, width, parent, closeHabitatPanel, onResourcesChanged);
 }
 
 function buildList(

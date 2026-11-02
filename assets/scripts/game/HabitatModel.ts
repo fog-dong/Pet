@@ -56,6 +56,21 @@ export type HabitatOutcome =
   | { kind: 'done'; entry: HabitatPet; rule: HabitatRule }
   | { kind: 'blocked'; text: string };
 
+/** 只读余额不扣费：互动菜单据此提前置灰，玩家不必点了才知道买不起（方案 §2.4）。 */
+export function affordShortfall(rule: HabitatRule): string | null {
+  if (rule.costCoins > 0 && Save.coins < rule.costCoins) {
+    return shortfallText('金币', rule.costCoins);
+  }
+  if (rule.costHearts > 0 && Save.hearts < rule.costHearts) {
+    return shortfallText('爱心', rule.costHearts);
+  }
+  return null;
+}
+
+function shortfallText(kind: '金币' | '爱心', need: number): string {
+  return `${kind}不足（需 ${need}）`;
+}
+
 /** 一次互动：先验状态与消耗，通过后改属性并立刻落盘（偏差 D19：只写本地）。 */
 export function runHabitatAction(petId: string, action: HabitatAction): HabitatOutcome {
   const rule = HABITAT_RULES[action];
@@ -72,11 +87,15 @@ export function runHabitatAction(petId: string, action: HabitatAction): HabitatO
       return { kind: 'blocked', text: `刚摸过啦，${Math.ceil(remain / 1000)} 秒后再来` };
     }
   }
+  const shortfall = affordShortfall(rule);
+  if (shortfall) {
+    return { kind: 'blocked', text: shortfall };
+  }
   if (rule.costCoins > 0 && !Save.spendCoins(rule.costCoins)) {
-    return { kind: 'blocked', text: '金币不足' };
+    return { kind: 'blocked', text: shortfallText('金币', rule.costCoins) };
   }
   if (rule.costHearts > 0 && !Save.spendHearts(rule.costHearts)) {
-    return { kind: 'blocked', text: '爱心不足' };
+    return { kind: 'blocked', text: shortfallText('爱心', rule.costHearts) };
   }
   Save.mutate((data) => {
     const target = data.habitat.find((item) => item.petId === petId);

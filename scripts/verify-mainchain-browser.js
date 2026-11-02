@@ -5,13 +5,17 @@
 // 全程收集 console 错误与未捕获异常。
 // 前置：本地起 web-mobile 构建静态服务 + headless Chrome 开 CDP 端口。
 // 用法：node scripts/verify-mainchain-browser.js <CDP端口> <host:端口> [截图目录] [xray|auscultation|lab]
+//       CASE=大福 前缀可锁定病例，用于定点复跑某条诊断组合。
+// 注意站点必须写 127.0.0.1：serve-web.js 只 bind 127.0.0.1，而 Windows 上 localhost 可能先解析到 ::1，
+// 表现为页面一直停在 Boot 场景、大厅起不来。
 
 const fs = require('fs');
 const path = require('path');
 
 const CDP_PORT = Number(process.argv[2] || 9448);
-const SITE = process.argv[3] || 'localhost:8095';
+const SITE = process.argv[3] || '127.0.0.1:8095';
 const SHOT_DIR = process.argv[4] || 'build';
+fs.mkdirSync(SHOT_DIR, { recursive: true });
 const VARIANT = ['auscultation', 'lab'].includes(process.argv[5]) ? process.argv[5] : 'xray';
 const TAG = String(Date.now());
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -28,6 +32,8 @@ const CASE_NAMES = (() => {
     multi: arr.filter((c) => kinds(c)[0] === VARIANT && kinds(c).length > 1).map((c) => c.petName),
   };
 })();
+// CASE=大福 锁定单个病例：新档的初始病例是固定的，不锁就反复跑同一条分支、覆盖不到别的组合。
+const ONLY = process.env.CASE || '';
 
 const results = [];
 function judge(id, title, pass, detail) {
@@ -252,7 +258,8 @@ function connect(url) {
   const openTargetCase = async () => {
     await click('StartButton');
     if (!(await waitFor('AcceptButton'))) throw new Error('no CaseIntro');
-    for (const names of [CASE_NAMES.multi, CASE_NAMES.variant]) {
+    const plans = ONLY ? [[ONLY]] : [CASE_NAMES.multi, CASE_NAMES.variant];
+    for (const names of plans) {
       if (!names.length) continue;
       for (let i = 0; i < 30; i += 1) {
         const name = await label('PetName');
@@ -261,6 +268,9 @@ function connect(url) {
         await sleep(450);
         await waitFor('AcceptButton', 3000);
       }
+    }
+    if (ONLY) {
+      throw new Error(`CASE=${ONLY} 没换到（当前 ${await label('PetName')}）`);
     }
   };
 

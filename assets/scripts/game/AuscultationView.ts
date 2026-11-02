@@ -36,8 +36,9 @@ export class AuscultationView {
     const board = addRect(parent, 'AuscultationBoard', 0, BOARD_W, BOARD_H, new Color(250, 246, 239, 255));
     // 贴图铺在棋盘上，热区浮在它上面；贴图缺失时 PetVisual 自己显示占位块。
     PetVisual.mount(board, BODY_SIZE).apply(petId);
-    layout.abnormal.forEach((def) => this.spots.push(this.build(board, def, true, onTap)));
+    // 先建干扰点、后建病灶：同层里后创建的节点在上，保证病灶中心永远不会被干扰点盖住点不到。
     layout.distractors.forEach((def) => this.spots.push(this.build(board, def, false, onTap)));
+    layout.abnormal.forEach((def) => this.spots.push(this.build(board, def, true, onTap)));
     this.progress = addLabel(board, 'Progress', '', -BOARD_H / 2 + 30, {
       size: 22,
       color: PALETTE.sub,

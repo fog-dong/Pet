@@ -11,6 +11,7 @@ const CDP_PORT = Number(process.argv[2] || 9448);
 const PORT = Number(process.argv[3] || 8095);
 const OUT = process.argv[4] || 'w204';
 const SHOT_DIR = process.env.SHOT_DIR || 'build';
+fs.mkdirSync(SHOT_DIR, { recursive: true });
 const W = 720;
 const H = 1280;
 const SITE = `http://127.0.0.1:${PORT}`;

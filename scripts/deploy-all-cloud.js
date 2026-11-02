@@ -2,7 +2,7 @@
 // STATUS: implemented, W21-7 cloudbase-cli（tcb）一键部署
 // 用途：把 cloudfunctions/ 下 13 个函数按依赖顺序部署到指定云环境，与 scripts/deploy-cloud.js 共用 cloud-manifest.js 的顺序与自检。
 // 默认 dry-run 只打印命令。部署属人工操作：Agent 不得代跑 --apply。
-// 前置：npm i -g @cloudbase/cli && tcb login（登录态与账号绑定，脚本不碰任何密钥）。
+// 前置：npm i -g @cloudbase/cli && tcb login（只有 --apply 需要；预演不需要 CLI 在场）。脚本不碰任何密钥。
 // 注意：--apply 会先用 `tcb env use <环境ID>` 把 CLI 的全局默认环境切到你填的环境，再逐个 fn deploy（本 CLI 的 fn deploy 没有 -e 参数）。
 // 用法：
 //   node scripts/deploy-all-cloud.js --detect                     # 只列出当前账号可见的云环境 ID
@@ -42,6 +42,12 @@ function detectEnvs(tcb) {
   process.exit(printEnvIds(tcb, run));
 }
 
+/** dry-run 只打印命令，CLI 不在场也能预演；--apply 没有 CLI 必须硬失败。 */
+function cliInfo(tcb, probe) {
+  if (probe.status === 0) return String(probe.stdout || '').trim().split('\n')[0];
+  return `找不到 cloudbase-cli（${tcb}）：npm i -g @cloudbase/cli && tcb login，或用 --tcb 指定可执行文件。`;
+}
+
 function preflight() {
   process.stdout.write([
     `【集合前置】以下 ${COLLECTIONS.length} 个集合必须已在控制台建好且权限为「所有用户不可读写」，缺一个就会在事务里报错：`,
@@ -63,12 +69,9 @@ function main() {
   }
 
   const probe = run(opt.tcb, ['--version']);
-  if (probe.status !== 0) {
-    process.stdout.write(`找不到 cloudbase-cli（${opt.tcb}）。装法：npm i -g @cloudbase/cli，然后 tcb login；或用 --tcb 指定可执行文件。\n`);
-    process.exit(2);
-  }
+  if (probe.status !== 0 && opt.apply) { process.stdout.write(`${cliInfo(opt.tcb, probe)}\n`); process.exit(2); }
 
-  process.stdout.write(`云环境：${opt.env}\nCLI：${opt.tcb} ${String(probe.stdout || '').trim().split('\n')[0]}\n函数：${names.length} 个（依赖顺序）\n依赖：${opt.remoteDeps ? '云端安装（--install-dependency true）' : '本地 npm install --omit=dev'}\n\n`);
+  process.stdout.write(`云环境：${opt.env}\nCLI：${opt.tcb} ${probe.status === 0 ? String(probe.stdout || '').trim().split('\n')[0] : '（未检测到，以下仅预演命令）'}\n函数：${names.length} 个（依赖顺序）\n依赖：${opt.remoteDeps ? '云端安装（--install-dependency true）' : '本地 npm install --omit=dev'}\n\n`);
   preflight();
 
   // 本 CLI 的 `fn deploy` 没有 -e/--env-id 参数，环境由全局默认（tcb env use）或 cloudbaserc.json 决定。

@@ -3,7 +3,7 @@ import { _decorator, Color, Component, Label, Node, Sprite, SpriteFrame, Tween, 
 import { artName, loadPetFrame } from './PetAssetManager';
 import { PetBehavior } from './PetBehavior';
 import type { PetState } from './CharacterLook';
-import { buildPlaceholder, buildShadow } from './PetVisualChrome';
+import { buildPlaceholder, buildShadow, petPlaceholderLook, PlaceholderLook } from './PetVisualChrome';
 
 const { ccclass } = _decorator;
 
@@ -19,6 +19,7 @@ export class PetVisual extends Component {
   private art: Sprite | null = null;
   private placeholder: Node | null = null;
   private placeholderLabel: Label | null = null;
+  private repaintPlaceholder: ((look: PlaceholderLook) => void) | null = null;
   private behavior: PetBehavior | null = null;
   private tint: Color = CLEAN_TINT;
   private token = 0;
@@ -44,6 +45,10 @@ export class PetVisual extends Component {
     this.petId = petId;
     if (this.placeholderLabel) {
       this.placeholderLabel.string = '加载中…';
+    }
+    // 占位色按品种走：贴图缺失时玩家看到的也是「这一只的颜色」，而不是统一灰块。
+    if (this.repaintPlaceholder) {
+      this.repaintPlaceholder(petPlaceholderLook(petId));
     }
     void loadPetFrame(petId).then((frame) => {
       if (token !== this.token || !this.isValid) {
@@ -100,6 +105,7 @@ export class PetVisual extends Component {
     const placeholder = buildPlaceholder(content, size * ART_RATIO);
     this.placeholder = placeholder.node;
     this.placeholderLabel = placeholder.label;
+    this.repaintPlaceholder = placeholder.repaint;
   }
 
   /** 行为帧与静态立绘共用这条显示路径：占位一次销毁，之后只换 spriteFrame。 */
@@ -108,6 +114,7 @@ export class PetVisual extends Component {
       this.placeholder.destroy();
       this.placeholder = null;
       this.placeholderLabel = null;
+      this.repaintPlaceholder = null;
     }
     if (this.art) {
       this.art.spriteFrame = frame;

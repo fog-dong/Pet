@@ -21,6 +21,17 @@ export interface AudioDef {
   /** 低画质档位下是否仍然播放：与玩法反馈直接相关的算必要音效。 */
   essential: boolean;
   volume: number;
+  /**
+   * 素材还没上传时的合成兜底音（分包 → 云存储 → 兜底 三级顺序）。
+   * 只给互动反馈这类「必须有声」的短音配，真实音频到位后这一级自动不再触发。
+   */
+  fallback?: FallbackTone;
+}
+
+/** 兜底提示音参数：freq 正弦频率（Hz），ms 时长。 */
+export interface FallbackTone {
+  freq: number;
+  ms: number;
 }
 
 export const AUDIO_TABLE: Record<AudioCue, AudioDef> = {
@@ -30,10 +41,10 @@ export const AUDIO_TABLE: Record<AudioCue, AudioDef> = {
   birdCry: { cloudKey: 'sfx_bird_cry', bundlePath: '', essential: true, volume: 0.5 },
   treatOk: { cloudKey: 'sfx_treat_success', bundlePath: '', essential: true, volume: 0.7 },
   recoverTick: { cloudKey: 'sfx_recover_tick', bundlePath: 'audio/ui/recoverTick', essential: false, volume: 0.35 },
-  // W20-2 小屋三条互动音：素材未上传，Sfx 解析不到源就静默通过，等云存储清单补 key 即可出声。
-  feed: { cloudKey: 'sfx_feed', bundlePath: '', essential: false, volume: 0.5 },
-  bath: { cloudKey: 'sfx_bath', bundlePath: '', essential: false, volume: 0.5 },
-  pet: { cloudKey: 'sfx_pet', bundlePath: '', essential: false, volume: 0.45 },
+  // W20-2 小屋三条互动音：素材未上传时先播合成「哔」，三条各给一个音高，闭眼也能分辨做了什么。
+  feed: { cloudKey: 'sfx_feed', bundlePath: '', essential: false, volume: 0.5, fallback: { freq: 660, ms: 110 } },
+  bath: { cloudKey: 'sfx_bath', bundlePath: '', essential: false, volume: 0.5, fallback: { freq: 520, ms: 140 } },
+  pet: { cloudKey: 'sfx_pet', bundlePath: '', essential: false, volume: 0.45, fallback: { freq: 780, ms: 90 } },
 };
 
 const SPECIES_CUE: Record<PetSpecies, AudioCue> = {

@@ -71,6 +71,36 @@ interface WxShareOptions {
   query?: string;
 }
 
+/** 小游戏 WebAudio（wx.createWebAudioContext，基础库 2.19.0+）最小声明：只用于合成兜底提示音。 */
+interface WxAudioParam {
+  value: number;
+  setValueAtTime(value: number, time: number): void;
+  exponentialRampToValueAtTime(value: number, time: number): void;
+}
+
+interface WxAudioNode {
+  connect(target: WxAudioNode): void;
+}
+
+interface WxOscillatorNode extends WxAudioNode {
+  type: string;
+  frequency: WxAudioParam;
+  start(time: number): void;
+  stop(time: number): void;
+}
+
+interface WxGainNode extends WxAudioNode {
+  gain: WxAudioParam;
+}
+
+interface WxWebAudioContext {
+  readonly currentTime: number;
+  readonly destination: WxAudioNode;
+  createOscillator(): WxOscillatorNode;
+  createGain(): WxGainNode;
+  resume?(): void;
+}
+
 interface WxRewardedVideoAdCloseResult {
   isEnded?: boolean;
 }
@@ -116,6 +146,7 @@ interface WxApi {
   env?: { USER_DATA_PATH: string };
   createImage?(): WxImageElement;
   createInnerAudioContext?(): WxInnerAudioContext;
+  createWebAudioContext?(): WxWebAudioContext;
   getFileSystemManager?(): WxFileSystemManager;
   shareAppMessage(options: WxShareOptions): void;
   createRewardedVideoAd?(options: { adUnitId: string }): WxRewardedVideoAd;

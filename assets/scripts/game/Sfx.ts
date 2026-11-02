@@ -1,15 +1,20 @@
-// STATUS: implemented, W17-3 音效统一播放入口（art 分包 AudioClip → 云存储下载文件 → 静音；低画质关非必要音效）
-// 业务侧只允许调用 Sfx.play(cue)；路径与云存储 key 一律来自 config/AudioConfig.ts。
+// STATUS: implemented, W17-3 音效统一播放入口（art 分包 AudioClip → 云存储下载文件 → 合成兜底音 → 静音；低画质关非必要音效）
+// 业务侧只允许调用 Sfx.play(cue)；路径、云存储 key 与兜底音参数一律来自 config/AudioConfig.ts。
 import { AudioClip, assetManager, AssetManager, AudioSource, director, Node } from 'cc';
-import { AudioCue, AUDIO_TABLE } from '../config/AudioConfig';
+import { AudioCue, AUDIO_TABLE, FallbackTone } from '../config/AudioConfig';
 import { ART_BUNDLE } from '../config/BundleConfig';
 import { Quality } from '../config/Quality';
 import { CloudResManager } from '../net/CloudResManager';
 import { playCloudAudio } from '../net/AudioFile';
+import { playFallbackTone } from '../net/AudioSynth';
 import { Track } from '../track/Track';
 import { warmArtBundle } from './ArtBundle';
 
-type Source = { kind: 'clip'; clip: AudioClip } | { kind: 'file'; path: string } | { kind: 'none' };
+type Source =
+  | { kind: 'clip'; clip: AudioClip }
+  | { kind: 'file'; path: string }
+  | { kind: 'beep'; tone: FallbackTone }
+  | { kind: 'none' };
 
 const sources = new Map<AudioCue, Source>();
 const resolving = new Set<AudioCue>();
@@ -69,6 +74,11 @@ async function resolveSource(cue: AudioCue): Promise<Source> {
   if (path) {
     return { kind: 'file', path };
   }
+  // 素材还没上传的互动音先播合成「哔」，保证点击有反馈；真实音频到位后这一级自动让位。
+  if (def.fallback) {
+    Track.track('sfx_fallback', { cue });
+    return { kind: 'beep', tone: def.fallback };
+  }
   Track.track('sfx_unavailable', { cue });
   return { kind: 'none' };
 }
@@ -80,6 +90,10 @@ function emit(source: Source, volume: number): void {
   }
   if (source.kind === 'file') {
     playCloudAudio(source.path, volume);
+    return;
+  }
+  if (source.kind === 'beep') {
+    playFallbackTone(source.tone, volume);
   }
 }
 

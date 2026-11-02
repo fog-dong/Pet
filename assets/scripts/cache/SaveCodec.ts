@@ -10,6 +10,11 @@ export interface SaveData {
   adoptedAt: Record<string, string>;
   /** 已领养宠物的三项属性，只写本地（10 §3.4 偏差 D19）。 */
   habitat: HabitatPet[];
+  /**
+   * 上次领取离线收益的本地时间戳，只作为 `claimHabitat` 的 `lastClaimTime` 入参；
+   * 真正的起算点在服务端 `habitat_state.lastClaimAt`，这里算错也不会多铸币。
+   */
+  habitatLastClaimAt: number;
   bestStars: Record<string, number>;
   casesDone: number;
   items: Record<string, number>;
@@ -37,6 +42,7 @@ export function emptySave(): SaveData {
     petsAdopted: [],
     adoptedAt: {},
     habitat: [],
+    habitatLastClaimAt: 0,
     bestStars: {},
     casesDone: 0,
     items: { ...DEFAULT_ITEMS },
@@ -103,6 +109,7 @@ export function decodeSave(raw: string | null): SaveData {
       petsAdopted: toStringArray(parsed.petsAdopted),
       adoptedAt: toStringMap(parsed.adoptedAt),
       habitat: decodeHabitat(parsed.habitat),
+      habitatLastClaimAt: Math.max(0, toNumber(parsed.habitatLastClaimAt, 0)),
       bestStars: toNumberMap(parsed.bestStars),
       casesDone: toNumber(parsed.casesDone, 0),
       items: parsed.items ? toNumberMap(parsed.items) : { ...DEFAULT_ITEMS },

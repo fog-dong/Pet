@@ -10,7 +10,7 @@ import { Profile } from '../net/Profile';
 import { WxPrivacy } from '../net/Privacy';
 import { PrivacyState } from '../cache/PrivacyState';
 import { Quality } from '../config/Quality';
-import { CLIENT_CHANNEL, CLIENT_VERSION, CLOUD_ENV } from '../config/EnvConfig';
+import { CLIENT_CHANNEL, CLIENT_VERSION, resolveCloudEnv } from '../config/EnvConfig';
 import { LEGAL_VERSION } from '../config/LegalConfig';
 import { Track } from '../track/Track';
 
@@ -47,7 +47,7 @@ export interface CloudSyncStart {
 }
 
 export function startCloudSync(): CloudSyncStart {
-  if (Net.init(CLOUD_ENV)) {
+  if (Net.init(resolveCloudEnv())) {
     return { ready: true, done: syncCloud() };
   }
   Track.track('boot_cloud_offline_fallback');

@@ -7,6 +7,7 @@ const fs = require('fs');
 const path = require('path');
 const { decodePng, encodePng } = require('./png-codec');
 const { keyOut, trim } = require('./pet-art-image');
+const { defringe } = require('./pet-art-defringe');
 const { toCanvas } = require('./pet-art-resize');
 
 const PET_DIR = path.join(__dirname, '..', 'assets', 'bundles', 'art', 'pets');
@@ -99,7 +100,8 @@ if (!name) {
       '（pet_xxx、xxx_shorthair 这类长写法会自动归一到规范名）',
   );
 }
-const img = keyOut(decodePng(src));
+const keyed = keyOut(decodePng(src));
+const { img, fixed } = defringe(keyed);
 const box = trim(img);
 const png = encodePng(width, height, toCanvas(img, box, width, height));
 fs.mkdirSync(outDir, { recursive: true });
@@ -107,5 +109,5 @@ const target = path.join(outDir, `${name}.png`);
 fs.writeFileSync(target, png);
 const alias = name === rawName ? '' : `  （${rawName} → ${name}）`;
 process.stdout.write(
-  `${name}.png  ${box.w}x${box.h} → ${width}x${height}  ${(png.length / 1024).toFixed(1)} KB${alias}\n`,
+  `${name}.png  ${box.w}x${box.h} → ${width}x${height}  ${(png.length / 1024).toFixed(1)} KB  去污染 ${fixed}px${alias}\n`,
 );

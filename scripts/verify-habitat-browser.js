@@ -13,7 +13,7 @@ const OUT = process.argv[4] || 'w204';
 const SHOT_DIR = process.env.SHOT_DIR || 'build';
 const W = 720;
 const H = 1280;
-const SITE = `http://localhost:${PORT}`;
+const SITE = `http://127.0.0.1:${PORT}`;
 const DAY = 86400000;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -240,7 +240,7 @@ function seedSave(overrides) {
     await sleep(700);
   };
 
-  // === 1. 小屋互动：扣费 / 免费路径 / 冷却 / 满值 / 音效兜底 / 缺图占位 ===
+  // === 1. 小屋互动：扣费 / 免费路径 / 冷却 / 满值 / 音效兜底 / 贴图覆盖 ===
   console.log('\n=== 1. 小屋互动（coins 1200 / hearts 8）===');
   await boot(true, {});
   judge(
@@ -271,14 +271,15 @@ function seedSave(overrides) {
     ),
   );
   await shot('w204-1-list');
-  const withArt = cards.filter((c) => !c.placeholder).map((c) => c.petId);
+  const withArt = cards.filter((c) => !c.placeholder && c.art !== '-').map((c) => c.petId);
   const missing = cards.filter((c) => c.placeholder);
-  const hues = new Set(missing.map((c) => c.phColor));
+  // 20 只立绘入库后，本组存档里的卡片全部拿到真贴图，「缺图 → 品种占位色」分支不再被数据触发；
+  // 兜底代码仍在 PetVisual.ts:105，若要复验需用未配贴图的品种造数据。
   judge(
     'L20',
-    '缺图走品种占位色、有图走真贴图',
-    withArt.length >= 2 && missing.length >= 3 && hues.size >= 3,
-    `真图=${withArt.join('/')} 占位=${missing.length} 只 ${hues.size} 色`,
+    `小屋 ${cards.length} 张卡片全部走真贴图（缺图占位分支未被触发）`,
+    cards.length >= 2 && missing.length === 0 && withArt.length === cards.length,
+    `真图=${withArt.join('/')} 帧名=${cards.map((c) => c.art).join('/')} 占位=${missing.length} 只`,
   );
 
   await tap('HabitatCard_pet_husky');

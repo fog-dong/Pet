@@ -1,10 +1,10 @@
 // STATUS: implemented, W19 模块三回归 + W20-4 模块三 主链路冒烟（CDP 驱动 web-mobile 构建）
 'use strict';
-// 覆盖：大厅入口 → 接诊（sick 静态姿态）→ 诊断（拍片拖拽 / 听诊轻点 / 化验连线，按 VARIANT 选定）→
+// 覆盖：大厅入口 → 接诊（sick 静态姿态）→ 诊断（拍片拖拽 / 听诊轻点 / 化验连线，多段病例逐段驱动）→
 // 治疗多选/住院/加速 → 康复（摇尾 + 里程碑 tick + happy 跳）→ 领养寄语 → 返回大厅 → 图鉴；
 // 全程收集 console 错误与未捕获异常。
 // 前置：本地起 web-mobile 构建静态服务 + headless Chrome 开 CDP 端口。
-// 用法：node scripts/verify-mainchain-browser.js <CDP端口> <站点地址> [截图目录] [xray|auscultation|lab]
+// 用法：node scripts/verify-mainchain-browser.js <CDP端口> <host:端口> [截图目录] [xray|auscultation|lab]
 
 const fs = require('fs');
 const path = require('path');
@@ -20,7 +20,13 @@ const CASE_NAMES = (() => {
   const raw = fs.readFileSync(path.join(__dirname, '../assets/bundles/cases/config/cases.json'), 'utf8');
   const list = JSON.parse(raw);
   const arr = Array.isArray(list) ? list : list.cases;
-  return arr.filter((c) => (c.diagnosisTypes || [c.diagnosisType])[0] === VARIANT).map((c) => c.petName);
+  const kinds = (c) => c.diagnosisTypes || [c.diagnosisType];
+  return {
+    // 首段为当前变体的病例（换例是随机的，命中即停）。
+    variant: arr.filter((c) => kinds(c)[0] === VARIANT).map((c) => c.petName),
+    // 其中多段诊断的病例优先：单段跑不到「诊断 2/2 推进」这条分支。
+    multi: arr.filter((c) => kinds(c)[0] === VARIANT && kinds(c).length > 1).map((c) => c.petName),
+  };
 })();
 
 const results = [];
@@ -242,16 +248,19 @@ function connect(url) {
     }
     return p;
   };
-  /** 换到含目标诊断变体的病例（默认 xray），换不到就用当前病例继续。 */
+  /** 换到目标病例：先尽量换到多段诊断的（单段跑不到「诊断 2/2 推进」分支），换不到再退回同变体病例。 */
   const openTargetCase = async () => {
     await click('StartButton');
     if (!(await waitFor('AcceptButton'))) throw new Error('no CaseIntro');
-    for (let i = 0; i < 40; i += 1) {
-      const name = await label('PetName');
-      if (name && CASE_NAMES.some((cn) => name.includes(cn))) break;
-      await click('SwapButton');
-      await sleep(450);
-      await waitFor('AcceptButton', 3000);
+    for (const names of [CASE_NAMES.multi, CASE_NAMES.variant]) {
+      if (!names.length) continue;
+      for (let i = 0; i < 30; i += 1) {
+        const name = await label('PetName');
+        if (name && names.some((cn) => name.includes(cn))) return;
+        await click('SwapButton');
+        await sleep(450);
+        await waitFor('AcceptButton', 3000);
+      }
     }
   };
 
@@ -295,15 +304,18 @@ function connect(url) {
   await click('AcceptButton');
   await sleep(1000);
 
-  // 诊断有三种变体（18 局里 xray 7 / lab 5 / auscultation 6，含多类型组合），按当前页驱动到通关。
+  // 诊断有三种变体，且 18 局里 6 局是多段组合（如 xray→听诊），按当前页逐段驱动到通关。
   // 通关瞬间当前组件会随页面销毁，页内计数读不到，所以在拖拽前把 onFinish 包一层，
-  // 把真实的 { completed, found, total, stars } 留在 window 上作为断言证据。
-  await ev('window.__diag = null, window.__lab = null, 1');
-  const armDiagnosis = (comp, key = '__diag') =>
+  // 把每一段真实的 { variant, completed, found, total, stars } 按顺序留在 window.__diags 上作为断言证据。
+  await ev('window.__diags = [], 1');
+  const armDiagnosis = (comp) =>
     ev(
       `(() => { const g = (${FINDCOMP})('${comp}'); if (!g || typeof g.onFinish !== 'function' || g.__armed) return g ? !!g.__armed : false;
       g.__armed = true; const inner = g.onFinish;
-      g.onFinish = (r) => { window['${key}'] = Object.assign({ variant: '${comp}' }, r); return inner && inner(r); };
+      g.onFinish = (r) => {
+        (window.__diags = window.__diags || []).push(Object.assign({ variant: '${comp}' }, r));
+        return inner && inner(r);
+      };
       return true; })()`,
     );
   /** 读本地存档里的药品库存（Save.mutate 每次变更都同步落盘，可直接用作扣费证据）。 */
@@ -312,12 +324,11 @@ function connect(url) {
       `(() => { const raw = localStorage.getItem('pet_save_v1'); if (!raw) return null;
       const m = JSON.parse(raw).medicines; return m ? (m[${JSON.stringify(name)}] === undefined ? 'absent' : m[${JSON.stringify(name)}]) : null; })()`,
     );
-  const readDiag = () => ev('window.__diag || null');
   const readMatched = () =>
     ev(`(() => { const lab = (${FINDCOMP})('Lab'); return lab ? lab.samples.filter((c) => c.matched).length + '/' + lab.samples.length : 'lab-page-left'; })()`);
   /** 样本→试剂逐对连线，直到全部配对或页面推进；返回最后一次配对进度。 */
-  const runLabConnect = async (key) => {
-    await armDiagnosis('Lab', key);
+  const runLabConnect = async () => {
+    await armDiagnosis('Lab');
     for (let guard = 0; guard < 10; guard += 1) {
       const next = await ev(
         `(() => { const lab = (${FINDCOMP})('Lab'); if (!lab) return { err: 'lab-page-left' };
@@ -338,13 +349,27 @@ function connect(url) {
     }
     return await readMatched();
   };
-  let diagnosis = 'none';
-  let expect = 0;
-  let hits = 0;
-  let armed = false;
-  if (await waitFor('XrayBoard', 4000)) {
-    diagnosis = 'xray';
-    armed = await armDiagnosis('Xray');
+  /** 当前诊断页上跑的是哪个小游戏板；化验只作为诊断阶段出现（DiagnosisGames.ts:26）。 */
+  const stageKind = () =>
+    ev(
+      `(() => { if ((${FIND})('XrayBoard')) return 'xray'; if ((${FIND})('AuscultationBoard')) return 'auscultation';
+      if ((${FINDCOMP})('Lab')) return 'lab'; return null; })()`,
+    );
+  const waitForStage = async (ms) => {
+    const end = Date.now() + ms;
+    for (;;) {
+      const kind = await stageKind();
+      if (kind) return kind;
+      if (Date.now() >= end) return null;
+      await sleep(200);
+    }
+  };
+  /** 本局的诊断序列：18 局里有 6 局配了两种类型，游戏按段推进（Diagnosis.ts:107）。 */
+  const diagPlan = () => ev(`(() => { const d = (${FINDCOMP})('Diagnosis'); return d ? (d.kinds || []).slice() : null; })()`);
+  const driveXray = async () => {
+    let expect = 0;
+    let hits = 0;
+    const armed = await armDiagnosis('Xray');
     for (let guard = 0; guard < 8; guard += 1) {
       const before = await xrayState();
       if (!before) {
@@ -367,9 +392,12 @@ function connect(url) {
       );
       if (!after || after.finished) break;
     }
-  } else if (await has('AuscultationBoard')) {
-    diagnosis = 'auscultation';
-    armed = await armDiagnosis('Auscultation');
+    return { variant: 'xray', expect, hits, armed };
+  };
+  const driveAuscult = async () => {
+    let expect = 0;
+    let hits = 0;
+    const armed = await armDiagnosis('Auscultation');
     for (let guard = 0; guard < 12; guard += 1) {
       const before = await auscultState();
       if (!before) {
@@ -388,59 +416,65 @@ function connect(url) {
       console.log(`  auscult#${guard} ${before.pending[0]} ${progress} 目标=(${Math.round(target.x)},${Math.round(target.y)})`);
       if (!after || after.finished) break;
     }
-  } else if (await waitComp('Lab', 4000)) {
-    // 化验也可以是本局唯一的诊断环节（5 局 lab-first），此时连线通关证据同样从 onFinish 取。
-    diagnosis = 'lab';
-    armed = true;
-    await runLabConnect('__diag');
+    return { variant: 'auscultation', expect, hits, armed };
+  };
+  const driveLab = async () => {
+    const matched = await runLabConnect();
+    return { variant: 'lab', expect: 0, hits: 0, armed: true, matched };
+  };
+
+  const stagePlan = await diagPlan();
+  const stages = [];
+  for (let s = 0; s < 3; s += 1) {
+    const kind = await waitForStage(s === 0 ? 5000 : 4000);
+    if (!kind) break;
+    const emittedBefore = await ev('window.__diags.length');
+    stages.push(
+      kind === 'xray' ? await driveXray() : kind === 'auscultation' ? await driveAuscult() : await driveLab(),
+    );
+    // 本段没回包说明没查完（超时走了兜底面板），不必再探测下一段。
+    if ((await ev('window.__diags.length')) <= emittedBefore) break;
+    await sleep(900);
   }
-  const diagResult = await readDiag();
-  if (diagResult) {
-    expect = diagResult.total;
-    hits = diagResult.found;
-  }
+  const records = await ev('window.__diags || []');
+  const driven = stages.map((s) => s.variant).join('→') || 'none';
+  const expectedStages = stagePlan ? stagePlan.length : Math.max(stages.length, 1);
+  const expect = records.length ? records.reduce((n, r) => n + (r.total || 0), 0) : stages.reduce((n, s) => n + s.expect, 0);
+  const hits = records.length ? records.reduce((n, r) => n + (r.found || 0), 0) : stages.reduce((n, s) => n + s.hits, 0);
   // 通关后当前诊断组件会被下一页替换，所以「组件已离场」与「finished=true」都是有效证据。
   const diagnosisState = await ev(
     `(() => { const g = (${FINDCOMP})('Xray') || (${FINDCOMP})('Auscultation') || (${FINDCOMP})('Lab');
       if (!g) return 'advanced'; return g.finished ? 'finished' : 'still-on-page'; })()`,
   );
-  const labReached = await waitComp('Lab', 6000);
-  const advanced = diagnosisState !== 'still-on-page' || labReached;
-  const diagnosisPassed = diagResult
-    ? diagResult.completed === true && diagResult.found === diagResult.total && advanced
-    : expect > 0 && hits === expect && advanced;
+  const advanced = diagnosisState !== 'still-on-page';
+  const stagesPassed =
+    records.length >= expectedStages && records.every((r) => r.completed === true && r.found === r.total);
   judge(
     'C03',
-    `诊断变体（本轮 ${diagnosis}）全部命中并通关`,
-    diagnosisPassed,
-    `type=${diagnosis} hits=${hits}/${expect} state=${diagnosisState} lab=${labReached} probe=${armed ? 'on' : 'off'}` +
-      (diagResult ? ` onFinish=${JSON.stringify(diagResult)}` : ' 无 onFinish 回包'),
+    `诊断 ${records.length}/${expectedStages} 段（${driven}）全部命中并通关`,
+    records.length ? stagesPassed && advanced : expect > 0 && hits === expect && advanced,
+    `段数=${records.length}/${expectedStages} 序列=${(stagePlan || []).join('→') || '未读到'} 命中=${hits}/${expect} ` +
+      `state=${diagnosisState} probe=${stages.every((s) => s.armed) ? 'on' : 'off'}` +
+      ` 各段=${JSON.stringify(records.map((r) => `${r.variant}:${r.found}/${r.total}${r.completed === true ? '' : ':未完成'}`))}`,
   );
 
-  // 化验：样本 → 对应试剂连线（本局没有化验环节时直接跳过；lab-first 局已在诊断段跑完）
-  let matched = 'no-lab';
-  if (labReached && diagnosis !== 'lab') {
-    await sleep(600);
-    matched = await runLabConnect('__lab');
-  } else if (labReached) {
-    matched = await readMatched();
-  }
-  const labResult = await ev('window.__lab || null');
-  const pairDone = matched.includes('/') && matched.split('/')[0] === matched.split('/')[1];
+  // 化验只作为诊断阶段出现，已在上面的阶段循环里驱动完；证据同样落在 __diags。
+  const labStage = stages.filter((s) => s.variant === 'lab').pop();
+  const matched = labStage ? labStage.matched : 'no-lab';
+  const labRecord = records.filter((r) => r.variant === 'Lab').pop();
+  const pairDone = String(matched).includes('/') && matched.split('/')[0] === matched.split('/')[1];
   const labComplete =
     matched === 'no-lab' ||
     matched === 'lab-page-left' ||
     pairDone ||
-    (!!labResult && labResult.completed === true && labResult.found === labResult.total);
+    (!!labRecord && labRecord.completed === true && labRecord.found === labRecord.total);
   // 治疗：多选 + 住院 + 加速 → 确认（全部配对后 Lab 会被替换，进得了治疗页就是通关证据）
   const reachedTreatment = await waitFor('ConfirmButton', 8000);
   judge(
     'C04',
-    `化验连线全部配对并进入治疗（${
-      diagnosis === 'lab' ? '本局化验即诊断' : matched === 'no-lab' ? '本局无化验环节' : '诊断后追加化验'
-    }）`,
+    `化验连线全部配对并进入治疗（${labStage ? `本局含化验段，第 ${stages.indexOf(labStage) + 1} 段` : '本局无化验环节'}）`,
     reachedTreatment && labComplete,
-    `matched=${matched} treatment=${reachedTreatment}` + (labResult ? ` onFinish=${JSON.stringify(labResult)}` : ''),
+    `matched=${matched} treatment=${reachedTreatment}` + (labRecord ? ` onFinish=${JSON.stringify(labRecord)}` : ''),
   );
   if (!reachedTreatment) throw new Error('no Treatment');
   // 危重要 3/3 全对才进康复（Treatment.ts:157），所以按病例配置取正确药/床/时间的下标来点，

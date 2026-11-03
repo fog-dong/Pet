@@ -54,6 +54,20 @@ export const COLORS = {
 
 export const RADIUS = { card: 16, button: 24 } as const;
 
+/**
+ * W22-5 生命周期阶段配色：幼年浅绿 / 成年橙黄 / 老年灰蓝。
+ * 三档都是 §4 色板里 sage / gold / mist 的浅化派生，文字取同色系深档保证可读性；
+ * 键位与 game/AgeSystem 的 LifeStage 一一对应，新增阶段必须同步补色，不允许在 UI 里现写十六进制。
+ */
+export const STAGE_TINT: Record<'baby' | 'adult' | 'senior', { fill: Color; text: Color }> = {
+  baby: { fill: tint('#CDE0C8'), text: tint('#4C6B49') },
+  adult: { fill: tint('#F6E2AE'), text: tint('#8A6416') },
+  senior: { fill: tint('#CFDCE7'), text: tint('#4E6379') },
+};
+
+/** 陪伴进度条的轨道：比卡片底色深一档，3px 高时仍能看清边界。 */
+export const LIFE_TRACK = tint(HEX.skirt, 96);
+
 export const GAP = { xs: 8, sm: 12, md: 16, lg: 24, xl: 32 } as const;
 
 /** 动效时长（秒），见方案 §7。 */

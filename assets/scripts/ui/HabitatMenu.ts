@@ -9,6 +9,7 @@ import { HabitatAction, HabitatRule, HABITAT_ACTIONS, HABITAT_RULES } from '../g
 import { PetVisual } from '../game/PetVisual';
 import { Sfx } from '../game/Sfx';
 import { addCard } from './PanelKit';
+import { addLifeSummary } from './LifeBadge';
 import { addLabel } from './SceneUI';
 import { floatText } from './FloatText';
 import { COLORS } from './Tokens';
@@ -61,6 +62,7 @@ export function openHabitatMenu(
   const host = addCard(parent, 'HabitatMenu', 0, MENU_W, MENU_H, { color: COLORS.paper });
   menu = host;
   addLabel(host, 'HabitatMenuTitle', look ? `和 ${look.name} 互动` : '和它互动', 160, { size: 30, width: MENU_W - 80 });
+  addLifeSummary(host, 'HabitatMenuLife', 118, entry, look);
 
   const visual = PetVisual.mount(host, 170, false);
   visual.node.setPosition(PORTRAIT_X, PORTRAIT_Y, 0);

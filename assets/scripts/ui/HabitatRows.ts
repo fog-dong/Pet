@@ -1,9 +1,11 @@
-// STATUS: implemented, W20-2 小屋成员卡片（现成立绘 + 三项属性条 + 轻点开互动菜单；缺图由 PetVisual 自带占位块顶上）
-import { Color, EventTouch, Node } from 'cc';
+// STATUS: implemented, W20-2 小屋成员卡片（现成立绘 + 阶段标签 + 三项属性条 + 底部陪伴进度条；缺图由 PetVisual 自带占位块顶上）
+import { Color, EventTouch, Label, Node } from 'cc';
 import { HabitatPet } from '../cache/HabitatCodec';
 import { CharacterConfig } from '../config/CharacterConfig';
+import { getLifeStage } from '../game/AgeSystem';
 import { PetVisual } from '../game/PetVisual';
 import { addLabel, addRect } from './SceneUI';
+import { addLifeBar, addStageTag } from './LifeBadge';
 import { addStatColumns, StatRow } from './HabitatBars';
 
 export const HABITAT_CARD_H = 150;
@@ -12,6 +14,13 @@ const PORTRAIT = 104;
 /** 属性块：标签列宽 88 + 轨道 200，轨道左沿固定在 x=-44。 */
 const STAT_LEFT = -44;
 const STAT_WIDTH = 200;
+/** 名字右对齐收在 x=61，标签槽位固定在 x=100：长名字往左伸，标签不会被顶跑。 */
+const NAME_X = -53;
+const NAME_W = 228;
+const NAME_Y = 34;
+const TAG_X = 100;
+/** 卡片竖直范围 ±69，心情条底沿 -63，所以 -67 是既不压条也不贴边的唯一落点。 */
+const LIFE_Y = -67;
 /** 列表要能上下拖，位移超过这个阈值算滚动而不是点选。 */
 const TAP_SLOP = 24;
 
@@ -35,13 +44,16 @@ export function buildHabitatRow(
   visual.node.setPosition(-cardWidth / 2 + 70, 0, 0);
   visual.apply(entry.petId);
   const look = CharacterConfig.petById(entry.petId);
-  addLabel(card, 'HabitatName', look ? `${look.name} · ${look.breed}` : entry.petId, 34, {
+  addLabel(card, 'HabitatName', look ? `${look.name} · ${look.breed}` : entry.petId, NAME_Y, {
     size: 26,
-    width: 300,
-    x: 12,
+    width: NAME_W,
+    x: NAME_X,
+    align: Label.HorizontalAlign.RIGHT,
   });
+  addStageTag(card, getLifeStage(entry.birthTimestamp, look), TAG_X, NAME_Y);
   const stats = addStatColumns(card, `HabitatStat${index}`, STAT_LEFT, 4, STAT_WIDTH);
   applyStats(stats, entry);
+  addLifeBar(card, `HabitatLife${index}`, cardWidth - 32, LIFE_Y, entry, look);
   const row: HabitatRow = { entry, node: card, visual, stats };
   bindTap(card, () => onTap(row));
   return row;

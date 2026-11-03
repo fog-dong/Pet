@@ -1,8 +1,10 @@
 // STATUS: implemented, W20-4 模块三 客户端全链路核验（CDP 驱动 web-mobile 构建，云函数用 mock 注入，不碰线上）
 'use strict';
-// 覆盖：大厅存档一致性、小屋四键扣费/满值/每日次数/跨天重置、买不起时置灰与余额守卫、
+// 覆盖：大厅存档一致性、小屋四种触点扣费/满值/每日次数/跨天重置（点图标=喂食洗澡、点立绘=抚摸、
+// 长按立绘=高级粮、拖动不误触）、买不起时热区变暗 + Toast 说明原因与余额守卫、
 // 离线收益四分支（granted / 1003 频控 / coins=0 / 云端未接通）、领取连点幂等、贴图覆盖、互动合成哔声、
 // 老年小毛病必命中用例（按当日 dayKey 反查命中的品种，验证扣爱心 + 当天只收一次）。
+// W25 P0-B 起互动弹窗已删：断言不再读按钮 interactable/置灰文案，改读热区 UIOpacity 与点击后的 Toast 原因。
 // 数值口径：2026-11-03 决策-4（喂食 30 金币 / 高级粮 8 爱心 / 洗澡 20 金币+5 爱心 / 抚摸 +10 且每天 3 次）
 // 与决策-5（老年小毛病 25%、安抚 3 爱心）。
 // 前置：本地起 web-mobile 构建静态服务 + headless Chrome 开 CDP 端口。
@@ -34,6 +36,10 @@ const DECAY_SRC = fs.readFileSync(path.join(__dirname, '..', 'assets/scripts/gam
 /** 概率与安抚价从源码正则取，脚本里不抄第二份数字（改了源码这里会立刻对不上）。 */
 const AILMENT_COST = Number(DECAY_SRC.match(/AILMENT_HEART_COST = (\d+)/)[1]);
 const AILMENT_ODDS = Number(DECAY_SRC.match(/AILMENT_ODDS_PERCENT = (\d+)/)[1]);
+
+const BARS_SRC = fs.readFileSync(path.join(__dirname, '..', 'assets/scripts/ui/HabitatBars.ts'), 'utf8');
+/** 变暗档同样从源码正则取：触点只有「全亮 / 变暗」两档，脚本不能自己抄 92。 */
+const ZONE_DIM = Number(BARS_SRC.match(/ZONE_DIM = (\d+)/)[1]);
 
 /** game/HabitatDecay.ts 里 FNV-1a 的镜像，只用来反查「今天哪只必命中」；触发与否仍由页面自己判。
  *  镜像若与实现跑偏，选中的一定不是真命中的宠物，下面的扣爱心断言会直接 FAIL，不会静默放过。 */
@@ -195,7 +201,7 @@ function seedSave(overrides) {
   }
   const base = {
     coins: 1200,
-    // 16 爱心 = 高级粮 8 + 洗澡 5 + 还得起第二次，够走完四键全扣费的路径。
+    // 16 爱心 = 高级粮 8 + 洗澡 5，走完两档爱心消耗后还剩 3，正好也能付一次老年安抚（决策-5）。
     hearts: 16,
     petsSeen: ids,
     petsAdopted: ids,
@@ -252,7 +258,7 @@ function seedSave(overrides) {
     return false;
   };
   const click = (nm) => ev(`(() => { const n = (${FIND})('${nm}'); if (!n) return 0; n.emit('click'); return 1; })()`);
-  /** 成员卡走 TOUCH_START/TOUCH_END + 位移阈值，不是 Button：用同一坐标的成对触摸事件模拟轻点。 */
+  /** 小屋触点（图标热区 / 小键 / 立绘）走 TOUCH_START/TOUCH_END + 位移阈值，不是 Button：用同一坐标的成对触摸事件模拟轻点。 */
   const tap = (nm) =>
     ev(`(() => {
       const n = (${FIND})('${nm}'); if (!n) return 0;
@@ -261,6 +267,39 @@ function seedSave(overrides) {
       n.emit('touch-end', e);
       return 1;
     })()`);
+  /** 长按：抬手前停留 500 ms（> HOLD_MS 350），中途不发 TOUCH_MOVE，位移判定自然为 0。 */
+  const hold = async (nm) => {
+    await ev(`(() => { const n = (${FIND})('${nm}'); if (!n) return 0; n.emit('touch-start', { getUILocation: () => ({ x: 0, y: 0 }) }); return 1; })()`);
+    await sleep(520);
+    await ev(`(() => { const n = (${FIND})('${nm}'); if (!n) return 0; n.emit('touch-end', { getUILocation: () => ({ x: 0, y: 0 }) }); return 1; })()`);
+  };
+  /** 从触点起手向下拖 200 px 再抬手：位移远超 TAP_SLOP，短按与长按都不该触发（列表滚动不能误扣费）。 */
+  const dragFrom = async (nm) => {
+    await ev(`(() => {
+      const n = (${FIND})('${nm}'); if (!n) return 0;
+      window.__start = { getUILocation: () => ({ x: 0, y: 0 }) };
+      window.__away = { getUILocation: () => ({ x: 0, y: -200 }) };
+      n.emit('touch-start', window.__start);
+      n.emit('touch-move', window.__away);
+      return 1;
+    })()`);
+    await sleep(520);
+    await ev(`(() => { const n = (${FIND})('${nm}'); if (!n) return 0; n.emit('touch-end', window.__away); return 1; })()`);
+  };
+  /** 动作 → 触点节点：高级粮走小键，抚摸走立绘（图标只是备用入口），喂食/洗澡走对应属性圆钮。 */
+  const hitNode = (petId, action) => {
+    if (action === 'premium') {
+      return `HabitatChip_${petId}`;
+    }
+    if (action === 'pet') {
+      return `HabitatPortrait_${petId}`;
+    }
+    return `HabitatZone_${action === 'feed' ? 'hunger' : 'cleanliness'}_${petId}`;
+  };
+  const hit = (petId, action) => tap(hitNode(petId, action));
+  /** 触点透明度：W25 之后"买不起"不再靠按钮文案表达，只有这一档可见度 + 点击后的 Toast。 */
+  const opacity = (nm) =>
+    ev(`(() => { const n = (${FIND})('${nm}'); const o = n && n.getComponent('cc.UIOpacity'); return o ? o.opacity : null; })()`);
   const label = (nm) => ev(`(() => { const n = (${FIND})('${nm}'); const c = n && n.getComponent('cc.Label'); return c ? c.string : null; })()`);
   const btnState = (nm) =>
     ev(`(() => {
@@ -315,18 +354,17 @@ function seedSave(overrides) {
     if (!(await waitFor('HabitatPanel'))) throw new Error('HabitatPanel not found');
     await sleep(1200);
   };
-  /** 菜单按钮要单独等：只等 HabitatMenu 会在菜单刚挂上、按钮还没建完时返回。 */
-  const openMenu = async (petId = 'pet_husky') => {
-    await openPanel();
-    await tap(`HabitatCard_${petId}`);
-    if (!(await waitFor('feed_btn'))) throw new Error('HabitatMenu buttons not found');
+  /** 热区要单独等：卡片是逐个建的，只等 HabitatPanel 会在第一条热区还没挂上时返回。 */
+  const readyCard = async (petId) => {
+    if (!(await waitFor(`HabitatZone_hunger_${petId}`))) {
+      throw new Error(`HabitatZone_hunger_${petId} not found`);
+    }
     await sleep(700);
   };
-  /** 只收菜单、不重开面板：用于「同一日内换一只宠物看次数是否共享」。 */
-  const openMenuOnly = async (petId) => {
-    await tap(`HabitatCard_${petId}`);
-    if (!(await waitFor('feed_btn'))) throw new Error('HabitatMenu buttons not found');
-    await sleep(700);
+  /** 打开面板并等到某只的触点就绪——W25 之后这就是"进入互动态"的全部步骤。 */
+  const openCard = async (petId = 'pet_husky') => {
+    await openPanel();
+    await readyCard(petId);
   };
 
   // === 1. 小屋互动：扣费 / 免费路径 / 每日次数 / 满值 / 音效兜底 / 贴图覆盖 ===
@@ -371,19 +409,19 @@ function seedSave(overrides) {
     `真图=${withArt.join('/')} 帧名=${cards.map((c) => c.art).join('/')} 占位=${missing.length} 只`,
   );
 
-  await tap('HabitatCard_pet_husky');
-  if (!(await waitFor('feed_btn'))) throw new Error('HabitatMenu buttons not found');
-  await sleep(800);
-  const fourBtns = await ev(`['feed','premium','bath','pet'].map(a => !!(${FIND})(a + '_btn')).join(',')`);
+  await openCard('pet_husky');
+  const fiveTargets = await ev(
+    `['HabitatZone_hunger_pet_husky','HabitatZone_cleanliness_pet_husky','HabitatZone_mood_pet_husky','HabitatChip_pet_husky','HabitatPortrait_pet_husky'].map(nm => !!(${FIND})(nm)).join(',')`,
+  );
   judge(
     'W23-2a',
-    '互动菜单四枚按钮齐备（喂食 / 高级粮 / 洗澡 / 抚摸）',
-    fourBtns === 'true,true,true,true',
-    fourBtns,
+    '五种互动触点齐备（喂食 / 洗澡 / 心情图标 + 高级粮小键 + 立绘）',
+    fiveTargets === 'true,true,true,true,true',
+    fiveTargets,
   );
   const before = { coins: await save('s.coins'), hearts: await save('s.hearts') };
   await ev('window.__tones = []');
-  await click('feed_btn');
+  await hit('pet_husky', 'feed');
   await sleep(500);
   judge(
     'L21',
@@ -391,16 +429,17 @@ function seedSave(overrides) {
     (await save('s.coins')) === before.coins - 30 && (await petState('hunger')) === 85,
     `coins ${before.coins}→${await save('s.coins')}, hunger 55→${await petState('hunger')}`,
   );
-  await click('premium_btn');
-  await sleep(500);
-  const premiumHunger = await petState('hunger');
+  await hit('pet_husky', 'premium');
+  await sleep(400);
+  // 飘字节点 0.9 s 自毁，且求值按源码顺序走：先抓飘字再抓其余，否则条件里排在后面的读取会拿到 null。
+  const premium = { float: await label('FloatText'), hunger: await petState('hunger'), hearts: await save('s.hearts') };
   judge(
     'L26',
     '高级粮扣 8 爱心、饱食 +70 并夹到满值（85+70→100）',
-    (await save('s.hearts')) === before.hearts - 8 && premiumHunger === 100 && (await label('FloatText')) === '+70 饱食度',
-    `hearts ${before.hearts}→${await save('s.hearts')}, hunger 85→${premiumHunger}, float=${await label('FloatText')}`,
+    premium.hearts === before.hearts - 8 && premium.hunger === 100 && premium.float === '+70 饱食度',
+    `hearts ${before.hearts}→${premium.hearts}, hunger 85→${premium.hunger}, float=${premium.float}`,
   );
-  await click('bath_btn');
+  await hit('pet_husky', 'bath');
   await sleep(500);
   judge(
     'L22',
@@ -410,7 +449,7 @@ function seedSave(overrides) {
   );
   const petSteps = [];
   for (let i = 0; i < 3; i++) {
-    await click('pet_btn');
+    await hit('pet_husky', 'pet');
     await sleep(450);
     petSteps.push({ mood: await petState('mood'), count: await save('s.pettedCount') });
   }
@@ -420,18 +459,19 @@ function seedSave(overrides) {
     petSteps.map((s) => s.mood).join(',') === '65,75,85' && petSteps.map((s) => s.count).join(',') === '1,2,3',
     `coins 不变(${await save('s.coins')}) steps=${JSON.stringify(petSteps)}`,
   );
-  const petBtn = JSON.parse(await btnState('pet_btn'));
+  const moodZone = await opacity('HabitatZone_mood_pet_husky');
+  const quotaLine = await label('HabitatQuotaLabel');
   judge(
     'W23-2b',
-    '三次用满后按钮当场置灰并写明「今日抚摸次数已用完」',
-    petBtn.on === false && petBtn.text === '今日抚摸次数已用完',
-    JSON.stringify(petBtn),
+    '三次用满后心情图标当场变暗、引导行同步写明「今日剩 0 次」（弹窗删除后没有按钮文案可写，决策-6b 改由透明度 + 引导行承担）',
+    moodZone === ZONE_DIM && /今日剩 0 次/.test(String(quotaLine)),
+    `zone=${moodZone} hint=${quotaLine}`,
   );
-  await click('pet_btn');
+  await hit('pet_husky', 'pet');
   await sleep(450);
   judge(
     'B02',
-    '绕过置灰仍被拦：第 4 次不加值、不计数，只提示次数用尽',
+    '变暗不拦事件，第 4 次点立绘仍被数据层拦住：不加值、不计数，只提示次数用尽',
     (await petState('mood')) === 85 && (await save('s.pettedCount')) === 3 && /今日抚摸次数已用完/.test(String(await label('ToastLabel'))),
     `mood=${await petState('mood')} count=${await save('s.pettedCount')} toast=${await label('ToastLabel')}`,
   );
@@ -443,9 +483,9 @@ function seedSave(overrides) {
     freqs.length === 6 && new Set(freqs).size === 3 && freqs[0] === freqs[1],
     tones.map((t) => `${t.type}:${t.freq}`).join(' '),
   );
-  await shot(`${OUT}-2-menu-four`);
+  await shot(`${OUT}-2-card-actions`);
   const coinsAtFull = await save('s.coins');
-  await click('feed_btn');
+  await hit('pet_husky', 'feed');
   await sleep(450);
   judge(
     'L24',
@@ -453,25 +493,75 @@ function seedSave(overrides) {
     (await petState('hunger')) === 100 && (await save('s.coins')) === coinsAtFull && /已经吃饱啦/.test(String(await label('ToastLabel'))),
     `hunger=${await petState('hunger')} coins=${coinsAtFull}→${await save('s.coins')} toast=${await label('ToastLabel')}`,
   );
-  await click('HabitatMenuClose');
-  await sleep(600);
-  await openMenuOnly('pet_british');
-  const sharedBtn = JSON.parse(await btnState('pet_btn'));
+  await readyCard('pet_british');
+  const sharedDim = await opacity('HabitatZone_mood_pet_british');
+  await hit('pet_british', 'pet');
+  await sleep(450);
   judge(
     'W23-1a',
-    '每日 3 次是全局计数（方案 §2.1 字段挂 SaveData）：换一只没摸过的照样置灰、不加值',
-    sharedBtn.on === false && sharedBtn.text === '今日抚摸次数已用完' && (await anyPetState('pet_british', 'mood')) === 60,
-    `btn=${JSON.stringify(sharedBtn)} 奶豆 mood=${await anyPetState('pet_british', 'mood')}`,
+    '每日 3 次是全局计数（方案 §2.1 字段挂 SaveData）：换一只没摸过的照样变暗、点了不加值',
+    sharedDim === ZONE_DIM &&
+      (await anyPetState('pet_british', 'mood')) === 60 &&
+      /今日抚摸次数已用完/.test(String(await label('ToastLabel'))),
+    `zone=${sharedDim} 奶豆 mood=${await anyPetState('pet_british', 'mood')} toast=${await label('ToastLabel')}`,
   );
-  await click('HabitatMenuClose');
-  await sleep(600);
   await shot(`${OUT}-2b-panel`);
+
+  // === 1.5 W25 触点语义：点立绘=抚摸 / 长按立绘=高级粮 / 点图标=对应动作 / 拖动不误触 ===
+  console.log('\n=== 1.5 触点语义（W25 P0-B）===');
+  await boot(true, {});
+  await openCard('pet_husky');
+  const t15 = { coins: await save('s.coins'), hearts: await save('s.hearts') };
+  await hit('pet_husky', 'pet');
+  await sleep(400);
+  // 飘字节点 0.9 s 后自毁：先一次性抓完快照再判定，且飘字排在最前——对象字面量按源码顺序 await，
+  // 把它放最后等于让它多等四个往返，日志里就会印出误导性的 float=null。
+  const s15 = {
+    float: await label('FloatText'),
+    mood: await petState('mood'),
+    coins: await save('s.coins'),
+    hearts: await save('s.hearts'),
+    count: await save('s.pettedCount'),
+  };
+  judge(
+    'W25-1a',
+    '点立绘即抚摸（弹窗套娃删掉后的主入口）：心情 +10、分文不扣、计数与飘字同步',
+    s15.mood === 65 && s15.coins === t15.coins && s15.hearts === t15.hearts && s15.count === 1 && s15.float === '+10 心情',
+    `mood 55→${s15.mood} hearts=${s15.hearts} count=${s15.count} float=${s15.float}`,
+  );
+  await hold('HabitatPortrait_pet_husky');
+  await sleep(700);
+  judge(
+    'W25-1b',
+    '长按立绘即高级粮（拍板-3 的快捷方式）：扣 8 爱心、饱食 55+70→100，且不占用抚摸次数',
+    (await save('s.hearts')) === t15.hearts - 8 && (await petState('hunger')) === 100 && (await save('s.pettedCount')) === 1,
+    `hearts ${t15.hearts}→${await save('s.hearts')} hunger 55→${await petState('hunger')} count=${await save('s.pettedCount')}`,
+  );
+  await tap('HabitatZone_mood_pet_husky');
+  await sleep(500);
+  judge(
+    'W25-1c',
+    '点心情图标与点立绘是同一个动作：第 2 次抚摸照常 +10（图标即按钮，不是只读进度条）',
+    (await petState('mood')) === 75 && (await save('s.pettedCount')) === 2,
+    `mood→${await petState('mood')} count=${await save('s.pettedCount')}`,
+  );
+  const t15b = { coins: await save('s.coins'), hearts: await save('s.hearts'), mood: await petState('mood') };
+  await dragFrom('HabitatPortrait_pet_husky');
+  await sleep(500);
+  judge(
+    'W25-1d',
+    '从立绘起手拖 200 px 是滚动不是点选：短按与长按都不触发，属性、计数与余额分文不动',
+    (await petState('mood')) === t15b.mood &&
+      (await save('s.pettedCount')) === 2 &&
+      (await save('s.coins')) === t15b.coins &&
+      (await save('s.hearts')) === t15b.hearts,
+    `mood ${t15b.mood}→${await petState('mood')} count=${await save('s.pettedCount')} coins ${t15b.coins}→${await save('s.coins')} hearts ${t15b.hearts}→${await save('s.hearts')}`,
+  );
+  await shot(`${OUT}-2c-tap-semantic`);
 
   // === 2. 离线收益四分支 ===
   console.log('\n=== 2. 离线收益四分支 ===');
   const coinsPreClaim = await save('s.coins');
-  await click('HabitatMenuClose');
-  await sleep(600);
   await click('HabitatClaim');
   await sleep(400);
   const floatTxt = await label('FloatText');
@@ -527,11 +617,8 @@ function seedSave(overrides) {
     /云端还没接通/.test(String(await label('ToastLabel'))) && (await save('s.coins')) === coinsPreOffline && (await claimCalls()) === 0,
     `toast=${await label('ToastLabel')}`,
   );
-  await tap('HabitatCard_pet_husky');
-  if (!(await waitFor('feed_btn'))) throw new Error('HabitatMenu buttons not found');
-  await sleep(700);
   const b1Coins = await save('s.coins');
-  await click('feed_btn');
+  await hit('pet_husky', 'feed');
   await sleep(500);
   judge(
     'B01',
@@ -551,9 +638,7 @@ function seedSave(overrides) {
   }
   await sleep(4200);
   await openPanel();
-  await tap('HabitatCard_pet_husky');
-  if (!(await waitFor('feed_btn'))) throw new Error('HabitatMenu buttons not found');
-  await sleep(500);
+  await readyCard('pet_husky');
   judge(
     'M22',
     '整页重载后饱食度与金币都不回初值（本地存档持久化）',
@@ -564,16 +649,17 @@ function seedSave(overrides) {
   // === 4. 每日次数跨天重置：昨天用满 3 次，今天重新起算 ===
   console.log('\n=== 4. 抚摸次数跨天重置 ===');
   await boot(true, { pettedDay: dayKeyOf(T0 - 2 * DAY), pettedCount: 3 });
-  await openMenu();
+  await openCard();
   const cdCoins = await save('s.coins');
-  const cdBtn = JSON.parse(await btnState('pet_btn'));
+  const cdZone = await opacity('HabitatZone_mood_pet_husky');
+  const cdHint = await label('HabitatQuotaLabel');
   judge(
     'W23-1b',
-    '昨日计数满 3 也不算今天用完：按钮仍可点、写明余量（剩 3）',
-    cdBtn.on === true && cdBtn.text === '抚摸 · 免费（剩 3）',
-    JSON.stringify(cdBtn),
+    '昨日计数满 3 也不算今天用完：心情图标全亮、引导行写明余量（今日剩 3 次）',
+    cdZone === 255 && /今日剩 3 次/.test(String(cdHint)),
+    `zone=${cdZone} hint=${cdHint}`,
   );
-  await click('pet_btn');
+  await hit('pet_husky', 'pet');
   await sleep(500);
   judge(
     'B04',
@@ -585,51 +671,47 @@ function seedSave(overrides) {
     `mood 55→${await petState('mood')} day=${await save('s.pettedDay')} count=${await save('s.pettedCount')}`,
   );
 
-  // === 5. 买不起：置灰 + 动作名 + 数额说明 + 免费路径不断链 ===
-  console.log('\n=== 5. 买不起时置灰，抚摸仍免费可点 ===');
+  // === 5. 买不起：热区变暗 + 点了给原因 + 免费路径不断链 ===
+  console.log('\n=== 5. 买不起时热区变暗，抚摸仍免费可点 ===');
   await boot(true, { coins: 5, hearts: 2 });
-  await openMenu();
-  const greyFeed = JSON.parse(await btnState('feed_btn'));
-  const greyPremium = JSON.parse(await btnState('premium_btn'));
-  const greyBath = JSON.parse(await btnState('bath_btn'));
-  const greyPet = JSON.parse(await btnState('pet_btn'));
+  await openCard();
+  const dimFeed = await opacity('HabitatZone_hunger_pet_husky');
+  const dimBath = await opacity('HabitatZone_cleanliness_pet_husky');
+  const dimPremium = await opacity('HabitatChip_pet_husky');
+  const litPet = await opacity('HabitatZone_mood_pet_husky');
+  const shortageHint = await label('HabitatQuotaLabel');
   await shot(`${OUT}-5-shortage`);
-  // W24-1：置灰文案前拼动作名，四键同灰时不能只靠数额区分动作（制作人拍板）。
-  judge(
-    'L21b',
-    '喂食·金币不足（需 30）：置灰仍保留动作名',
-    greyFeed.on === false && greyFeed.text === '喂食·金币不足（需 30）',
-    JSON.stringify(greyFeed),
-  );
-  judge(
-    'L26b',
-    '高级粮·爱心不足（需 8）：置灰仍保留动作名',
-    greyPremium.on === false && greyPremium.text === '高级粮·爱心不足（需 8）',
-    JSON.stringify(greyPremium),
-  );
-  judge(
-    'L22b',
-    '洗澡·金币不足（需 20）：金币先卡住（同一行还写着 5 爱心）',
-    greyBath.on === false && greyBath.text === '洗澡·金币不足（需 20）',
-    JSON.stringify(greyBath),
-  );
+  // 决策-6b 在 W25 的形态：图标钮没有文字可写原因，所以拆成两段——
+  // 事前用透明度标「这一档现在不行」（动作名由图标自己表达），事后由 Toast 给完整原因。
+  judge('L21b', '喂食热区金币不足（需 30）时变暗，不是消失', dimFeed === ZONE_DIM, `zone=${dimFeed}`);
+  judge('L26b', '高级粮小键爱心不足（需 8）时变暗', dimPremium === ZONE_DIM, `chip=${dimPremium}`);
+  judge('L22b', '洗澡热区金币先卡住（需 20，同一档还含 5 爱心）', dimBath === ZONE_DIM, `zone=${dimBath}`);
   judge(
     'L23b',
-    '买不起时零成本路径（抚摸 · 免费（剩 3））仍然可点',
-    greyPet.on === true && greyPet.text === '抚摸 · 免费（剩 3）',
-    JSON.stringify(greyPet),
+    '买不起时零成本路径（点立绘摸一摸 · 今日剩 3 次）仍然全亮',
+    litPet === 255 && /今日剩 3 次/.test(String(shortageHint)),
+    `zone=${litPet} hint=${shortageHint}`,
   );
-  // 真实触摸会被 Button.interactable 拦住，脚本直发 click 会绕过它；这里验第二道防线：互动谓词自身的余额守卫。
+  // 变暗只是可见度、不拦事件（没有 Button.interactable 可绕）：这里直接点暗掉的触点，验第二道防线——谓词自身的余额守卫。
   const coinsPreSpend = await save('s.coins');
-  await click('feed_btn');
+  const heartsPreSpend = await save('s.hearts');
+  await hit('pet_husky', 'feed');
   await sleep(500);
   judge(
     'L21c',
-    '即便绕过禁用，扣费仍有余额守卫（不扣成负数）',
-    (await save('s.coins')) === coinsPreSpend && /金币不足/.test(String(await label('ToastLabel'))),
+    '点了暗掉的喂食钮也不扣成负数，Toast 写明「金币不足（需 30）」',
+    (await save('s.coins')) === coinsPreSpend && /金币不足（需 30）/.test(String(await label('ToastLabel'))),
     `coins ${coinsPreSpend}→${await save('s.coins')} toast=${await label('ToastLabel')}`,
   );
-  await click('pet_btn');
+  await hit('pet_husky', 'premium');
+  await sleep(500);
+  judge(
+    'L26c',
+    '点了暗掉的高级粮小键同样分文不动，Toast 写明「爱心不足（需 8）」',
+    (await save('s.hearts')) === heartsPreSpend && /爱心不足（需 8）/.test(String(await label('ToastLabel'))),
+    `hearts ${heartsPreSpend}→${await save('s.hearts')} toast=${await label('ToastLabel')}`,
+  );
+  await hit('pet_husky', 'pet');
   await sleep(500);
   judge('L23c', '买不起时免费抚摸照样能加心情（零成本回访路径不断链）', (await petState('mood')) === 65, `mood→${await petState('mood')}`);
 
@@ -658,24 +740,29 @@ function seedSave(overrides) {
     );
   } else {
     await boot(true, { senior: STRUCK_PET });
-    await openMenu(STRUCK_PET);
+    await openCard(STRUCK_PET);
     const struckTag = await stageTag(STRUCK_PET);
     const heartsPreStrike = await save('s.hearts');
     const coinsPreStrike = await save('s.coins');
     const moodPreStrike = await anyPetState(STRUCK_PET, 'mood');
-    await click('pet_btn');
-    await sleep(600);
-    const moodAfterStrike = await anyPetState(STRUCK_PET, 'mood');
-    const heartsAfterStrike = await save('s.hearts');
+    await hit(STRUCK_PET, 'pet');
+    await sleep(400);
+    // 同上：飘字与 Toast 都是短命节点，一次性按「飘字 → Toast → 存档」的顺序抓完再判定。
+    const strike = {
+      float: await label('FloatText'),
+      toast: await label('ToastLabel'),
+      mood: await anyPetState(STRUCK_PET, 'mood'),
+      hearts: await save('s.hearts'),
+    };
     judge(
       'A01',
-      `老年 ${STRUCK_PET} 今日必命中：免费抚摸照样扣 ${AILMENT_COST} 爱心，心情只按老年档 +5`,
+      `老年 ${STRUCK_PET} 今日必命中：点立绘的免费抚摸照样扣 ${AILMENT_COST} 爱心，心情只按老年档 +5`,
       moodPreStrike === 70 &&
-        moodAfterStrike === 75 &&
-        heartsAfterStrike === heartsPreStrike - AILMENT_COST &&
-        (await label('FloatText')) === '+5 心情' &&
-        /安抚/.test(String(await label('ToastLabel'))),
-      `阶段标签=${struckTag} mood ${moodPreStrike}→${moodAfterStrike} hearts ${heartsPreStrike}→${heartsAfterStrike} toast=${await label('ToastLabel')}`,
+        strike.mood === 75 &&
+        strike.hearts === heartsPreStrike - AILMENT_COST &&
+        strike.float === '+5 心情' &&
+        /安抚/.test(String(strike.toast)),
+      `阶段标签=${struckTag} mood ${moodPreStrike}→${strike.mood} hearts ${heartsPreStrike}→${strike.hearts} float=${strike.float} toast=${strike.toast}`,
     );
     judge(
       'A02',
@@ -686,12 +773,12 @@ function seedSave(overrides) {
     judge('A04', '命中前提是老年档：卡片阶段标签确实写着「老年」', struckTag === '老年', String(struckTag));
     await shot(`${OUT}-7-ailment`);
     // 同一天第二次互动：规则本身的消耗照扣，但不再重复收安抚费。
-    await click('feed_btn');
+    await hit(STRUCK_PET, 'feed');
     await sleep(600);
     judge(
       'A03',
       '当天不再重复安抚：第二次互动只扣喂食自己的 30 金币，爱心分文不动',
-      (await save('s.hearts')) === heartsAfterStrike &&
+      (await save('s.hearts')) === strike.hearts &&
         (await save('s.coins')) === coinsPreStrike - 30 &&
         (await anyPetState(STRUCK_PET, 'hunger')) === 80,
       `hearts=${await save('s.hearts')} coins ${coinsPreStrike}→${await save('s.coins')} hunger 50→${await anyPetState(STRUCK_PET, 'hunger')}`,

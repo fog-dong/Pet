@@ -14,7 +14,7 @@ export function spawnHearts(parent: Node, at: Point, count = 6): void {
   const total = Quality.low ? 3 : count;
   for (let i = 0; i < total; i += 1) {
     const drift = (Math.random() - 0.5) * 80;
-    spawn(parent, `Heart${i}`, at.x + drift, at.y + 20, heartPath, COLORS.clay, 22, 120 + i * 8, drift * 0.3, 0.06 * i);
+    spawn(parent, `Heart${i}`, at.x + drift, at.y + 20, drawHeart, COLORS.clay, 22, 120 + i * 8, drift * 0.3, 0.06 * i);
   }
 }
 
@@ -24,7 +24,7 @@ export function spawnBubbles(parent: Node, at: Point, count = 8): void {
   for (let i = 0; i < total; i += 1) {
     const drift = (Math.random() - 0.5) * 60;
     const radius = 8 + Math.random() * 10;
-    spawn(parent, `Bubble${i}`, at.x + drift, at.y - 40 - Math.random() * 20, bubblePath, COLORS.mist, radius, 140, drift - 8, 0.06 * i);
+    spawn(parent, `Bubble${i}`, at.x + drift, at.y - 40 - Math.random() * 20, drawBubble, COLORS.mist, radius, 140, drift - 8, 0.06 * i);
   }
 }
 
@@ -44,7 +44,17 @@ export function tossTo(
   const node = new Node(`Toss_${kind}`);
   node.parent = parent;
   node.setPosition(from.x, from.y, 0);
-  drawItem(node.addComponent(Graphics), kind);
+  const g = node.addComponent(Graphics);
+  g.fillColor = kind === 'pellet' ? COLORS.sub : COLORS.paper;
+  if (kind === 'pellet') {
+    drawPellet(g);
+  } else {
+    drawBone(g);
+    g.strokeColor = COLORS.skirt;
+    g.lineWidth = 2;
+    g.roundRect(-14, -5, 28, 10, 5);
+    g.stroke();
+  }
   const apex = (from.y + to.y) / 2 + Math.abs(to.x - from.x) * 0.35 + 40;
   const half = Quality.low ? DURATION.toss / 4 : DURATION.toss / 2;
   tween(node)
@@ -55,6 +65,40 @@ export function tossTo(
       onArrive();
     })
     .start();
+}
+
+/** 心形 = 倒三角 + 两枚圆叶，同色一次填充即为并集，比贝塞尔曲线更稳。 */
+export function drawHeart(g: Graphics, r: number): void {
+  g.moveTo(0, -r);
+  g.lineTo(-0.72 * r, 0.2 * r);
+  g.lineTo(0.72 * r, 0.2 * r);
+  g.close();
+  g.circle(-0.36 * r, 0.36 * r, 0.38 * r);
+  g.circle(0.36 * r, 0.36 * r, 0.38 * r);
+  g.fill();
+}
+
+/** 泡泡 = 外圈描边 + 右上高光小圈，描边才读得出"透明"。 */
+export function drawBubble(g: Graphics, r: number): void {
+  g.lineWidth = Math.max(2, r * 0.26);
+  g.circle(0, 0, r);
+  g.circle(r * 0.34, r * 0.34, r * 0.18);
+  g.stroke();
+}
+
+/** 骨头 = 两端各两枚圆 + 中间方杆；高级粮 = 深木色圆片带高光。0.45s 飞行里形状要一眼认得出。 */
+export function drawBone(g: Graphics): void {
+  g.roundRect(-14, -5, 28, 10, 5);
+  [-14, 14].forEach((cx) => {
+    g.circle(cx, 7, 7);
+    g.circle(cx, -7, 7);
+  });
+  g.fill();
+}
+
+export function drawPellet(g: Graphics): void {
+  g.circle(0, 0, 13);
+  g.fill();
 }
 
 /** 出生即自毁的单颗粒子：位移与淡出两条 tween 并行，互不阻塞。 */
@@ -95,47 +139,4 @@ function spawn(
       }
     })
     .start();
-}
-
-/** 心形 = 倒三角 + 两枚圆叶，同色一次填充即为并集，比贝塞尔曲线更稳。 */
-function heartPath(g: Graphics, r: number): void {
-  g.moveTo(0, -r);
-  g.lineTo(-0.72 * r, 0.2 * r);
-  g.lineTo(0.72 * r, 0.2 * r);
-  g.close();
-  g.circle(-0.36 * r, 0.36 * r, 0.38 * r);
-  g.circle(0.36 * r, 0.36 * r, 0.38 * r);
-  g.fill();
-}
-
-/** 泡泡 = 外圈描边 + 右上高光小圈，描边才读得出"透明"。 */
-function bubblePath(g: Graphics, r: number): void {
-  g.lineWidth = Math.max(2, r * 0.26);
-  g.circle(0, 0, r);
-  g.circle(r * 0.34, r * 0.34, r * 0.18);
-  g.stroke();
-}
-
-/** 骨头 = 两端各两枚圆 + 中间方杆；高级粮 = 深木色圆片带高光。0.45s 飞行里形状要一眼认得出。 */
-function drawItem(g: Graphics, kind: TossKind): void {
-  if (kind === 'pellet') {
-    g.fillColor = COLORS.sub;
-    g.circle(0, 0, 13);
-    g.fill();
-    g.fillColor = COLORS.paper;
-    g.circle(-4, 4, 3.5);
-    g.fill();
-    return;
-  }
-  g.fillColor = COLORS.paper;
-  g.roundRect(-14, -5, 28, 10, 5);
-  [-14, 14].forEach((cx) => {
-    g.circle(cx, 7, 7);
-    g.circle(cx, -7, 7);
-  });
-  g.fill();
-  g.strokeColor = COLORS.skirt;
-  g.lineWidth = 2;
-  g.roundRect(-14, -5, 28, 10, 5);
-  g.stroke();
 }

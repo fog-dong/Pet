@@ -94,8 +94,17 @@ export function openHabitatMenu(
 function syncAffordability(rows: readonly MenuRow[]): void {
   rows.forEach(({ action, rule, button }) => {
     const shortfall = affordShortfall(rule);
-    setUIButtonState(button, !shortfall, shortfall ?? buttonText(rule), TINT[action]);
+    setUIButtonState(button, !shortfall, shortfall ? greyText(rule.label, shortfall) : buttonText(rule), TINT[action]);
   });
+}
+
+/**
+ * 置灰也保留动作名：四键同灰时只剩「金币不足（需 30）／（需 20）」这类数额，
+ * 玩家分不清哪个是哪个动作。配额提示本身自带动作名，不再重复拼。
+ * 长文案由 FontKit 的 SHRINK 溢出自动缩字号，340 px 宽不会被撑破。
+ */
+function greyText(label: string, shortfall: string): string {
+  return shortfall.includes(label) ? shortfall : `${label}·${shortfall}`;
 }
 
 /** 限次动作把今日余量写进按钮，玩家不必自己数今天摸了几下（全局计数，不分宠物）。 */

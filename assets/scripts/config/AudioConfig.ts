@@ -1,5 +1,6 @@
 // STATUS: implemented, W17-3 音效触发点与资源位置（唯一口径：业务只传 cue，不写路径）
-// 分包归属沿用 W17-2 策略：短促的进度提示音进 art 分包，体积大的动物叫声只走云存储清单。
+// 分包归属沿用 W17-2 策略；W24-2 复核后 9 条音效全部只走云存储清单（assets 下暂无 AudioClip 文件，
+// 一旦某条素材落进分包，把它的 bundlePath 填上即可自动优先读分包，业务层不用改）。
 import type { PetSpecies } from './CharacterConfig';
 
 export type AudioCue =
@@ -40,7 +41,9 @@ export const AUDIO_TABLE: Record<AudioCue, AudioDef> = {
   rabbitCry: { cloudKey: 'sfx_rabbit_cry', bundlePath: '', essential: true, volume: 0.5 },
   birdCry: { cloudKey: 'sfx_bird_cry', bundlePath: '', essential: true, volume: 0.5 },
   treatOk: { cloudKey: 'sfx_treat_success', bundlePath: '', essential: true, volume: 0.7 },
-  recoverTick: { cloudKey: 'sfx_recover_tick', bundlePath: 'audio/ui/recoverTick', essential: false, volume: 0.35 },
+  // W24-2：原先写 `audio/ui/recoverTick`，但 art 分包下只有 `pets/` 立绘、assets 里也没有任何
+  // AudioClip 文件，这条路径永远命中不了；按本表约定改为空串，明确它只走云存储清单。
+  recoverTick: { cloudKey: 'sfx_recover_tick', bundlePath: '', essential: false, volume: 0.35 },
   // W20-2 小屋三条互动音：素材未上传时先播合成「哔」，三条各给一个音高，闭眼也能分辨做了什么。
   feed: { cloudKey: 'sfx_feed', bundlePath: '', essential: false, volume: 0.5, fallback: { freq: 660, ms: 110 } },
   bath: { cloudKey: 'sfx_bath', bundlePath: '', essential: false, volume: 0.5, fallback: { freq: 520, ms: 140 } },

@@ -292,7 +292,10 @@ function seedSave(overrides) {
   };
 
   async function boot(cloudEnv, saveOverrides, waitMs = 4200) {
+    // `pet_api_base_v1='off'`：源码里有自建 HTTP 默认地址（决策-6d），浏览器用例必须显式关掉这条通路，
+    // 否则会去请求真线上后端、而且 mock 的 wx 没有 request；关掉后按 cloudEnv 决定走 mock 云还是本地模式。
     await ev(`${cloudEnv ? `localStorage.setItem('pet_cloud_env_v1','mock-env-id');` : `localStorage.removeItem('pet_cloud_env_v1');`}
+      localStorage.setItem('pet_api_base_v1', 'off');
       localStorage.setItem('pet_save_v1', ${JSON.stringify(seedSave(saveOverrides))});
       localStorage.setItem('pet_privacy_v1', JSON.stringify({ privacyAccepted: true, acceptedVersion: '1.0.1', guestMode: false }));
       location.replace('${SITE}/?qa=1');`);
@@ -582,7 +585,7 @@ function seedSave(overrides) {
     `mood 55→${await petState('mood')} day=${await save('s.pettedDay')} count=${await save('s.pettedCount')}`,
   );
 
-  // === 5. 买不起：置灰 + 数额说明 + 免费路径不断链 ===
+  // === 5. 买不起：置灰 + 动作名 + 数额说明 + 免费路径不断链 ===
   console.log('\n=== 5. 买不起时置灰，抚摸仍免费可点 ===');
   await boot(true, { coins: 5, hearts: 2 });
   await openMenu();
@@ -591,22 +594,23 @@ function seedSave(overrides) {
   const greyBath = JSON.parse(await btnState('bath_btn'));
   const greyPet = JSON.parse(await btnState('pet_btn'));
   await shot(`${OUT}-5-shortage`);
+  // W24-1：置灰文案前拼动作名，四键同灰时不能只靠数额区分动作（制作人拍板）。
   judge(
     'L21b',
-    '金币不足（需 30）：喂食按钮置灰并写明数额',
-    greyFeed.on === false && greyFeed.text === '金币不足（需 30）',
+    '喂食·金币不足（需 30）：置灰仍保留动作名',
+    greyFeed.on === false && greyFeed.text === '喂食·金币不足（需 30）',
     JSON.stringify(greyFeed),
   );
   judge(
     'L26b',
-    '爱心不足（需 8）：高级粮按钮置灰并写明数额',
-    greyPremium.on === false && greyPremium.text === '爱心不足（需 8）',
+    '高级粮·爱心不足（需 8）：置灰仍保留动作名',
+    greyPremium.on === false && greyPremium.text === '高级粮·爱心不足（需 8）',
     JSON.stringify(greyPremium),
   );
   judge(
     'L22b',
-    '金币不足（需 20）：洗澡先卡金币这一项（同一行还写着 5 爱心）',
-    greyBath.on === false && greyBath.text === '金币不足（需 20）',
+    '洗澡·金币不足（需 20）：金币先卡住（同一行还写着 5 爱心）',
+    greyBath.on === false && greyBath.text === '洗澡·金币不足（需 20）',
     JSON.stringify(greyBath),
   );
   judge(

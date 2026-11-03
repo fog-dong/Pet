@@ -1,6 +1,6 @@
 // STATUS: implemented, W20-2 大厅内嵌宠物小屋面板（G3-A 不新建场景；整块盖在大厅之上，只让 Toast 压在它上面）
 // W25 P0-B：点行开互动弹窗的链已删，动作改由卡片内的图标 / 立绘直接触发；本文件只做列表编排与派发。
-import { BlockInputEvents, Color, Label, Mask, Node, ScrollView, UITransform } from 'cc';
+import { BlockInputEvents, Color, Label, Mask, Node, ScrollView, UITransform, Vec2 } from 'cc';
 import { HabitatPet } from '../cache/HabitatCodec';
 import { Save } from '../cache/Save';
 import { habitatList, runHabitatAction } from '../game/HabitatModel';
@@ -40,7 +40,7 @@ export function closeHabitatPanel(): void {
   resourcesChanged = undefined;
 }
 
-export function openHabitatPanel(parent: Node, onResourcesChanged?: () => void): void {
+export function openHabitatPanel(parent: Node, onResourcesChanged?: () => void, focusPetId?: string): void {
   closeHabitatPanel();
   Save.load();
   const entries = habitatList();
@@ -59,7 +59,7 @@ export function openHabitatPanel(parent: Node, onResourcesChanged?: () => void):
     addLabel(panel, 'HabitatEmpty', EMPTY_TEXT, 40, { size: 28, color: PALETTE.sub, width: width - 120 });
   } else {
     hint = addLabel(panel, 'HabitatQuotaLabel', habitatHintText(), 272, { size: 18, color: PALETTE.sub, width: width - 60 });
-    buildList(panel, entries, width);
+    buildList(panel, entries, width, focusPetId);
     if (entries.length > 2) {
       addLabel(panel, 'HabitatScrollHint', '上下拖动可以翻看全部宠物', -285, { size: 20, color: PALETTE.sub });
     }
@@ -68,7 +68,7 @@ export function openHabitatPanel(parent: Node, onResourcesChanged?: () => void):
   buildHabitatFooter(panel, width, parent, closeHabitatPanel, onResourcesChanged);
 }
 
-function buildList(panel: Node, entries: readonly HabitatPet[], panelWidth: number): void {
+function buildList(panel: Node, entries: readonly HabitatPet[], panelWidth: number, focusPetId?: string): void {
   const viewW = panelWidth - 80;
   const cardW = panelWidth - CARD_SIDE * 2;
   const scrollNode = createNode(panel, 'HabitatScroll', 0, viewW, VIEW_H);
@@ -87,6 +87,21 @@ function buildList(panel: Node, entries: readonly HabitatPet[], panelWidth: numb
   scroll.vertical = true;
   scroll.horizontal = false;
   scroll.brake = 0.72;
+  focusRow(scroll, entries, focusPetId);
+}
+
+/** 从大厅点进来时把被点的那只滚到视口中间；列表装不下才有滚动，装得下就原地不动。 */
+function focusRow(scroll: ScrollView, entries: readonly HabitatPet[], focusPetId?: string): void {
+  if (!focusPetId) {
+    return;
+  }
+  const index = entries.findIndex((entry) => entry.petId === focusPetId);
+  const max = entries.length * HABITAT_CARD_H - VIEW_H;
+  if (index < 0 || max <= 0) {
+    return;
+  }
+  const offset = Math.max(0, Math.min(max, (index + 0.5) * HABITAT_CARD_H - VIEW_H / 2));
+  scroll.scrollToOffset(new Vec2(0, offset), 0);
 }
 
 /**

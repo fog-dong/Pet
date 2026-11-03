@@ -5,7 +5,7 @@ import { Res } from '../core/Res';
 import { Track } from '../track/Track';
 
 let pending: Promise<AssetManager.Bundle | null> | null = null;
-let warmed = false;
+let warming: Promise<boolean> | null = null;
 
 /**
  * 取 art 分包：已就绪直接返回，未打包或加载失败返回 null。
@@ -26,14 +26,15 @@ function loadArtBundle(): Promise<AssetManager.Bundle | null> {
 
 /** 首次显示宠物时预热 art：不 await，失败走色块分支，由调用方继续渲染。 */
 export function warmArtBundle(): Promise<boolean> {
-  if (warmed) {
-    return Promise.resolve(assetManager.getBundle(ART_BUNDLE) !== null);
+  // 大厅同一帧里医生和两三只宠物会一起要图：只要第一次加载还没回来，后来的调用必须等同一个 Promise，
+  // 不能按「bundle 此刻不在」直接判 false —— 那会把先到的那只打成永久「待补图」。
+  if (!warming) {
+    warming = loadArtBundle().then((bundle) => {
+      const ready = bundle !== null;
+      // 显式两分支：色块占位是 ready=false 的正常路径，不是异常吞掉。
+      Track.track(ready ? 'art_bundle_ready' : 'art_bundle_fallback', { bundle: ART_BUNDLE });
+      return ready;
+    });
   }
-  warmed = true;
-  return loadArtBundle().then((bundle) => {
-    const ready = bundle !== null;
-    // 显式两分支：色块占位是 ready=false 的正常路径，不是异常吞掉。
-    Track.track(ready ? 'art_bundle_ready' : 'art_bundle_fallback', { bundle: ART_BUNDLE });
-    return ready;
-  });
+  return warming;
 }

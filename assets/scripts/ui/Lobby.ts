@@ -13,12 +13,14 @@ import { Res } from '../core/Res';
 import { goState } from '../core/SceneFlow';
 import { CaseSession } from '../game/CaseSession';
 import { CharacterView } from '../game/CharacterView';
+import { habitatList } from '../game/HabitatModel';
 import { Profile } from '../net/Profile';
 import { Track } from '../track/Track';
-import { buildLobbyMenu, HudHandle } from './LobbyChrome';
+import { buildLobbyLinks, buildLobbyMenu, HudHandle } from './LobbyChrome';
 import { LobbyMenuHost, openLobbyMenu } from './LobbyMenu';
 import { lobbyDoctorSize, lobbyDoctorY, lobbyHintY } from './LobbyLayout';
 import { mountLobbyScene } from './LobbyScene';
+import type { PetBandHandle } from './LobbyPetRow';
 import { LeaderboardPanel } from './LeaderboardPanel';
 import { addLabel, PALETTE } from './SceneUI';
 import { SyncBadge } from './SyncBadge';
@@ -33,16 +35,19 @@ export class Lobby extends Component {
 
   private hint: Label | null = null;
   private hud: HudHandle | null = null;
+  private band: PetBandHandle | null = null;
   private doctorSlot: Node | null = null;
   private readonly leaderboard = new LeaderboardPanel();
   private readonly syncBadge = new SyncBadge();
 
   protected start(): void {
     Save.load();
-    const scene = mountLobbyScene(this.node, this.startButton);
+    const scene = mountLobbyScene(this.node, this.startButton, (petId) => this.onMenuClick('HabitatButton', petId));
     this.doctorSlot = scene.doctorSlot;
     this.hud = scene.hud;
+    this.band = scene.band;
     buildLobbyMenu(this.node, (name) => this.onMenuClick(name));
+    buildLobbyLinks(this.node, (name) => this.onMenuClick(name));
     this.hideLegacyStats();
     this.refreshStats();
     if (PrivacyState.isGuest()) {
@@ -67,6 +72,8 @@ export class Lobby extends Component {
           doctor.showDoctor('doc_director');
           doctor.hideBadges();
         }
+        // 角色表到位后再排散步带：品种属性要靠 pets.json 补齐，早于它就刷会按默认值落档。
+        this.refreshBand();
       });
   }
 
@@ -91,7 +98,7 @@ export class Lobby extends Component {
     }
   }
 
-  private onMenuClick(name: string): void {
+  private onMenuClick(name: string, focusPetId?: string): void {
     const host: LobbyMenuHost = {
       node: this.node,
       isValid: this.isValid,
@@ -100,11 +107,19 @@ export class Lobby extends Component {
       showHint: (text) => this.showHint(text),
       refreshStats: () => this.refreshStats(),
     };
-    openLobbyMenu(name, host);
+    openLobbyMenu(name, host, focusPetId);
   }
 
   private refreshStats(): void {
     this.hud?.set(Save.coins, Save.hearts);
+    this.refreshBand();
+  }
+
+  /** 散步带的重建判定在 LobbyPetRow 内部（人没变就跳过），这里只负责拿最新列表。 */
+  private refreshBand(): void {
+    if (this.band && CharacterConfig.ready) {
+      this.band.refresh(habitatList());
+    }
   }
 
   private onStartClick(): void {

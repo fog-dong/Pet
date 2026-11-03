@@ -65,7 +65,7 @@ export function addLifeSummary(
   entry: HabitatPet,
   look: PetConfigItem | null,
 ): void {
-  makeLabel(parent, name, `陪伴 ${getAgeText(entry.birthTimestamp, look)} · ${lifespanText(look)}`, y, {
+  makeLabel(parent, name, `陪伴 ${getAgeText(entry.birthTimestamp)} · ${lifespanText(look)}`, y, {
     size: 22,
     width: 460,
     color: STAGE_TINT[getLifeStage(entry.birthTimestamp, look)].text,

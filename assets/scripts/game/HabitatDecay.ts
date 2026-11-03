@@ -67,7 +67,7 @@ export function statDelta(rule: HabitatRule, stage: LifeStage): number {
     : rule.delta;
 }
 
-/** 互动飘字按实际收益生成，避免老年显示「+15 心情」却只加 8。 */
+/** 互动飘字按实际收益生成，避免老年显示「+10 心情」却只加 5。 */
 export function floatTextOf(rule: HabitatRule, delta: number): string {
   return `+${delta} ${rule.statLabel}`;
 }

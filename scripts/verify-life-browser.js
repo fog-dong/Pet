@@ -111,7 +111,6 @@ function seedSave(options) {
       hunger: p.hunger,
       cleanliness: p.cleanliness,
       mood: p.mood,
-      lastPettedAt: 0,
       birthTimestamp: T0 - p.ageDays * DAY,
       lastDecayAt: T0,
       soothedDay: '',
@@ -142,6 +141,8 @@ function seedSave(options) {
     adDay: '',
     adCounts: {},
     habitatLastClaimAt: 0,
+    pettedDay: '',
+    pettedCount: 0,
   });
 }
 
@@ -287,8 +288,8 @@ function seedSave(options) {
   await click('pet_btn');
   await sleep(500);
   const ragdollMood = await petState('pet_ragdoll', 'mood');
-  judge('W22-3a', '幼年抚摸不打折：心情 70→85', ragdollMood === 85, `mood=${ragdollMood}`);
-  judge('W22-3b', '飘字按实际收益生成 +15 心情', (await label('FloatText')) === '+15 心情', String(await label('FloatText')));
+  judge('W22-3a', '幼年抚摸不打折：心情 70→80（§2.2 +10）', ragdollMood === 80, `mood=${ragdollMood}`);
+  judge('W22-3b', '飘字按实际收益生成 +10 心情', (await label('FloatText')) === '+10 心情', String(await label('FloatText')));
   await click('HabitatMenuClose');
   await sleep(700);
   await openMenu('pet_shiba');
@@ -297,15 +298,16 @@ function seedSave(options) {
   const shibaMood = await petState('pet_shiba', 'mood');
   const shibaFloat = await label('FloatText');
   await shot(`${OUT}-3-menu-senior`);
-  judge('W22-3c', '老年抚摸收益减半：心情 70→78（15×0.5 取整）', shibaMood === 78, `mood=${shibaMood}`);
-  judge('W22-3d', '老年飘字读作 +8 心情，不写死 +15', shibaFloat === '+8 心情', String(shibaFloat));
+  judge('W22-3c', '老年抚摸收益减半：心情 70→75（10×0.5）', shibaMood === 75, `mood=${shibaMood}`);
+  judge('W22-3d', '老年飘字读作 +5 心情，不写死 +10', shibaFloat === '+5 心情', String(shibaFloat));
   const heartsAfterSoothe = await save('s.hearts');
   judge(
     'W22-3e',
-    '老年小毛病只可能是「没收」（8 爱心）或「当天收一次」（5 爱心）',
+    '老年小毛病只可能是「没命中」（8 爱心）或「当天命中一次」（5 爱心）',
     heartsAfterSoothe === 8 || heartsAfterSoothe === 5,
     `hearts=${heartsAfterSoothe}`,
   );
+  judge('W22-3f', '抚摸计入全局每日 3 次：两次互动后 pettedCount=2', (await save('s.pettedCount')) === 2, `pettedCount=${await save('s.pettedCount')}`);
 
   console.log('\n=== 4. 老档缺字段：按领养日回填生日，且不追溯扣属性 ===');
   await boot({ legacy: true });

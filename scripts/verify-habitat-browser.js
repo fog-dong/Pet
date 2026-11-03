@@ -1,11 +1,15 @@
 // STATUS: implemented, W20-4 模块三 客户端全链路核验（CDP 驱动 web-mobile 构建，云函数用 mock 注入，不碰线上）
 'use strict';
-// 覆盖：大厅存档一致性、小屋扣费/满值/冷却/跨天重置、买不起时置灰与余额守卫、
-// 离线收益四分支（granted / 1003 频控 / coins=0 / 云端未接通）、领取连点幂等、缺图占位色、互动合成哔声。
+// 覆盖：大厅存档一致性、小屋四键扣费/满值/每日次数/跨天重置、买不起时置灰与余额守卫、
+// 离线收益四分支（granted / 1003 频控 / coins=0 / 云端未接通）、领取连点幂等、贴图覆盖、互动合成哔声、
+// 老年小毛病必命中用例（按当日 dayKey 反查命中的品种，验证扣爱心 + 当天只收一次）。
+// 数值口径：2026-11-03 决策-4（喂食 30 金币 / 高级粮 8 爱心 / 洗澡 20 金币+5 爱心 / 抚摸 +10 且每天 3 次）
+// 与决策-5（老年小毛病 25%、安抚 3 爱心）。
 // 前置：本地起 web-mobile 构建静态服务 + headless Chrome 开 CDP 端口。
 // 用法：node scripts/verify-habitat-browser.js <CDP端口> <站点端口> <截图前缀>
 
 const fs = require('fs');
+const path = require('path');
 
 const CDP_PORT = Number(process.argv[2] || 9448);
 const PORT = Number(process.argv[3] || 8095);
@@ -17,11 +21,50 @@ const H = 1280;
 const SITE = `http://127.0.0.1:${PORT}`;
 const DAY = 86400000;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+// 基准时刻在 Node 侧取一次：种子存档与断言共用同一个点，避免出现两处「现在」。
+const T0 = Date.now();
+/** 日期键格式与 cache/DayKey.ts 完全一致（月、日不补零）。 */
+function dayKeyOf(ts) {
+  const d = new Date(ts);
+  return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+}
+const DAY_KEY = dayKeyOf(T0);
+
+const DECAY_SRC = fs.readFileSync(path.join(__dirname, '..', 'assets/scripts/game/HabitatDecay.ts'), 'utf8');
+/** 概率与安抚价从源码正则取，脚本里不抄第二份数字（改了源码这里会立刻对不上）。 */
+const AILMENT_COST = Number(DECAY_SRC.match(/AILMENT_HEART_COST = (\d+)/)[1]);
+const AILMENT_ODDS = Number(DECAY_SRC.match(/AILMENT_ODDS_PERCENT = (\d+)/)[1]);
+
+/** game/HabitatDecay.ts 里 FNV-1a 的镜像，只用来反查「今天哪只必命中」；触发与否仍由页面自己判。
+ *  镜像若与实现跑偏，选中的一定不是真命中的宠物，下面的扣爱心断言会直接 FAIL，不会静默放过。 */
+function hash32(text) {
+  let hash = 2166136261;
+  for (let i = 0; i < text.length; i += 1) {
+    hash ^= text.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return Math.abs(hash >>> 0);
+}
+/** 默认成员之外的品种，供老年用例追加进屋（避免同一 petId 在 habitat 里出现两次）。 */
+const BASE_IDS = ['pet_husky', 'pet_british', 'pet_american', 'pet_calico', 'pet_samoyed', 'pet_shiba'];
+const ALL_PETS = JSON.parse(
+  fs.readFileSync(path.join(__dirname, '..', 'assets/bundles/cases/config/pets.json'), 'utf8'),
+).pets.map((p) => p.petId);
+/** 900 天超过全部品种的老年线（最长 420 天），所以无论选中谁都必定是老年档。 */
+const SENIOR_DAYS = 900;
+const STRUCK_PET = ALL_PETS.find((id) => !BASE_IDS.includes(id) && hash32(`${id}|${DAY_KEY}`) % 100 < AILMENT_ODDS) || null;
 
 const results = [];
+const skips = [];
 function judge(id, title, pass, detail) {
   results.push({ id, title, pass, detail });
   console.log(`${pass ? 'PASS' : 'FAIL'} [${id}] ${title}${detail ? ' → ' + detail : ''}`);
+}
+
+/** 数据条件今天凑不出来的用例：显式告知，绝不当成通过。 */
+function skip(id, title, reason) {
+  skips.push({ id, title, reason });
+  console.log(`SKIP [${id}] ${title} → ${reason}`);
 }
 
 /** 汇总判定并落退出码；forced 非 0 时（如有未捕获异常或 ABORT）直接判失败。 */
@@ -29,6 +72,7 @@ function report(forced) {
   const failed = results.filter((r) => !r.pass);
   console.log(`\n合计 ${results.length} 条判定，PASS ${results.length - failed.length} / FAIL ${failed.length}`);
   failed.forEach((f) => console.log(`  FAIL ${f.id} ${f.title} → ${f.detail}`));
+  skips.forEach((s) => console.log(`  ⚠️ SKIP ${s.id} ${s.title} → ${s.reason}`));
   process.exitCode = failed.length || forced ? 1 : 0;
 }
 
@@ -119,25 +163,44 @@ const BOOT_SCRIPT = `(() => {
 
 const FIND = `(nm) => { const find = (n) => { if (n.name === nm) return n; for (const c of n.children) { const r = find(c); if (r) return r; } return null; }; const s = cc.director.getScene(); return s ? find(s) : null; }`;
 const SCENE = `(() => { const s = window.cc && cc.director.getScene(); return s ? s.name : 'none'; })()`;
-const PET_STATE = `JSON.parse(localStorage.getItem('pet_save_v1')).habitat.find(h=>h.petId==='pet_husky')`;
 
 function seedSave(overrides) {
-  const pettedAt = overrides.pettedAt || 0;
-  delete overrides.pettedAt;
+  const opts = Object.assign({}, overrides);
+  const senior = opts.senior || null;
+  delete opts.senior;
+  const ids = BASE_IDS.slice();
+  const habitat = [
+    // 心情给 55 而不是 70：三次抚摸（+10×3）后是 85，仍然没满。
+    // 满值判定在次数判定之前（HabitatModel.runHabitatAction），要是这里就摸满，第 4 次会被「心情已经满格啦」拦住，
+    // 就测不到「今日抚摸次数已用完」这条分支了。
+    { petId: 'pet_husky', hunger: 55, cleanliness: 40, mood: 55 },
+    { petId: 'pet_british', hunger: 40, cleanliness: 60, mood: 60 },
+    { petId: 'pet_american', hunger: 50, cleanliness: 50, mood: 50 },
+    { petId: 'pet_calico', hunger: 50, cleanliness: 50, mood: 50 },
+    { petId: 'pet_samoyed', hunger: 50, cleanliness: 50, mood: 50 },
+    { petId: 'pet_shiba', hunger: 50, cleanliness: 50, mood: 60 },
+  ];
+  if (senior) {
+    // 出生时间给到 900 天前、水位给到 T0：进屋既必定是老年档，又不会顺手补算出额外衰减。
+    habitat.push({
+      petId: senior,
+      hunger: 50,
+      cleanliness: 50,
+      mood: 70,
+      birthTimestamp: T0 - SENIOR_DAYS * DAY,
+      lastDecayAt: T0,
+      soothedDay: '',
+    });
+    ids.push(senior);
+  }
   const base = {
     coins: 1200,
-    hearts: 8,
-    petsSeen: ['pet_husky', 'pet_british', 'pet_american', 'pet_calico', 'pet_samoyed', 'pet_shiba'],
-    petsAdopted: ['pet_husky', 'pet_british', 'pet_american', 'pet_calico', 'pet_samoyed', 'pet_shiba'],
+    // 16 爱心 = 高级粮 8 + 洗澡 5 + 还得起第二次，够走完四键全扣费的路径。
+    hearts: 16,
+    petsSeen: ids,
+    petsAdopted: ids,
     adoptedAt: { pet_husky: '2026-10-1' },
-    habitat: [
-      { petId: 'pet_husky', hunger: 55, cleanliness: 40, mood: 70, lastPettedAt: pettedAt },
-      { petId: 'pet_british', hunger: 40, cleanliness: 60, mood: 60, lastPettedAt: pettedAt },
-      { petId: 'pet_american', hunger: 50, cleanliness: 50, mood: 50, lastPettedAt: pettedAt },
-      { petId: 'pet_calico', hunger: 50, cleanliness: 50, mood: 50, lastPettedAt: pettedAt },
-      { petId: 'pet_samoyed', hunger: 50, cleanliness: 50, mood: 50, lastPettedAt: pettedAt },
-      { petId: 'pet_shiba', hunger: 50, cleanliness: 50, mood: 60, lastPettedAt: pettedAt },
-    ],
+    habitat,
     bestStars: {},
     casesDone: 3,
     items: {},
@@ -148,9 +211,11 @@ function seedSave(overrides) {
     slotBonus: 0,
     adDay: '',
     adCounts: {},
+    pettedDay: '',
+    pettedCount: 0,
     habitatLastClaimAt: 0,
   };
-  return JSON.stringify(Object.assign(base, overrides));
+  return JSON.stringify(Object.assign(base, opts));
 }
 
 (async () => {
@@ -204,7 +269,21 @@ function seedSave(overrides) {
       return JSON.stringify({ on: b ? b.interactable : null, text: l ? l.getComponent('cc.Label').string : null });
     })()`);
   const save = (path) => ev(`(() => { const s = JSON.parse(localStorage.getItem('pet_save_v1')); return ${path}; })()`);
-  const petState = (field) => ev(`(() => { const h = ${PET_STATE}; return h ? h.${field} : null; })()`);
+  const anyPetState = (petId, field) =>
+    ev(`(() => { const h = JSON.parse(localStorage.getItem('pet_save_v1')).habitat.find(x=>x.petId==='${petId}'); return h ? h.${field} : null; })()`);
+  const petState = (field) => anyPetState('pet_husky', field);
+  /** 阶段标签节点名是 `StageTag_<stage>`（不含 petId），文字又在它的 StageTagText 子节点里，所以按卡片往下找。 */
+  const stageTag = (petId) =>
+    ev(`(() => {
+      const card = (${FIND})('HabitatCard_${petId}');
+      if (!card) return null;
+      let text = null;
+      (function walk(n) {
+        if (n.name.indexOf('StageTag_') === 0) { const t = n.getChildByName('StageTagText'); text = t ? t.getComponent('cc.Label').string : '?'; }
+        n.children.forEach(walk);
+      })(card);
+      return text;
+    })()`);
   const claimCalls = () => ev(`window.__calls.filter(c=>c==='claimHabitat').length`);
   const shot = async (file) => {
     const img = await cdp.call('Page.captureScreenshot', { format: 'png' });
@@ -234,20 +313,26 @@ function seedSave(overrides) {
     await sleep(1200);
   };
   /** 菜单按钮要单独等：只等 HabitatMenu 会在菜单刚挂上、按钮还没建完时返回。 */
-  const openMenu = async () => {
+  const openMenu = async (petId = 'pet_husky') => {
     await openPanel();
-    await tap('HabitatCard_pet_husky');
+    await tap(`HabitatCard_${petId}`);
+    if (!(await waitFor('feed_btn'))) throw new Error('HabitatMenu buttons not found');
+    await sleep(700);
+  };
+  /** 只收菜单、不重开面板：用于「同一日内换一只宠物看次数是否共享」。 */
+  const openMenuOnly = async (petId) => {
+    await tap(`HabitatCard_${petId}`);
     if (!(await waitFor('feed_btn'))) throw new Error('HabitatMenu buttons not found');
     await sleep(700);
   };
 
-  // === 1. 小屋互动：扣费 / 免费路径 / 冷却 / 满值 / 音效兜底 / 贴图覆盖 ===
-  console.log('\n=== 1. 小屋互动（coins 1200 / hearts 8）===');
+  // === 1. 小屋互动：扣费 / 免费路径 / 每日次数 / 满值 / 音效兜底 / 贴图覆盖 ===
+  console.log('\n=== 1. 小屋互动（coins 1200 / hearts 16）===');
   await boot(true, {});
   judge(
     'L01',
     '大厅 HUD 与存档一致',
-    (await label('CoinPillLabel')) === '1200' && (await label('HeartPillLabel')) === '8',
+    (await label('CoinPillLabel')) === '1200' && (await label('HeartPillLabel')) === '16',
     `Coin=${await label('CoinPillLabel')} Heart=${await label('HeartPillLabel')}`,
   );
   await openPanel();
@@ -271,7 +356,7 @@ function seedSave(overrides) {
     })()`,
     ),
   );
-  await shot('w204-1-list');
+  await shot(`${OUT}-1-list`);
   const withArt = cards.filter((c) => !c.placeholder && c.art !== '-').map((c) => c.petId);
   const missing = cards.filter((c) => c.placeholder);
   // 20 只立绘入库后，本组存档里的卡片全部拿到真贴图，「缺图 → 品种占位色」分支不再被数据触发；
@@ -286,63 +371,98 @@ function seedSave(overrides) {
   await tap('HabitatCard_pet_husky');
   if (!(await waitFor('feed_btn'))) throw new Error('HabitatMenu buttons not found');
   await sleep(800);
+  const fourBtns = await ev(`['feed','premium','bath','pet'].map(a => !!(${FIND})(a + '_btn')).join(',')`);
+  judge(
+    'W23-2a',
+    '互动菜单四枚按钮齐备（喂食 / 高级粮 / 洗澡 / 抚摸）',
+    fourBtns === 'true,true,true,true',
+    fourBtns,
+  );
   const before = { coins: await save('s.coins'), hearts: await save('s.hearts') };
   await ev('window.__tones = []');
   await click('feed_btn');
   await sleep(500);
   judge(
     'L21',
-    '喂食扣 10 金币、饱食 +30',
-    (await save('s.coins')) === before.coins - 10 && (await petState('hunger')) === 85,
+    '喂食扣 30 金币、饱食 +30（决策-4）',
+    (await save('s.coins')) === before.coins - 30 && (await petState('hunger')) === 85,
     `coins ${before.coins}→${await save('s.coins')}, hunger 55→${await petState('hunger')}`,
+  );
+  await click('premium_btn');
+  await sleep(500);
+  const premiumHunger = await petState('hunger');
+  judge(
+    'L26',
+    '高级粮扣 8 爱心、饱食 +70 并夹到满值（85+70→100）',
+    (await save('s.hearts')) === before.hearts - 8 && premiumHunger === 100 && (await label('FloatText')) === '+70 饱食度',
+    `hearts ${before.hearts}→${await save('s.hearts')}, hunger 85→${premiumHunger}, float=${await label('FloatText')}`,
   );
   await click('bath_btn');
   await sleep(500);
   judge(
     'L22',
-    '洗澡扣 5 爱心、清洁 +40',
-    (await save('s.hearts')) === before.hearts - 5 && (await petState('cleanliness')) === 80,
-    `hearts ${before.hearts}→${await save('s.hearts')}, cleanliness 40→${await petState('cleanliness')}`,
+    '洗澡扣 20 金币 + 5 爱心、清洁 +35（决策-4：在 §2.2 的 20 金币之外加收 5 爱心）',
+    (await save('s.coins')) === before.coins - 50 && (await save('s.hearts')) === before.hearts - 13 && (await petState('cleanliness')) === 75,
+    `coins ${before.coins}→${await save('s.coins')} hearts ${before.hearts}→${await save('s.hearts')} clean 40→${await petState('cleanliness')}`,
   );
-  await click('pet_btn');
-  await sleep(500);
+  const petSteps = [];
+  for (let i = 0; i < 3; i++) {
+    await click('pet_btn');
+    await sleep(450);
+    petSteps.push({ mood: await petState('mood'), count: await save('s.pettedCount') });
+  }
   judge(
     'L23',
-    '抚摸免费、心情 +15',
-    (await save('s.coins')) === before.coins - 10 && (await petState('mood')) === 85,
-    `coins 不变(${await save('s.coins')}), mood 70→${await petState('mood')}`,
+    '抚摸免费、每次心情 +10（决策-4），连点三次分别计 1/2/3 次',
+    petSteps.map((s) => s.mood).join(',') === '65,75,85' && petSteps.map((s) => s.count).join(',') === '1,2,3',
+    `coins 不变(${await save('s.coins')}) steps=${JSON.stringify(petSteps)}`,
+  );
+  const petBtn = JSON.parse(await btnState('pet_btn'));
+  judge(
+    'W23-2b',
+    '三次用满后按钮当场置灰并写明「今日抚摸次数已用完」',
+    petBtn.on === false && petBtn.text === '今日抚摸次数已用完',
+    JSON.stringify(petBtn),
+  );
+  await click('pet_btn');
+  await sleep(450);
+  judge(
+    'B02',
+    '绕过置灰仍被拦：第 4 次不加值、不计数，只提示次数用尽',
+    (await petState('mood')) === 85 && (await save('s.pettedCount')) === 3 && /今日抚摸次数已用完/.test(String(await label('ToastLabel'))),
+    `mood=${await petState('mood')} count=${await save('s.pettedCount')} toast=${await label('ToastLabel')}`,
   );
   const tones = JSON.parse(await ev('JSON.stringify(window.__tones)'));
   const freqs = tones.map((t) => t.freq);
   judge(
     'S01',
-    '三条互动 cue 无素材时走合成哔声且音高互不相同',
-    freqs.length === 3 && new Set(freqs).size === 3,
+    '六次放行各发一条合成哔声，三个 cue 音高互不相同；高级粮复用 feed 键所以与第一次同音高',
+    freqs.length === 6 && new Set(freqs).size === 3 && freqs[0] === freqs[1],
     tones.map((t) => `${t.type}:${t.freq}`).join(' '),
   );
-  const moodBefore2 = await petState('mood');
-  await click('pet_btn');
-  await sleep(450);
-  judge(
-    'B02',
-    '抚摸 60 秒冷却：第二次只提示不加值',
-    (await petState('mood')) === moodBefore2 && /刚摸过啦/.test(String(await label('ToastLabel'))),
-    await label('ToastLabel'),
-  );
-  await click('feed_btn');
-  await sleep(400);
-  await click('feed_btn');
-  await sleep(400);
+  await shot(`${OUT}-2-menu-four`);
   const coinsAtFull = await save('s.coins');
   await click('feed_btn');
   await sleep(450);
   judge(
     'L24',
-    '属性满值只提示不扣费',
+    '属性满值只提示不扣费（饱食已 100，喂食不再扣 30 金币）',
     (await petState('hunger')) === 100 && (await save('s.coins')) === coinsAtFull && /已经吃饱啦/.test(String(await label('ToastLabel'))),
     `hunger=${await petState('hunger')} coins=${coinsAtFull}→${await save('s.coins')} toast=${await label('ToastLabel')}`,
   );
-  await shot('w204-2-menu');
+  await click('HabitatMenuClose');
+  await sleep(600);
+  await openMenuOnly('pet_british');
+  const sharedBtn = JSON.parse(await btnState('pet_btn'));
+  judge(
+    'W23-1a',
+    '每日 3 次是全局计数（方案 §2.1 字段挂 SaveData）：换一只没摸过的照样置灰、不加值',
+    sharedBtn.on === false && sharedBtn.text === '今日抚摸次数已用完' && (await anyPetState('pet_british', 'mood')) === 60,
+    `btn=${JSON.stringify(sharedBtn)} 奶豆 mood=${await anyPetState('pet_british', 'mood')}`,
+  );
+  await click('HabitatMenuClose');
+  await sleep(600);
+  await shot(`${OUT}-2b-panel`);
 
   // === 2. 离线收益四分支 ===
   console.log('\n=== 2. 离线收益四分支 ===');
@@ -352,7 +472,7 @@ function seedSave(overrides) {
   await click('HabitatClaim');
   await sleep(400);
   const floatTxt = await label('FloatText');
-  await shot('w204-3-claim-granted');
+  await shot(`${OUT}-3-claim-granted`);
   await sleep(700);
   const granted = JSON.parse(await btnState('HabitatClaim'));
   judge(
@@ -365,7 +485,7 @@ function seedSave(overrides) {
       granted.text === '离线收益 · 已领取',
     `float=${floatTxt} coins=${coinsPreClaim}→${await save('s.coins')} btn=${JSON.stringify(granted)}`,
   );
-  await shot('w204-3b-claim-granted-toast');
+  await shot(`${OUT}-3b-claim-granted-toast`);
 
   await boot(true, {});
   await openPanel();
@@ -382,7 +502,7 @@ function seedSave(overrides) {
       limitedBtn.text === '离线收益 · 待领取',
     `btn=${JSON.stringify(limitedBtn)} toast=${await label('ToastLabel')}`,
   );
-  await shot('w204-4-claim-limited');
+  await shot(`${OUT}-4-claim-limited`);
   await ev("window.__claimMode = 'empty'");
   await click('HabitatClaim');
   await sleep(900);
@@ -412,8 +532,8 @@ function seedSave(overrides) {
   await sleep(500);
   judge(
     'B01',
-    '断网小屋照常互动（本地扣费 + 本地属性，不发云端请求）',
-    (await save('s.coins')) === b1Coins - 10 && (await claimCalls()) === 0,
+    '断网小屋照常互动（本地扣 30 金币 + 本地属性，不发云端请求）',
+    (await save('s.coins')) === b1Coins - 30 && (await claimCalls()) === 0,
     `coins ${b1Coins}→${await save('s.coins')}`,
   );
 
@@ -438,18 +558,28 @@ function seedSave(overrides) {
     `hunger ${hungerPreReload}→${await petState('hunger')} coins ${coinsPreReload}→${await save('s.coins')}`,
   );
 
-  // === 4. 跨天冷却重置：上次抚摸在昨天，不该被 60 秒窗口拦住 ===
-  console.log('\n=== 4. 抚摸冷却跨天重置 ===');
-  await boot(true, { pettedAt: Date.now() - 2 * DAY });
+  // === 4. 每日次数跨天重置：昨天用满 3 次，今天重新起算 ===
+  console.log('\n=== 4. 抚摸次数跨天重置 ===');
+  await boot(true, { pettedDay: dayKeyOf(T0 - 2 * DAY), pettedCount: 3 });
   await openMenu();
   const cdCoins = await save('s.coins');
+  const cdBtn = JSON.parse(await btnState('pet_btn'));
+  judge(
+    'W23-1b',
+    '昨日计数满 3 也不算今天用完：按钮仍可点、写明余量（剩 3）',
+    cdBtn.on === true && cdBtn.text === '抚摸 · 免费（剩 3）',
+    JSON.stringify(cdBtn),
+  );
   await click('pet_btn');
   await sleep(500);
   judge(
     'B04',
-    '上次抚摸在昨天：冷却不拦，心情照常 +15',
-    (await petState('mood')) === 85 && (await save('s.coins')) === cdCoins,
-    `mood 70→${await petState('mood')} coins=${await save('s.coins')}`,
+    '昨天用满、今天不拦：心情照常 +10，计数改挂到今天并从 1 重起',
+    (await petState('mood')) === 65 &&
+      (await save('s.coins')) === cdCoins &&
+      (await save('s.pettedDay')) === DAY_KEY &&
+      (await save('s.pettedCount')) === 1,
+    `mood 55→${await petState('mood')} day=${await save('s.pettedDay')} count=${await save('s.pettedCount')}`,
   );
 
   // === 5. 买不起：置灰 + 数额说明 + 免费路径不断链 ===
@@ -457,22 +587,34 @@ function seedSave(overrides) {
   await boot(true, { coins: 5, hearts: 2 });
   await openMenu();
   const greyFeed = JSON.parse(await btnState('feed_btn'));
+  const greyPremium = JSON.parse(await btnState('premium_btn'));
   const greyBath = JSON.parse(await btnState('bath_btn'));
   const greyPet = JSON.parse(await btnState('pet_btn'));
-  await shot('w204-5-shortage');
+  await shot(`${OUT}-5-shortage`);
   judge(
     'L21b',
-    '金币不足（需 10）：喂食按钮置灰并写明数额',
-    greyFeed.on === false && greyFeed.text === '金币不足（需 10）',
+    '金币不足（需 30）：喂食按钮置灰并写明数额',
+    greyFeed.on === false && greyFeed.text === '金币不足（需 30）',
     JSON.stringify(greyFeed),
   );
   judge(
+    'L26b',
+    '爱心不足（需 8）：高级粮按钮置灰并写明数额',
+    greyPremium.on === false && greyPremium.text === '爱心不足（需 8）',
+    JSON.stringify(greyPremium),
+  );
+  judge(
     'L22b',
-    '爱心不足（需 5）：洗澡按钮置灰并写明数额',
-    greyBath.on === false && greyBath.text === '爱心不足（需 5）',
+    '金币不足（需 20）：洗澡先卡金币这一项（同一行还写着 5 爱心）',
+    greyBath.on === false && greyBath.text === '金币不足（需 20）',
     JSON.stringify(greyBath),
   );
-  judge('L23b', '买不起时零成本路径（抚摸 · 免费）仍然可点', greyPet.on === true && greyPet.text === '抚摸 · 免费', JSON.stringify(greyPet));
+  judge(
+    'L23b',
+    '买不起时零成本路径（抚摸 · 免费（剩 3））仍然可点',
+    greyPet.on === true && greyPet.text === '抚摸 · 免费（剩 3）',
+    JSON.stringify(greyPet),
+  );
   // 真实触摸会被 Button.interactable 拦住，脚本直发 click 会绕过它；这里验第二道防线：互动谓词自身的余额守卫。
   const coinsPreSpend = await save('s.coins');
   await click('feed_btn');
@@ -485,7 +627,7 @@ function seedSave(overrides) {
   );
   await click('pet_btn');
   await sleep(500);
-  judge('L23c', '买不起时免费抚摸照样能加心情（零成本回访路径不断链）', (await petState('mood')) === 85, `mood→${await petState('mood')}`);
+  judge('L23c', '买不起时免费抚摸照样能加心情（零成本回访路径不断链）', (await petState('mood')) === 65, `mood→${await petState('mood')}`);
 
   // === 6. 领取连点幂等 ===
   console.log('\n=== 6. 领取连点 ===');
@@ -500,6 +642,57 @@ function seedSave(overrides) {
     (await claimCalls()) === 1 && (await save('s.coins')) === coinsPreTap + 150,
     `calls=${await claimCalls()} coins=${coinsPreTap}→${await save('s.coins')}`,
   );
+
+  // === 7. 老年小毛病必命中（决策-5：25% 概率、安抚 3 爱心、当天只收一次）===
+  console.log('\n=== 7. 老年小毛病必命中用例 ===');
+  console.log(`     今日日期键=${DAY_KEY}，反查命中品种=${STRUCK_PET || '（无）'}，安抚价=${AILMENT_COST} 爱心，概率=${AILMENT_ODDS}%`);
+  if (!STRUCK_PET) {
+    skip(
+      'A01',
+      '老年小毛病扣爱心',
+      `20 只品种在 dayKey=${DAY_KEY} 下没有一个 hash 落在 ${AILMENT_ODDS}% 以内（约 3% 的日子会这样）；换一天重跑即可复现，不是代码缺陷`,
+    );
+  } else {
+    await boot(true, { senior: STRUCK_PET });
+    await openMenu(STRUCK_PET);
+    const struckTag = await stageTag(STRUCK_PET);
+    const heartsPreStrike = await save('s.hearts');
+    const coinsPreStrike = await save('s.coins');
+    const moodPreStrike = await anyPetState(STRUCK_PET, 'mood');
+    await click('pet_btn');
+    await sleep(600);
+    const moodAfterStrike = await anyPetState(STRUCK_PET, 'mood');
+    const heartsAfterStrike = await save('s.hearts');
+    judge(
+      'A01',
+      `老年 ${STRUCK_PET} 今日必命中：免费抚摸照样扣 ${AILMENT_COST} 爱心，心情只按老年档 +5`,
+      moodPreStrike === 70 &&
+        moodAfterStrike === 75 &&
+        heartsAfterStrike === heartsPreStrike - AILMENT_COST &&
+        (await label('FloatText')) === '+5 心情' &&
+        /安抚/.test(String(await label('ToastLabel'))),
+      `阶段标签=${struckTag} mood ${moodPreStrike}→${moodAfterStrike} hearts ${heartsPreStrike}→${heartsAfterStrike} toast=${await label('ToastLabel')}`,
+    );
+    judge(
+      'A02',
+      `安抚日期键写入当天（soothedDay === ${DAY_KEY}）`,
+      (await anyPetState(STRUCK_PET, 'soothedDay')) === DAY_KEY,
+      `soothedDay=${await anyPetState(STRUCK_PET, 'soothedDay')}`,
+    );
+    judge('A04', '命中前提是老年档：卡片阶段标签确实写着「老年」', struckTag === '老年', String(struckTag));
+    await shot(`${OUT}-7-ailment`);
+    // 同一天第二次互动：规则本身的消耗照扣，但不再重复收安抚费。
+    await click('feed_btn');
+    await sleep(600);
+    judge(
+      'A03',
+      '当天不再重复安抚：第二次互动只扣喂食自己的 30 金币，爱心分文不动',
+      (await save('s.hearts')) === heartsAfterStrike &&
+        (await save('s.coins')) === coinsPreStrike - 30 &&
+        (await anyPetState(STRUCK_PET, 'hunger')) === 80,
+      `hearts=${await save('s.hearts')} coins ${coinsPreStrike}→${await save('s.coins')} hunger 50→${await anyPetState(STRUCK_PET, 'hunger')}`,
+    );
+  }
 
   console.log('\n=== 未捕获异常 ===');
   console.log(errors.length ? errors.slice(0, 10).join('\n') : '无');

@@ -1,8 +1,9 @@
-// STATUS: implemented, W20-2 小屋数据层 + W22-4 生命周期衰减接入
+// STATUS: implemented, W20-2 小屋数据层 + W22-4 生命周期衰减接入 + W23-1 数值对齐与每日次数上限
 // 互动规则表见 game/HabitatRules.ts，衰减倍率与老年小毛病见 game/HabitatDecay.ts；本文件只做编排与落盘（偏差 D19：全部只写本地存档）。
 import { clampStat, HabitatPet, seedHabitat, STAT_MAX } from '../cache/HabitatCodec';
 import { dayKeyToTime, todayKey } from '../cache/DayKey';
 import { Save } from '../cache/Save';
+import { PetQuota } from '../cache/PetQuota';
 import { CharacterConfig } from '../config/CharacterConfig';
 import { getLifeStage, LifeStage } from './AgeSystem';
 import { ailmentCost, applyDecay, elapsedDecayHours, floatTextOf, statDelta } from './HabitatDecay';
@@ -69,9 +70,9 @@ function settleDecay(): void {
   });
 }
 
-/** 只读余额不扣费：互动菜单据此提前置灰，玩家不必点了才知道买不起（方案 §2.4）。 */
+/** 只读余额与今日次数、不扣费：互动菜单据此提前置灰，玩家不必点了才知道买不起（方案 §2.4）。 */
 export function affordShortfall(rule: HabitatRule): string | null {
-  return shortfallFor(rule.costCoins, rule.costHearts);
+  return PetQuota.shortfall(rule.label, rule.dailyLimit) ?? shortfallFor(rule.costCoins, rule.costHearts);
 }
 
 /** 当前生命周期阶段：阈值只从 pets.json 的品种配置读，缺配由 AgeSystem 兜底，本文件无 petId 分支。 */
@@ -79,7 +80,7 @@ export function stageOf(entry: HabitatPet, now: number = Date.now()): LifeStage 
   return getLifeStage(entry.birthTimestamp, CharacterConfig.petById(entry.petId), now);
 }
 
-/** 一次互动：先补算衰减，再验状态与消耗，通过后改属性并立刻落盘。 */
+/** 一次互动：先补算衰减，再验状态、今日次数与消耗，通过后改属性并立刻落盘。 */
 export function runHabitatAction(petId: string, action: HabitatAction): HabitatOutcome {
   const rule = HABITAT_RULES[action];
   const entry = habitatList().find((item) => item.petId === petId);
@@ -89,14 +90,12 @@ export function runHabitatAction(petId: string, action: HabitatAction): HabitatO
   if (entry[rule.stat] >= STAT_MAX) {
     return { kind: 'blocked', text: rule.fullText };
   }
-  if (rule.cooldownMs > 0) {
-    const remain = rule.cooldownMs - (Date.now() - entry.lastPettedAt);
-    if (remain > 0) {
-      return { kind: 'blocked', text: `刚摸过啦，${Math.ceil(remain / 1000)} 秒后再来` };
-    }
-  }
   const stage = stageOf(entry);
   const dayKey = todayKey();
+  const limitText = PetQuota.shortfall(rule.label, rule.dailyLimit, dayKey);
+  if (limitText) {
+    return { kind: 'blocked', text: limitText };
+  }
   const soothCost = ailmentCost(entry, stage, dayKey);
   const hearts = rule.costHearts + soothCost;
   const shortfall = shortfallFor(rule.costCoins, hearts);
@@ -116,13 +115,11 @@ export function runHabitatAction(petId: string, action: HabitatAction): HabitatO
       return;
     }
     target[rule.stat] = clampStat(target[rule.stat] + delta);
-    if (rule.cooldownMs > 0) {
-      target.lastPettedAt = Date.now();
-    }
     if (soothCost > 0) {
       target.soothedDay = dayKey;
     }
   });
+  PetQuota.consume(rule.dailyLimit, dayKey);
   return { kind: 'done', entry, rule, delta, floatText: floatTextOf(rule, delta), soothed: soothCost > 0 };
 }
 

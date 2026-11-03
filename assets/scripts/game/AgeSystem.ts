@@ -73,12 +73,11 @@ export function getLifeProgress(
   return Math.max(0, Math.min(1, ageInDays(birthTimestamp, now) / span.expectedLifespanDays));
 }
 
-/** "1 岁 2 个月" / "5 个月" / "出生当天"。 */
-export function getAgeText(
-  birthTimestamp: number,
-  item?: PetConfigItem | null,
-  now: number = Date.now(),
-): string {
+/**
+ * "1 岁 2 个月" / "5 个月" / "出生当天"。
+ * 只跟出生时间有关，与品种阈值无关（老年线只影响倍率），所以这里不接 `PetConfigItem`。
+ */
+export function getAgeText(birthTimestamp: number, now: number = Date.now()): string {
   const days = ageInDays(birthTimestamp, now);
   const years = Math.floor(days / DAYS_PER_PET_YEAR);
   const months = days % DAYS_PER_PET_YEAR;

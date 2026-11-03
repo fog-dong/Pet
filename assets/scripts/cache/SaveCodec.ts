@@ -1,4 +1,4 @@
-// STATUS: implemented, W3 本地存档编解码（纯函数，无副作用）；W20-2 增小屋条目，编解码拆到 HabitatCodec
+// STATUS: implemented, W3 本地存档编解码（纯函数，无副作用）；W20-2 增小屋条目，编解码拆到 HabitatCodec；W23-1 增抚摸每日上限计数
 import { decodeHabitat, HabitatPet } from './HabitatCodec';
 
 export interface SaveData {
@@ -15,6 +15,12 @@ export interface SaveData {
    * 真正的起算点在服务端 `habitat_state.lastClaimAt`，这里算错也不会多铸币。
    */
   habitatLastClaimAt: number;
+  /**
+   * 今日已抚摸次数（方案 §2.1：全局计数，不分宠物）与起算日。
+   * 与 `adDay` / `adCounts` 同一套口径：`pettedDay` 不等于今天就把 `pettedCount` 视为 0。
+   */
+  pettedDay: string;
+  pettedCount: number;
   bestStars: Record<string, number>;
   casesDone: number;
   items: Record<string, number>;
@@ -43,6 +49,8 @@ export function emptySave(): SaveData {
     adoptedAt: {},
     habitat: [],
     habitatLastClaimAt: 0,
+    pettedDay: '',
+    pettedCount: 0,
     bestStars: {},
     casesDone: 0,
     items: { ...DEFAULT_ITEMS },
@@ -110,6 +118,8 @@ export function decodeSave(raw: string | null): SaveData {
       adoptedAt: toStringMap(parsed.adoptedAt),
       habitat: decodeHabitat(parsed.habitat),
       habitatLastClaimAt: Math.max(0, toNumber(parsed.habitatLastClaimAt, 0)),
+      pettedDay: typeof parsed.pettedDay === 'string' ? parsed.pettedDay : '',
+      pettedCount: Math.max(0, Math.floor(toNumber(parsed.pettedCount, 0))),
       bestStars: toNumberMap(parsed.bestStars),
       casesDone: toNumber(parsed.casesDone, 0),
       items: parsed.items ? toNumberMap(parsed.items) : { ...DEFAULT_ITEMS },

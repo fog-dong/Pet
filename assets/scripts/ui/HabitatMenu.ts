@@ -1,33 +1,23 @@
-// STATUS: implemented, W20-2 小屋互动菜单（点宠物行弹出；喂食/洗澡/抚摸三枚按钮 + 抚摸 ±4° 摇摆）
-import { Color, Button, Node, Tween, tween } from 'cc';
+// STATUS: implemented, W20-2 小屋互动菜单（点宠物行弹出；W23-2 四枚互动按钮，反馈表现在 HabitatFeedback.ts）
+import { Button, Node } from 'cc';
 import { HabitatPet } from '../cache/HabitatCodec';
-import { Quality } from '../config/Quality';
+import { PetQuota } from '../cache/PetQuota';
 import { CharacterConfig } from '../config/CharacterConfig';
 import { affordShortfall, HabitatOutcome } from '../game/HabitatModel';
-import { AILMENT_HEART_COST } from '../game/HabitatDecay';
 import { HabitatAction, HabitatRule, HABITAT_ACTIONS, HABITAT_RULES } from '../game/HabitatRules';
 import { PetVisual } from '../game/PetVisual';
-import { Sfx } from '../game/Sfx';
 import { addCard } from './PanelKit';
 import { addLifeSummary } from './LifeBadge';
 import { addLabel } from './SceneUI';
-import { floatText } from './FloatText';
 import { COLORS } from './Tokens';
 import { addUIButton, setUIButtonState } from './UIButton';
+import { playFeedback, PORTRAIT_X, PORTRAIT_Y, TINT } from './HabitatFeedback';
 
 const MENU_W = 560;
-const MENU_H = 400;
-const PORTRAIT_X = -150;
-const PORTRAIT_Y = -20;
-const BUTTON_X = 95;
-const BUTTON_Y = [70, -10, -90];
-const ROCK_ANGLE = 4;
-
-const TINT: Record<HabitatAction, Color> = {
-  feed: COLORS.gold,
-  bath: COLORS.mist,
-  pet: COLORS.clay,
-};
+/** 四枚按钮比三枚多占 78，标题与寿命摘要同步上移；面板本身 780 高，装得下。 */
+const MENU_H = 490;
+const BUTTON_X = 105;
+const BUTTON_Y = [104, 26, -52, -130];
 
 /** 一枚互动按钮 + 它的规则，置灰判定要同时读两者。 */
 interface MenuRow {
@@ -61,8 +51,8 @@ export function openHabitatMenu(
   const look = CharacterConfig.petById(entry.petId);
   const host = addCard(parent, 'HabitatMenu', 0, MENU_W, MENU_H, { color: COLORS.paper });
   menu = host;
-  addLabel(host, 'HabitatMenuTitle', look ? `和 ${look.name} 互动` : '和它互动', 160, { size: 30, width: MENU_W - 80 });
-  addLifeSummary(host, 'HabitatMenuLife', 118, entry, look);
+  addLabel(host, 'HabitatMenuTitle', look ? `和 ${look.name} 互动` : '和它互动', 200, { size: 30, width: MENU_W - 80 });
+  addLifeSummary(host, 'HabitatMenuLife', 156, entry, look);
 
   const visual = PetVisual.mount(host, 170, false);
   visual.node.setPosition(PORTRAIT_X, PORTRAIT_Y, 0);
@@ -71,16 +61,16 @@ export function openHabitatMenu(
   const rows: MenuRow[] = [];
   HABITAT_ACTIONS.forEach((action, index) => {
     const rule = HABITAT_RULES[action];
-    const button = addUIButton(host, `${action}_btn`, `${rule.label} · ${rule.costText}`, () => {
+    const button = addUIButton(host, `${action}_btn`, buttonText(rule), () => {
       const outcome = onAction(action);
       if (outcome.kind === 'done') {
         syncAffordability(rows);
       }
-      trigger(action, visual, outcome, notify);
+      playFeedback(host, action, visual, outcome, notify);
     }, {
       y: BUTTON_Y[index],
       x: BUTTON_X,
-      width: 300,
+      width: 340,
       height: 74,
       color: TINT[action],
       fontSize: 26,
@@ -89,7 +79,7 @@ export function openHabitatMenu(
   });
   syncAffordability(rows);
   addUIButton(host, 'HabitatMenuClose', '收 起', () => closeHabitatMenu(), {
-    y: -160,
+    y: -200,
     width: 220,
     height: 64,
     color: COLORS.sage,
@@ -98,52 +88,19 @@ export function openHabitatMenu(
 }
 
 /**
- * 买不起的直接置灰并写明所需数额（方案 §2.4）：喂食扣金币、洗澡扣爱心，
- * 只有抚摸永远免费可点，留一条零成本的回访理由，不出现"点了才知道没钱"的死胡同。
+ * 买不起或次数用完的直接置灰并写明原因（方案 §2.4）：金币、爱心各自显示所需数额，
+ * 抚摸免费但每天 3 次，用完写「今日抚摸次数已用完」——不留「点了才知道不行」的死胡同。
  */
 function syncAffordability(rows: readonly MenuRow[]): void {
   rows.forEach(({ action, rule, button }) => {
     const shortfall = affordShortfall(rule);
-    setUIButtonState(button, !shortfall, shortfall ?? `${rule.label} · ${rule.costText}`, TINT[action]);
+    setUIButtonState(button, !shortfall, shortfall ?? buttonText(rule), TINT[action]);
   });
 }
 
-function trigger(
-  action: HabitatAction,
-  visual: PetVisual,
-  outcome: HabitatOutcome,
-  notify: (text: string) => void,
-): void {
-  if (!menu) {
-    return;
-  }
-  if (outcome.kind === 'blocked') {
-    notify(outcome.text);
-    return;
-  }
-  const root = menu;
-  const rule = outcome.rule;
-  Sfx.play(rule.cue);
-  floatText(root, outcome.floatText, PORTRAIT_X, PORTRAIT_Y + 70, TINT[action]);
-  if (outcome.soothed) {
-    notify(`它有点闹脾气，顺手安抚了一下（−${AILMENT_HEART_COST} 爱心）`);
-  }
-  if (action === 'pet') {
-    playRock(visual.contentNode);
-  }
-}
-
-/** 一次性 ±4° 摇摆：借用行为层的幅度上限，但不像 recover 那样无限循环。 */
-function playRock(content: Node | null): void {
-  if (!content || Quality.low) {
-    return;
-  }
-  Tween.stopAllByTarget(content);
-  content.angle = 0;
-  tween(content)
-    .to(0.12, { angle: -ROCK_ANGLE })
-    .to(0.12, { angle: ROCK_ANGLE })
-    .to(0.12, { angle: -ROCK_ANGLE })
-    .to(0.12, { angle: 0 })
-    .start();
+/** 限次动作把今日余量写进按钮，玩家不必自己数今天摸了几下（全局计数，不分宠物）。 */
+function buttonText(rule: HabitatRule): string {
+  const remain = PetQuota.remaining(rule.dailyLimit);
+  const base = `${rule.label} · ${rule.costText}`;
+  return remain === null ? base : `${base}（剩 ${remain}）`;
 }

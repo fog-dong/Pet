@@ -33,7 +33,6 @@ function pet(overrides) {
     hunger: 70,
     cleanliness: 70,
     mood: 70,
-    lastPettedAt: 0,
     birthTimestamp: T0 - 100 * 24 * HOUR,
     lastDecayAt: T0,
     soothedDay: '',
@@ -82,16 +81,25 @@ console.log('[3] 水位推进与上限夹紧');
   check('同一时刻重复进屋不再扣第二次', [settle(twice, 'adult', T0 + 5 * HOUR), once].flat(), [0, ...once]);
 }
 
-console.log('[4] 阶段影响互动收益（模块三）');
-check('幼年抚摸收益不打折', statDelta(HABITAT_RULES.pet, 'baby'), 15);
-check('成年抚摸 = 基准 15', statDelta(HABITAT_RULES.pet, 'adult'), 15);
-check('老年抚摸减半（15×0.5 取整）', statDelta(HABITAT_RULES.pet, 'senior'), 8);
-check('喂食/洗澡不受心情倍率影响', [statDelta(HABITAT_RULES.feed, 'senior'), statDelta(HABITAT_RULES.bath, 'senior')], [30, 40]);
+console.log('[4] 阶段影响互动收益（模块三，基准值按 2026-11-03 决策-4）');
+check('幼年抚摸收益不打折', statDelta(HABITAT_RULES.pet, 'baby'), 10);
+check('成年抚摸 = 基准 10', statDelta(HABITAT_RULES.pet, 'adult'), 10);
+check('老年抚摸减半（10×0.5）', statDelta(HABITAT_RULES.pet, 'senior'), 5);
+check('喂食/高级粮/洗澡的饱食清洁收益不受心情倍率影响', [
+  statDelta(HABITAT_RULES.feed, 'senior'),
+  statDelta(HABITAT_RULES.premium, 'senior'),
+  statDelta(HABITAT_RULES.bath, 'senior'),
+], [30, 70, 35]);
 check('倍率表只有三档', Object.keys(STAGE_MOOD_GAIN), ['baby', 'adult', 'senior']);
-check('飘字按实际收益生成', floatTextOf(HABITAT_RULES.pet, 8), '+8 心情');
+check('飘字按实际收益生成', floatTextOf(HABITAT_RULES.pet, 5), '+5 心情');
+check('高级粮飘字写作饱食度 +70', floatTextOf(HABITAT_RULES.premium, 70), '+70 饱食度');
 
 console.log('[5] 老年小毛病：确定性触发、当天只收一次');
 {
+  const PET_IDS = ['pet_golden', 'pet_ragdoll', 'pet_corgi', 'pet_budgie', 'pet_maine', 'pet_chihuahua',
+    'pet_husky', 'pet_tabby_cat', 'pet_poodle', 'pet_calico', 'pet_shiba', 'pet_british',
+    'pet_american', 'pet_siamese', 'pet_orange_cat', 'pet_labrador', 'pet_samoyed',
+    'pet_collie', 'pet_bichon', 'pet_lop_rabbit'];
   const day = '2026-11-3';
   const senior = pet({ soothedDay: '' });
   check('幼年不触发', ailmentCost(pet(), 'baby', day), 0);
@@ -102,13 +110,14 @@ console.log('[5] 老年小毛病：确定性触发、当天只收一次');
   check('同一天重进结果一致', [struck('pet_golden'), struck('pet_golden')].every((v) => v === struck('pet_golden')), true);
   const values = [0, AILMENT_HEART_COST];
   check('收费只可能是 0 或安抚价', [struck('pet_golden'), struck('pet_ragdoll')].every((v) => values.includes(v)), true);
+  // 浏览器端要复现「今天必扣爱心」，得先在 20 只里挑出一只当天命中的；这里保证这样的样本一定存在。
+  const hitSample = PET_IDS.filter((id) => struck(id) === AILMENT_HEART_COST);
+  check(`${day} 存在必命中样本（供 verify:habitat 浏览器端复现）`, hitSample.length > 0, true);
+  console.log(`     当天命中：${hitSample.join('/')}`);
   // 20 只 × 30 天 = 600 个样本，用于确认概率档位没有跑偏（±10 个百分点容忍）。
   let hits = 0;
   for (let d = 1; d <= 30; d += 1) {
-    ['pet_golden', 'pet_ragdoll', 'pet_corgi', 'pet_budgie', 'pet_maine', 'pet_chihuahua',
-      'pet_husky', 'pet_tabby_cat', 'pet_poodle', 'pet_calico', 'pet_shiba', 'pet_british',
-      'pet_american', 'pet_siamese', 'pet_orange_cat', 'pet_labrador', 'pet_samoyed',
-      'pet_collie', 'pet_bichon', 'pet_lop_rabbit'].forEach((id) => {
+    PET_IDS.forEach((id) => {
       hits += ailmentCost(pet({ petId: id }), 'senior', `2026-11-${d}`) > 0 ? 1 : 0;
     });
   }

@@ -50,8 +50,8 @@ check('金毛 65 天已成年', getLifeStage(bornNDaysAgo(65), GOLDEN, NOW), 'ad
 check('布偶 65 天仍是幼年', getLifeStage(bornNDaysAgo(65), RAGDOLL, NOW), 'baby');
 check('金毛 210 天进老年', getLifeStage(bornNDaysAgo(210), GOLDEN, NOW), 'senior');
 check('布偶 210 天正当年', getLifeStage(bornNDaysAgo(210), RAGDOLL, NOW), 'adult');
-check('年龄文案只跟天数有关', getAgeText(bornNDaysAgo(65), GOLDEN, NOW), getAgeText(bornNDaysAgo(65), RAGDOLL, NOW));
-check('金毛 65 天 = 5 岁 5 个月', getAgeText(bornNDaysAgo(65), GOLDEN, NOW), '5 岁 5 个月');
+// 「年龄文案与品种无关」现在由函数签名保证：getAgeText 只接出生时间与 now，没有品种参数。
+check('金毛 65 天 = 5 岁 5 个月', getAgeText(bornNDaysAgo(65), NOW), '5 岁 5 个月');
 check('同日进度不同', [
   Math.round(getLifeProgress(bornNDaysAgo(65), GOLDEN, NOW) * 1000) / 1000,
   Math.round(getLifeProgress(bornNDaysAgo(65), RAGDOLL, NOW) * 1000) / 1000,
@@ -70,8 +70,8 @@ check('远超寿命仍是 1', getLifeProgress(bornNDaysAgo(900), GOLDEN, NOW), 1
 check('远超寿命仍是老年而非消失', getLifeStage(bornNDaysAgo(900), GOLDEN, NOW), 'senior');
 check('出生时间在未来按 0 天', getLifeStage(bornNDaysAgo(-3), GOLDEN, NOW), 'baby');
 check('未来时间进度不为负', getLifeProgress(bornNDaysAgo(-3), GOLDEN, NOW), 0);
-check('出生当天文案', getAgeText(NOW, GOLDEN, NOW), '出生当天');
-check('满整岁不带月', getAgeText(bornNDaysAgo(24), GOLDEN, NOW), '2 岁');
+check('出生当天文案', getAgeText(NOW, NOW), '出生当天');
+check('满整岁不带月', getAgeText(bornNDaysAgo(24), NOW), '2 岁');
 check('缺配置走兜底档', lifeSpanOf(null), { expectedLifespanDays: 500, maturityAgeDays: 120, seniorAgeDays: 400 });
 check('阈值顺序异常整档回落', lifeSpanOf({ maturityAgeDays: 400, seniorAgeDays: 120, expectedLifespanDays: 500 }), {
   expectedLifespanDays: 500, maturityAgeDays: 120, seniorAgeDays: 400,

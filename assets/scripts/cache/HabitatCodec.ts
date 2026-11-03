@@ -9,8 +9,6 @@ export interface HabitatPet {
   cleanliness: number;
   /** 心情 0-100。 */
   mood: number;
-  /** 上次抚摸的时间戳（ms），用于冷却判定。 */
-  lastPettedAt: number;
   /**
    * 出生（进屋）时间戳 ms。0 表示老存档缺字段，由 `game/HabitatModel` 按 `adoptedAt` 回填；
    * 回填不到才取当前时间。只用于展示与互动数值，不参与离线收益计价（红线 G4）。
@@ -46,7 +44,6 @@ export function seedHabitat(petId: string, look?: PetConfigItem | null, now: num
     hunger: toStat(look?.hunger, HABITAT_DEFAULT.hunger),
     cleanliness: toStat(look?.cleanliness, HABITAT_DEFAULT.cleanliness),
     mood: toStat(look?.mood, HABITAT_DEFAULT.mood),
-    lastPettedAt: 0,
     birthTimestamp: stamp,
     lastDecayAt: stamp,
     soothedDay: '',
@@ -75,7 +72,6 @@ export function decodeHabitat(value: unknown): HabitatPet[] {
       hunger: toStat(item.hunger, HABITAT_DEFAULT.hunger),
       cleanliness: toStat(item.cleanliness, HABITAT_DEFAULT.cleanliness),
       mood: toStat(item.mood, HABITAT_DEFAULT.mood),
-      lastPettedAt: toTime(item.lastPettedAt),
       // 老档缺这三项：给 0 / 空串，由数据层区分「未知」与「已知水位」，不在解码层猜时间。
       birthTimestamp: toTime(item.birthTimestamp),
       lastDecayAt: toTime(item.lastDecayAt),

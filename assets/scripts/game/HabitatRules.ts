@@ -1,7 +1,7 @@
-// STATUS: implemented, W22-4 小屋互动规则表（自 game/HabitatModel.ts 拆出，保持单文件 ≤150 行）
+// STATUS: implemented, W23-1 小屋互动规则表（数值口径：方案 §2.2 + 2026-11-03 决策-4）
 import type { AudioCue } from '../config/AudioConfig';
 
-export type HabitatAction = 'feed' | 'bath' | 'pet';
+export type HabitatAction = 'feed' | 'premium' | 'bath' | 'pet';
 export type HabitatStatKey = 'hunger' | 'cleanliness' | 'mood';
 
 export interface HabitatRule {
@@ -10,8 +10,11 @@ export interface HabitatRule {
   costCoins: number;
   costHearts: number;
   cue: AudioCue;
-  /** 冷却毫秒：只有免费动作需要，否则能连点把属性刷满。 */
-  cooldownMs: number;
+  /**
+   * 每日次数上限；0 表示不限。计数是**全局**的（存档 `pettedDay` / `pettedCount`，方案 §2.1），
+   * 不是每只宠物各 3 次——替换掉原来的 60 秒冷却：文档要的是「每天几次零成本回访」，不是防连点。
+   */
+  dailyLimit: number;
   label: string;
   costText: string;
   fullText: string;
@@ -19,19 +22,26 @@ export interface HabitatRule {
   statLabel: string;
 }
 
+/** §2.2 基准表：喂食/高级粮都加饱食度，高级粮用爱心换一次加满的大额收益。 */
 export const HABITAT_RULES: Record<HabitatAction, HabitatRule> = {
   feed: {
-    stat: 'hunger', delta: 30, costCoins: 10, costHearts: 0, cue: 'feed', cooldownMs: 0,
-    label: '喂食', costText: '10 金币', fullText: '已经吃饱啦', statLabel: '饱食度',
+    stat: 'hunger', delta: 30, costCoins: 30, costHearts: 0, cue: 'feed', dailyLimit: 0,
+    label: '喂食', costText: '30 金币', fullText: '已经吃饱啦', statLabel: '饱食度',
+  },
+  premium: {
+    // cue 复用 feed：同属「吃」，不新增云存储音频 key（方案 §2.4）。
+    stat: 'hunger', delta: 70, costCoins: 0, costHearts: 8, cue: 'feed', dailyLimit: 0,
+    label: '高级粮', costText: '8 爱心', fullText: '已经吃饱啦', statLabel: '饱食度',
   },
   bath: {
-    stat: 'cleanliness', delta: 40, costCoins: 0, costHearts: 5, cue: 'bath', cooldownMs: 0,
-    label: '洗澡', costText: '5 爱心', fullText: '已经很干净啦', statLabel: '清洁度',
+    stat: 'cleanliness', delta: 35, costCoins: 20, costHearts: 5, cue: 'bath', dailyLimit: 0,
+    label: '洗澡', costText: '20 金币 + 5 爱心', fullText: '已经很干净啦', statLabel: '清洁度',
   },
   pet: {
-    stat: 'mood', delta: 15, costCoins: 0, costHearts: 0, cue: 'pet', cooldownMs: 60 * 1000,
+    stat: 'mood', delta: 10, costCoins: 0, costHearts: 0, cue: 'pet', dailyLimit: 3,
     label: '抚摸', costText: '免费', fullText: '心情已经满格啦', statLabel: '心情',
   },
 };
 
-export const HABITAT_ACTIONS: readonly HabitatAction[] = ['feed', 'bath', 'pet'];
+/** 菜单按这一行的顺序摆按钮：两档喂食并列，再洗澡、再抚摸。 */
+export const HABITAT_ACTIONS: readonly HabitatAction[] = ['feed', 'premium', 'bath', 'pet'];

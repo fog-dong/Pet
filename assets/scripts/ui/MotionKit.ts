@@ -47,6 +47,66 @@ function enter(node: Node, delay: number): void {
   }
 }
 
+/**
+ * 抚摸 Q 弹：压扁 → 回弹过头 → 收住（Playful 签名段，方案 §4.3 ①）。
+ * dirX 取触点相对立绘中心的左右符号，让形变顺着手指方向；低端机退化为轻微上下起伏。
+ * 连点同一目标时先收敛所有 tween，否则 scale 会叠在半空。
+ */
+export function squash(node: Node | null, dirX = 0): void {
+  if (!node) {
+    return;
+  }
+  Tween.stopAllByTarget(node);
+  node.setScale(1, 1, 1);
+  if (Quality.low) {
+    playRock(node);
+    return;
+  }
+  const lean = Math.max(-1, Math.min(1, dirX));
+  const flat = new Vec3(1 + 0.14 * (1 - Math.abs(lean) * 0.3), 0.86, 1);
+  const over = new Vec3(0.96, 1.06, 1);
+  tween(node)
+    .to(DURATION.squashIn, { scale: flat }, { easing: 'quadOut' })
+    .to(DURATION.squashOut * 0.4, { scale: over }, { easing: 'quadOut' })
+    .to(DURATION.squashOut * 0.6, { scale: new Vec3(1, 1, 1) }, { easing: 'backOut' })
+    .call(() => node.setScale(1, 1, 1))
+    .start();
+  if (Math.abs(lean) > 0.15) {
+    tween(node)
+      .by(DURATION.squashIn, { position: new Vec3(lean * 8, 0, 0) }, { easing: 'quadOut' })
+      .by(DURATION.squashOut, { position: new Vec3(-lean * 8, 0, 0) }, { easing: 'backOut' })
+      .start();
+  }
+}
+
+/** 咀嚼：到位后两次小幅上下脉冲，间隔由 DURATION.chew 控制。 */
+export function chew(node: Node | null): void {
+  if (!node || Quality.low) {
+    return;
+  }
+  Tween.stopAllByTarget(node);
+  node.setScale(1, 1, 1);
+  const bite = new Vec3(1.06, 0.94, 1);
+  tween(node)
+    .to(DURATION.chew, { scale: bite }, { easing: 'sineInOut' })
+    .to(DURATION.chew, { scale: new Vec3(1, 1, 1) }, { easing: 'sineInOut' })
+    .to(DURATION.chew, { scale: bite }, { easing: 'sineInOut' })
+    .to(DURATION.chew, { scale: new Vec3(1, 1, 1) }, { easing: 'sineInOut' })
+    .call(() => node.setScale(1, 1, 1))
+    .start();
+}
+
+/** 低端机兜底：±4° 一次性摇摆（原 HabitatFeedback.playRock 的口径）。 */
+function playRock(node: Node): void {
+  node.angle = 0;
+  tween(node)
+    .to(0.12, { angle: -4 })
+    .to(0.12, { angle: 4 })
+    .to(0.12, { angle: -4 })
+    .to(0.12, { angle: 0 })
+    .start();
+}
+
 /** PanelKit 的影子是锚点的兄弟节点，不跟着淡入会在按钮落位前先露出一块暗角。 */
 function withShadow(node: Node): Node[] {
   const shadow = node.parent?.children.find((child) => child.name === `${node.name}Shadow`);

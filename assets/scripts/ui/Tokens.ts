@@ -70,9 +70,12 @@ export const LIFE_TRACK = tint(HEX.skirt, 96);
 
 export const GAP = { xs: 8, sm: 12, md: 16, lg: 24, xl: 32 } as const;
 
-/** 动效时长（秒），见方案 §7。 */
+/**
+ * 动效时长（秒），W16 §7 原表 + W25 Playful 档扩表（docs/plan/可玩性升级实施方案.md §4.2）。
+ * Playful 身份 = 150–300ms + backOut 过冲；新增键位一律进这里，UI 侧不允许现写数字。
+ */
 export const DURATION = {
-  press: 0.12,
+  press: 0.1,
   release: 0.18,
   card: 0.24,
   toastIn: 0.2,
@@ -83,4 +86,16 @@ export const DURATION = {
   float: 0.9,
   fadeOut: 0.18,
   fadeIn: 0.25,
+  /** 挤压到底（抚摸 / 道具落地）。 */
+  squashIn: 0.09,
+  /** 回弹过头再收住，Playful 的签名段。 */
+  squashOut: 0.26,
+  /** 道具抛物线单程。 */
+  toss: 0.45,
+  /** 咀嚼单次脉冲，播两次。 */
+  chew: 0.12,
+  /** 单颗粒子从出生到淡出。 */
+  particle: 0.75,
+  /** 大厅散步带入场（入场比退场长一档）。 */
+  bandIn: 0.3,
 } as const;

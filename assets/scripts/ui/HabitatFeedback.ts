@@ -1,18 +1,18 @@
-// STATUS: implemented, W23-2 小屋互动反馈（音效 + 飘字 + 安抚提示 + 抚摸 ±4° 摇摆；自 HabitatMenu 拆出保持单文件 ≤150 行）
-// 立绘位与四枚按钮的色相都归这里定义，菜单只负责摆按钮，飘字与摇摆用同一组常量对齐视觉。
-import { Color, Node, Tween, tween } from 'cc';
-import { Quality } from '../config/Quality';
+// STATUS: implemented, W25 P0-A 小屋互动反馈（音效 + 飘字 + 安抚提示 + Q 弹/抛物线/粒子；规格见方案 §4.3）
+// 立绘位与四枚动作的色相都归这里定义，触点侧只负责摆位置，反馈用同一组常量对齐视觉。
+import { Color, Node } from 'cc';
 import { HabitatOutcome } from '../game/HabitatModel';
 import { AILMENT_HEART_COST } from '../game/HabitatDecay';
 import { HabitatAction } from '../game/HabitatRules';
 import { PetVisual } from '../game/PetVisual';
 import { Sfx } from '../game/Sfx';
 import { floatText } from './FloatText';
+import { chew, squash } from './MotionKit';
+import { Point, spawnBubbles, spawnHearts, tossTo } from './ParticleKit';
 import { COLORS } from './Tokens';
 
 export const PORTRAIT_X = -150;
 export const PORTRAIT_Y = -10;
-const ROCK_ANGLE = 4;
 
 export const TINT: Record<HabitatAction, Color> = {
   feed: COLORS.gold,
@@ -22,13 +22,18 @@ export const TINT: Record<HabitatAction, Color> = {
   pet: COLORS.clay,
 };
 
-/** 被拦住只说原因；成交才播音效与飘字，飘字落在立绘上方而不是按钮上，视线跟着宠物走。 */
+/**
+ * 被拦住只说原因；成交才播音效与飘字，飘字落在立绘上方而不是按钮上，视线跟着宠物走。
+ * origin 是道具的起飞点（触点坐标），缺省表示这次不做抛物线——由触点侧按实际布局传入。
+ */
 export function playFeedback(
   host: Node,
   action: HabitatAction,
   visual: PetVisual,
   outcome: HabitatOutcome,
   notify: (text: string) => void,
+  origin?: Point,
+  touchX = 0,
 ): void {
   if (outcome.kind === 'blocked') {
     notify(outcome.text);
@@ -40,22 +45,13 @@ export function playFeedback(
   if (outcome.soothed) {
     notify(`它有点闹脾气，顺手安抚了一下（−${AILMENT_HEART_COST} 爱心）`);
   }
+  const content = visual.contentNode;
   if (action === 'pet') {
-    playRock(visual.contentNode);
+    squash(content, touchX);
+    spawnHearts(host, { x: PORTRAIT_X, y: PORTRAIT_Y + 30 });
+  } else if (action === 'bath') {
+    spawnBubbles(host, { x: PORTRAIT_X, y: PORTRAIT_Y - 30 });
+  } else if (origin && content) {
+    tossTo(host, origin, { x: PORTRAIT_X, y: PORTRAIT_Y + 10 }, action === 'premium' ? 'pellet' : 'bone', () => chew(content));
   }
-}
-
-/** 一次性 ±4° 摇摆：借用行为层的幅度上限，但不像 recover 那样无限循环。 */
-function playRock(content: Node | null): void {
-  if (!content || Quality.low) {
-    return;
-  }
-  Tween.stopAllByTarget(content);
-  content.angle = 0;
-  tween(content)
-    .to(0.12, { angle: -ROCK_ANGLE })
-    .to(0.12, { angle: ROCK_ANGLE })
-    .to(0.12, { angle: -ROCK_ANGLE })
-    .to(0.12, { angle: 0 })
-    .start();
 }

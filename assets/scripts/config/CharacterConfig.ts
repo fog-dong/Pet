@@ -28,6 +28,14 @@ export interface PetConfigItem {
   hunger?: number;
   cleanliness?: number;
   mood?: number;
+  /**
+   * W22-1 生命周期三字段，单位一律是**现实自然日**（2026-11-03 拍板：不引入加速倍率）。
+   * `expectedLifespanDays` 只用于进度条分母——宠物不会死（沿用 W20 方案 §2.2 硬约束）。
+   * 三者缺省时由 game/AgeSystem 的 DEFAULT_LIFESPAN 兜底，业务代码不得按 petId 分支。
+   */
+  expectedLifespanDays?: number;
+  maturityAgeDays?: number;
+  seniorAgeDays?: number;
 }
 
 export interface DoctorConfigItem {

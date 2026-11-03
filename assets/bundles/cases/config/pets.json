@@ -1,5 +1,5 @@
 {
-  "version": 3,
+  "version": 4,
   "pets": [
     {
       "petId": "pet_orange_cat",
@@ -12,7 +12,10 @@
       "message": "把它带回家后，它每天都会蹲在门口等你下班。",
       "hunger": 55,
       "cleanliness": 70,
-      "mood": 72
+      "mood": 72,
+      "expectedLifespanDays": 500,
+      "maturityAgeDays": 120,
+      "seniorAgeDays": 400
     },
     {
       "petId": "pet_tabby_cat",
@@ -25,7 +28,10 @@
       "message": "它不轻易靠近人，但你伸手时，它会慢慢把脑袋凑过来。",
       "hunger": 68,
       "cleanliness": 78,
-      "mood": 52
+      "mood": 52,
+      "expectedLifespanDays": 520,
+      "maturityAgeDays": 120,
+      "seniorAgeDays": 420
     },
     {
       "petId": "pet_ragdoll",
@@ -38,7 +44,10 @@
       "message": "别看它总是一副高冷样，你转身时它已经跟到门口了。",
       "hunger": 64,
       "cleanliness": 88,
-      "mood": 58
+      "mood": 58,
+      "expectedLifespanDays": 500,
+      "maturityAgeDays": 150,
+      "seniorAgeDays": 400
     },
     {
       "petId": "pet_british",
@@ -51,7 +60,10 @@
       "message": "它一天只挪三次窝，但每一次都挪到你身边。",
       "hunger": 74,
       "cleanliness": 76,
-      "mood": 58
+      "mood": 58,
+      "expectedLifespanDays": 500,
+      "maturityAgeDays": 140,
+      "seniorAgeDays": 400
     },
     {
       "petId": "pet_american",
@@ -64,7 +76,10 @@
       "message": "家里的纸团永远活不过一晚，它说那是它的猎物。",
       "hunger": 70,
       "cleanliness": 72,
-      "mood": 66
+      "mood": 66,
+      "expectedLifespanDays": 520,
+      "maturityAgeDays": 130,
+      "seniorAgeDays": 420
     },
     {
       "petId": "pet_siamese",
@@ -77,7 +92,10 @@
       "message": "你说话它一定要回一句，好像真能聊明白。",
       "hunger": 66,
       "cleanliness": 70,
-      "mood": 78
+      "mood": 78,
+      "expectedLifespanDays": 500,
+      "maturityAgeDays": 120,
+      "seniorAgeDays": 420
     },
     {
       "petId": "pet_maine",
@@ -90,7 +108,10 @@
       "message": "它是屋里最大的那个，却最喜欢钻进最小的纸盒。",
       "hunger": 78,
       "cleanliness": 68,
-      "mood": 62
+      "mood": 62,
+      "expectedLifespanDays": 450,
+      "maturityAgeDays": 180,
+      "seniorAgeDays": 380
     },
     {
       "petId": "pet_calico",
@@ -103,7 +124,10 @@
       "message": "它挑食的脾气出了名，唯独你递过去的东西肯吃两口。",
       "hunger": 56,
       "cleanliness": 80,
-      "mood": 54
+      "mood": 54,
+      "expectedLifespanDays": 520,
+      "maturityAgeDays": 120,
+      "seniorAgeDays": 420
     },
     {
       "petId": "pet_shiba",
@@ -116,7 +140,10 @@
       "message": "它会把最爱的玩具叼到你脚边，然后假装只是路过。",
       "hunger": 72,
       "cleanliness": 72,
-      "mood": 66
+      "mood": 66,
+      "expectedLifespanDays": 480,
+      "maturityAgeDays": 90,
+      "seniorAgeDays": 330
     },
     {
       "petId": "pet_corgi",
@@ -129,7 +156,10 @@
       "message": "它害怕打雷，但只要你坐在旁边，它就能睡得很安稳。",
       "hunger": 70,
       "cleanliness": 76,
-      "mood": 68
+      "mood": 68,
+      "expectedLifespanDays": 470,
+      "maturityAgeDays": 90,
+      "seniorAgeDays": 330
     },
     {
       "petId": "pet_golden",
@@ -142,7 +172,10 @@
       "message": "它会把整个身子靠在你腿上，好像这样就能留住你。",
       "hunger": 74,
       "cleanliness": 70,
-      "mood": 75
+      "mood": 75,
+      "expectedLifespanDays": 300,
+      "maturityAgeDays": 60,
+      "seniorAgeDays": 200
     },
     {
       "petId": "pet_husky",
@@ -155,7 +188,10 @@
       "message": "它把沙发拆了还一脸理直气壮，可你一生气它就先服软。",
       "hunger": 76,
       "cleanliness": 62,
-      "mood": 80
+      "mood": 80,
+      "expectedLifespanDays": 330,
+      "maturityAgeDays": 65,
+      "seniorAgeDays": 210
     },
     {
       "petId": "pet_collie",
@@ -168,7 +204,10 @@
       "message": "它听得懂所有指令，只是挑自己愿意的那几句执行。",
       "hunger": 70,
       "cleanliness": 74,
-      "mood": 50
+      "mood": 50,
+      "expectedLifespanDays": 350,
+      "maturityAgeDays": 75,
+      "seniorAgeDays": 230
     },
     {
       "petId": "pet_poodle",
@@ -181,7 +220,10 @@
       "message": "门一响它就叫，其实只是想告诉全家：有人回来了。",
       "hunger": 64,
       "cleanliness": 70,
-      "mood": 76
+      "mood": 76,
+      "expectedLifespanDays": 500,
+      "maturityAgeDays": 90,
+      "seniorAgeDays": 340
     },
     {
       "petId": "pet_bichon",
@@ -194,7 +236,10 @@
       "message": "它吃得少、爱得满，你摸一下它就愿意跟你一整天。",
       "hunger": 58,
       "cleanliness": 84,
-      "mood": 64
+      "mood": 64,
+      "expectedLifespanDays": 510,
+      "maturityAgeDays": 95,
+      "seniorAgeDays": 350
     },
     {
       "petId": "pet_samoyed",
@@ -207,7 +252,10 @@
       "message": "它在街上能跟每个人打招呼，回家才发现谁都没牵。",
       "hunger": 72,
       "cleanliness": 66,
-      "mood": 82
+      "mood": 82,
+      "expectedLifespanDays": 320,
+      "maturityAgeDays": 70,
+      "seniorAgeDays": 210
     },
     {
       "petId": "pet_labrador",
@@ -220,7 +268,10 @@
       "message": "它以为全世界最难的事，是把零食藏好不被它找到。",
       "hunger": 60,
       "cleanliness": 72,
-      "mood": 74
+      "mood": 74,
+      "expectedLifespanDays": 300,
+      "maturityAgeDays": 60,
+      "seniorAgeDays": 200
     },
     {
       "petId": "pet_chihuahua",
@@ -233,7 +284,10 @@
       "message": "它只有巴掌大，却把自己当成整个家的门卫。",
       "hunger": 68,
       "cleanliness": 78,
-      "mood": 46
+      "mood": 46,
+      "expectedLifespanDays": 550,
+      "maturityAgeDays": 100,
+      "seniorAgeDays": 380
     },
     {
       "petId": "pet_lop_rabbit",
@@ -246,7 +300,10 @@
       "message": "它很安静，只在你叫它名字的时候轻轻动一下耳朵。",
       "hunger": 66,
       "cleanliness": 80,
-      "mood": 55
+      "mood": 55,
+      "expectedLifespanDays": 250,
+      "maturityAgeDays": 40,
+      "seniorAgeDays": 160
     },
     {
       "petId": "pet_budgie",
@@ -259,7 +316,10 @@
       "message": "它会把学会的第一句“你好”留给你。",
       "hunger": 62,
       "cleanliness": 68,
-      "mood": 70
+      "mood": 70,
+      "expectedLifespanDays": 350,
+      "maturityAgeDays": 30,
+      "seniorAgeDays": 240
     }
   ]
 }

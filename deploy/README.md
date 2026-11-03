@@ -218,12 +218,27 @@ wx.setStorageSync('pet_api_base_v1', 'https://pet.jiangker.cn')
 | `DEPLOY_USER` | SSH 用户 |
 | `DEPLOY_PASSWORD` | SSH 密码 |
 | `DEPLOY_PORT` | SSH 端口，一般 `22` |
-| `DEPLOY_PATH` | **`/root/docker/pet-game`** |
+| `DEPLOY_PATH` | **`/root/docker/pet-game`**（一行、无首尾空格、无换行） |
 
 push 到 `main`/`master` 且改动 `server/**` 或 `deploy/**` 时：构建推镜像 → SSH 到 `DEPLOY_PATH` → `docker compose pull && up`。  
 **无需**创建 GitHub Environment，无需人工点批准。
 
 服务器上的 `docker-compose.yml` / `.env` **不会**被 CI 覆盖；CI 只拉新镜像并重启容器。
+
+### Secrets 填写注意（避免 `yaml: control characters are not allowed`）
+
+drone-ssh 会把 Action 参数编成 YAML。若 Secret **末尾带了回车/换行**（从记事本粘贴常见），会报：
+
+```text
+yaml: control characters are not allowed
+Process exited with status 15
+```
+
+处理：在 GitHub → Settings → Secrets 里 **删掉重建** 这些值，粘贴后确认没有多余空行：
+
+- `DEPLOY_HOST` / `DEPLOY_USER` / `DEPLOY_PASSWORD` / `DEPLOY_PORT` / `DEPLOY_PATH`
+- `DEPLOY_PATH` 只写：`/root/docker/pet-game`
+- `DEPLOY_PORT` 只写：`22`
 
 ---
 

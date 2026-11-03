@@ -43,21 +43,26 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
+    env:
+      DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
     steps:
+      # Do not interpolate secrets into script body; trailing CR/LF in secrets
+      # makes drone-ssh fail with: yaml: control characters are not allowed
       - uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           password: ${{ secrets.DEPLOY_PASSWORD }}
           port: ${{ secrets.DEPLOY_PORT }}
+          envs: DEPLOY_PATH
           script_stop: true
           script: |
             set -e
-            cd "${{ secrets.DEPLOY_PATH }}"
+            cd "$DEPLOY_PATH"
             set -a && [ -f .env ] && . ./.env && set +a
             HP="${HOST_PORT:-18766}"
             if [ -f .env ] && grep -qE '^PORT=' .env; then
-              echo "WARN: .env 含 PORT=，建议仅使用 HOST_PORT=，避免容器内错绑端口"
+              echo "WARN: .env has PORT=; use HOST_PORT only"
             fi
             docker compose pull
             docker compose up -d --remove-orphans --wait --wait-timeout 200
@@ -66,6 +71,6 @@ jobs:
             if curl -fsS "http://127.0.0.1:${HP}/health"; then
               echo "host :${HP}/health ok"
             else
-              echo "WARN: 宿主机 127.0.0.1:${HP}/health 未通过（若域名正常可忽略）"
+              echo "WARN: host 127.0.0.1:${HP}/health failed (ignore if domain ok)"
             fi
             echo "deploy ok"

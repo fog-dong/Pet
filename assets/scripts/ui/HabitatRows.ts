@@ -14,11 +14,11 @@ const PORTRAIT = 104;
 /** 属性块：标签列宽 88 + 轨道 200，轨道左沿固定在 x=-44。 */
 const STAT_LEFT = -44;
 const STAT_WIDTH = 200;
-/** 名字右对齐收在 x=61，标签槽位固定在 x=100：长名字往左伸，标签不会被顶跑。 */
-const NAME_X = -53;
+/** 名字左沿与属性标签列（-140）对齐，标签右沿与属性轨道右端（156）对齐，两列都落在既有栅格上。 */
+const NAME_X = -26;
 const NAME_W = 228;
 const NAME_Y = 34;
-const TAG_X = 100;
+const TAG_X = 125;
 /** 卡片竖直范围 ±69，心情条底沿 -63，所以 -67 是既不压条也不贴边的唯一落点。 */
 const LIFE_Y = -67;
 /** 列表要能上下拖，位移超过这个阈值算滚动而不是点选。 */
@@ -48,7 +48,7 @@ export function buildHabitatRow(
     size: 26,
     width: NAME_W,
     x: NAME_X,
-    align: Label.HorizontalAlign.RIGHT,
+    align: Label.HorizontalAlign.LEFT,
   });
   addStageTag(card, getLifeStage(entry.birthTimestamp, look), TAG_X, NAME_Y);
   const stats = addStatColumns(card, `HabitatStat${index}`, STAT_LEFT, 4, STAT_WIDTH);

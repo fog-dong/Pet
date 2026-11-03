@@ -18,6 +18,7 @@
     "verify:sync": "node --experimental-strip-types --no-warnings scripts/verify-sync-retry.js",
     "serve:web": "node scripts/serve-web.js build/web-mobile 8095",
     "verify:habitat": "node scripts/verify-habitat-browser.js 9448 8095 w204",
+    "verify:life": "node scripts/verify-life-browser.js 9448 8095 w22",
     "verify:mainchain": "node scripts/verify-mainchain-browser.js 9448 127.0.0.1:8095 build xray"
   },
   "devDependencies": {

@@ -1,6 +1,8 @@
-// STATUS: implemented, W5 真实云函数调用（8s 超时 + 2 次重试 + 失败返回错误码不抛错）；W10-2 云端总开关改读 EnvConfig
+// STATUS: implemented, W5 云函数；W21 支持 Axum HTTP（EnvConfig.resolveApiBase）
 // API: Net.call, see docs/plan/接口冻结清单.md §1
-import { isCloudEnabled } from '../config/EnvConfig';
+import { isCloudEnabled, resolveApiBase, resolveCloudEnv } from '../config/EnvConfig';
+import { invokeCloud } from './NetCloud';
+import { invokeHttp } from './NetHttp';
 
 export interface NetResponse<T> {
   code: number;
@@ -21,19 +23,36 @@ export const NET_ERROR = {
   BAD_RESPONSE: -3,
 } as const;
 
-export class NetworkClient {
-  private initialized = false;
+type Transport = 'none' | 'cloud' | 'http';
 
-  /** 云端可用时才允许补发队列，避免本地模式下反复失败。 */
+export class NetworkClient {
+  private transport: Transport = 'none';
+  private apiBase = '';
+
   get ready(): boolean {
-    return this.initialized;
+    return this.transport !== 'none';
   }
 
-  init(env: string): boolean {
-    if (this.initialized) {
+  /** HTTP 模式时 login 必须带 wx.login code。 */
+  get usesHttp(): boolean {
+    return this.transport === 'http';
+  }
+
+  init(_env?: string): boolean {
+    if (this.transport !== 'none') {
       return true;
     }
-    if (!isCloudEnabled() || !env || typeof wx === 'undefined' || !wx.cloud) {
+    if (!isCloudEnabled()) {
+      return false;
+    }
+    const base = resolveApiBase();
+    if (base.length > 0) {
+      this.apiBase = base;
+      this.transport = 'http';
+      return true;
+    }
+    const env = resolveCloudEnv();
+    if (!env || typeof wx === 'undefined' || !wx.cloud) {
       return false;
     }
     try {
@@ -41,7 +60,7 @@ export class NetworkClient {
     } catch {
       return false;
     }
-    this.initialized = true;
+    this.transport = 'cloud';
     return true;
   }
 
@@ -53,8 +72,7 @@ export class NetworkClient {
     if (!name) {
       return this.failure<T>(NET_ERROR.BAD_RESPONSE, 'EMPTY_FUNCTION_NAME');
     }
-    // 未 init 就 callFunction 会被微信 SDK 抛 SystemError（Cloud API isn't enabled），这里按断网处理。
-    if (!this.initialized) {
+    if (this.transport === 'none') {
       return this.failure<T>(NET_ERROR.NETWORK, 'NET_NOT_READY');
     }
 
@@ -67,7 +85,10 @@ export class NetworkClient {
     let last: NetResponse<T> | null = null;
     for (let attempt = 0; attempt <= retries; attempt += 1) {
       try {
-        const raw = await this.invoke(name, payload, timeoutMs);
+        const raw =
+          this.transport === 'http'
+            ? await invokeHttp(this.apiBase, name, payload, timeoutMs)
+            : await invokeCloud(name, payload, timeoutMs);
         const parsed = this.parse<T>(raw);
         if (parsed.code === 0 || !this.isRetryable(parsed.code)) {
           return parsed;
@@ -87,39 +108,6 @@ export class NetworkClient {
     return last ?? this.failure<T>(NET_ERROR.NETWORK, 'NETWORK_ERROR');
   }
 
-  private invoke(
-    name: string,
-    data: Record<string, unknown>,
-    timeoutMs: number,
-  ): Promise<WxCloudCallResult> {
-    return new Promise((resolve, reject) => {
-      let settled = false;
-      const timer = setTimeout(() => {
-        if (!settled) {
-          settled = true;
-          reject(new Error('NET_TIMEOUT'));
-        }
-      }, timeoutMs);
-
-      wx.cloud
-        .callFunction({ name, data })
-        .then((result) => {
-          if (!settled) {
-            settled = true;
-            clearTimeout(timer);
-            resolve(result);
-          }
-        })
-        .catch((error: unknown) => {
-          if (!settled) {
-            settled = true;
-            clearTimeout(timer);
-            reject(error instanceof Error ? error : new Error('NETWORK_ERROR'));
-          }
-        });
-    });
-  }
-
   private parse<T>(raw: WxCloudCallResult): NetResponse<T> {
     const value = raw && typeof raw === 'object' ? raw.result : undefined;
     if (!value || typeof value !== 'object') {
@@ -134,9 +122,13 @@ export class NetworkClient {
     return { code, msg, data, serverTime };
   }
 
-  private isRetryable(code: number): boolean { return code < 0; }
+  private isRetryable(code: number): boolean {
+    return code < 0;
+  }
 
-  private failure<T>(code: number, msg: string): NetResponse<T> { return { code, msg, data: null }; }
+  private failure<T>(code: number, msg: string): NetResponse<T> {
+    return { code, msg, data: null };
+  }
 
   private delay(attempt: number): Promise<void> {
     return new Promise((resolve) => {

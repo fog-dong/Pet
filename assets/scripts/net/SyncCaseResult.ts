@@ -24,6 +24,8 @@ export interface CaseSyncInput {
   diagnosis: CaseDiagnosisInput;
   treatment: CaseTreatmentInput;
   durationMs: number;
+  /** 追加字段：本局是否领养，供 Axum 写 pets/adoptions。 */
+  adopted?: boolean;
 }
 
 export async function syncCaseResult(input: CaseSyncInput): Promise<NetResponse<unknown>> {
@@ -43,6 +45,7 @@ export async function syncCaseResult(input: CaseSyncInput): Promise<NetResponse<
       healing: input.treatment.healing,
     },
     durationMs: input.durationMs,
+    adopted: input.adopted === true,
   };
   const response = await Net.call<unknown>('syncCaseResult', payload, {
     idempotencyKey: input.caseSessionId,

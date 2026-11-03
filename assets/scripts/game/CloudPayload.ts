@@ -11,6 +11,7 @@ export interface CaseSnapshot {
   diagnosis: DiagnosisResult | null;
   treatment: TreatmentResult;
   durationMs: number;
+  adopted?: boolean;
 }
 
 function toDiagnosisType(raw: string): 'auscultation' | 'xray' | 'lab' {
@@ -35,6 +36,7 @@ export function buildCaseSync(input: CaseSnapshot): CaseSyncInput {
       healing: treatment.score,
     },
     durationMs: input.durationMs,
+    adopted: input.adopted === true,
   };
 }
 

@@ -1,0 +1,955 @@
+{
+  "version": 2,
+  "cases": [
+    {
+      "caseId": "case_cat_001",
+      "petId": "pet_orange_cat",
+      "petName": "橘子",
+      "petSpecies": "cat",
+      "breed": "橘猫",
+      "severity": "normal",
+      "story": "一只吃得太快的橘猫，饭后一直干呕，主人很着急。",
+      "symptoms": [
+        "干呕",
+        "食欲下降",
+        "精神萎靡"
+      ],
+      "diagnosisType": "auscultation",
+      "diagnosisTypes": ["auscultation"],
+      "diagnosisDifficulty": 1,
+      "treatment": {
+        "medicine": [
+          "止吐药",
+          "健胃药",
+          "观察"
+        ],
+        "bed": [
+          "住院",
+          "门诊"
+        ],
+        "time": [
+          "正常",
+          "加速"
+        ],
+        "correct": {
+          "medicine": "健胃药",
+          "bed": "门诊",
+          "time": "正常"
+        }
+      },
+      "baseRewards": {
+        "coins": 200,
+        "hearts": 1,
+        "affection": 1
+      },
+      "auscultation": {
+        "abnormalSpots": [
+          {
+            "id": "heart",
+            "x": -60,
+            "y": 60,
+            "label": "心音杂音"
+          },
+          {
+            "id": "belly",
+            "x": 40,
+            "y": -40,
+            "label": "肠鸣音亢进"
+          }
+        ],
+        "distractors": [
+          {
+            "id": "chest",
+            "x": 60,
+            "y": 120
+          },
+          {
+            "id": "leg",
+            "x": -90,
+            "y": -110
+          }
+        ]
+      }
+    },
+    {
+      "caseId": "case_cat_002",
+      "petId": "pet_tabby_cat",
+      "petName": "狸花",
+      "petSpecies": "cat",
+      "breed": "狸花猫",
+      "severity": "urgent",
+      "story": "从窗台跳下后一直舔右前爪，走路有点瘸。",
+      "symptoms": [
+        "跛行",
+        "舔舐前爪",
+        "轻微肿胀"
+      ],
+      "diagnosisType": "xray",
+      "diagnosisTypes": ["xray"],
+      "diagnosisDifficulty": 2,
+      "xray": {
+        "lesions": [
+          {
+            "id": "paw",
+            "x": 110,
+            "y": -100,
+            "label": "右前爪关节错位"
+          }
+        ],
+        "shadows": [
+          {
+            "id": "shadow_chest",
+            "x": -80,
+            "y": 70
+          }
+        ]
+      },
+      "treatment": {
+        "medicine": [
+          "消炎药",
+          "止痛药",
+          "热敷"
+        ],
+        "bed": [
+          "住院",
+          "门诊"
+        ],
+        "time": [
+          "正常",
+          "加速"
+        ],
+        "correct": {
+          "medicine": "消炎药",
+          "bed": "门诊",
+          "time": "正常"
+        }
+      },
+      "baseRewards": {
+        "coins": 300,
+        "hearts": 2,
+        "affection": 2
+      },
+      "auscultation": {
+        "abnormalSpots": [
+          {
+            "id": "paw",
+            "x": 100,
+            "y": -90,
+            "label": "关节杂音"
+          },
+          {
+            "id": "heart",
+            "x": -50,
+            "y": 70,
+            "label": "心音偏快"
+          },
+          {
+            "id": "lung",
+            "x": 60,
+            "y": 90,
+            "label": "呼吸音粗"
+          }
+        ],
+        "distractors": [
+          {
+            "id": "neck",
+            "x": 0,
+            "y": 160
+          },
+          {
+            "id": "belly",
+            "x": 0,
+            "y": -30
+          },
+          {
+            "id": "tail",
+            "x": -110,
+            "y": -140
+          },
+          {
+            "id": "ear",
+            "x": 110,
+            "y": 140
+          }
+        ]
+      }
+    },
+    {
+      "caseId": "case_cat_003",
+      "petId": "pet_ragdoll",
+      "petName": "布丁",
+      "petSpecies": "cat",
+      "breed": "布偶猫",
+      "severity": "critical",
+      "story": "连续两天不吃不喝，窝在角落，眼睛半闭。",
+      "symptoms": [
+        "拒食",
+        "嗜睡",
+        "体温偏低"
+      ],
+      "diagnosisType": "xray",
+      "diagnosisTypes": ["xray", "lab"],
+      "diagnosisDifficulty": 3,
+      "xray": {
+        "lesions": [
+          {
+            "id": "chest",
+            "x": 60,
+            "y": 70,
+            "label": "胸腔积液"
+          },
+          {
+            "id": "belly",
+            "x": -70,
+            "y": -60,
+            "label": "肠管积气"
+          }
+        ],
+        "shadows": [
+          {
+            "id": "shadow_rib",
+            "x": -120,
+            "y": 120
+          },
+          {
+            "id": "shadow_leg",
+            "x": 120,
+            "y": -140
+          }
+        ]
+      },
+      "lab": {
+        "pairs": [
+          {
+            "sample": "血液样本",
+            "reagent": "血常规"
+          },
+          {
+            "sample": "尿液样本",
+            "reagent": "尿比重"
+          },
+          {
+            "sample": "皮肤刮片",
+            "reagent": "镜检"
+          },
+          {
+            "sample": "血清样本",
+            "reagent": "电解质"
+          }
+        ],
+        "decoys": ["便检", "耳道分泌物"]
+      },
+      "treatment": {
+        "medicine": [
+          "补液",
+          "抗生素",
+          "营养膏"
+        ],
+        "bed": [
+          "住院",
+          "门诊"
+        ],
+        "time": [
+          "正常",
+          "加速"
+        ],
+        "correct": {
+          "medicine": "补液",
+          "bed": "住院",
+          "time": "加速"
+        }
+      },
+      "baseRewards": {
+        "coins": 450,
+        "hearts": 3,
+        "affection": 3
+      },
+      "auscultation": {
+        "abnormalSpots": [
+          {
+            "id": "heart",
+            "x": -60,
+            "y": 60,
+            "label": "心音低钝"
+          },
+          {
+            "id": "lung",
+            "x": 70,
+            "y": 80,
+            "label": "呼吸音弱"
+          },
+          {
+            "id": "belly",
+            "x": 0,
+            "y": -50,
+            "label": "肠鸣音消失"
+          },
+          {
+            "id": "throat",
+            "x": 0,
+            "y": 150,
+            "label": "气管干啰音"
+          }
+        ],
+        "distractors": [
+          {
+            "id": "ear",
+            "x": 110,
+            "y": 150
+          },
+          {
+            "id": "neck",
+            "x": -110,
+            "y": 150
+          },
+          {
+            "id": "chest",
+            "x": 110,
+            "y": 20
+          },
+          {
+            "id": "flank",
+            "x": -120,
+            "y": 0
+          },
+          {
+            "id": "paw",
+            "x": 100,
+            "y": -150
+          },
+          {
+            "id": "tail",
+            "x": -90,
+            "y": -160
+          }
+        ]
+      }
+    },
+    {
+      "caseId": "case_dog_001",
+      "petId": "pet_shiba",
+      "petName": "豆豆",
+      "petSpecies": "dog",
+      "breed": "柴犬",
+      "severity": "normal",
+      "story": "遛弯回来后不停抓耳朵，还甩头。",
+      "symptoms": [
+        "抓耳",
+        "甩头",
+        "耳道有异味"
+      ],
+      "diagnosisType": "lab",
+      "diagnosisTypes": ["lab"],
+      "diagnosisDifficulty": 1,
+      "lab": {
+        "pairs": [
+          {
+            "sample": "耳道分泌物",
+            "reagent": "镜检"
+          },
+          {
+            "sample": "皮肤刮片",
+            "reagent": "真菌培养"
+          },
+          {
+            "sample": "血液样本",
+            "reagent": "血常规"
+          }
+        ],
+        "decoys": []
+      },
+      "treatment": {
+        "medicine": [
+          "洗耳液",
+          "消炎滴耳",
+          "驱虫"
+        ],
+        "bed": [
+          "住院",
+          "门诊"
+        ],
+        "time": [
+          "正常",
+          "加速"
+        ],
+        "correct": {
+          "medicine": "消炎滴耳",
+          "bed": "门诊",
+          "time": "正常"
+        }
+      },
+      "baseRewards": {
+        "coins": 200,
+        "hearts": 1,
+        "affection": 1
+      },
+      "auscultation": {
+        "abnormalSpots": [
+          {
+            "id": "ear",
+            "x": 90,
+            "y": 140,
+            "label": "耳道杂音"
+          },
+          {
+            "id": "throat",
+            "x": 0,
+            "y": 130,
+            "label": "气管音异常"
+          }
+        ],
+        "distractors": [
+          {
+            "id": "chest",
+            "x": -60,
+            "y": 40
+          },
+          {
+            "id": "paw",
+            "x": -100,
+            "y": -120
+          }
+        ]
+      }
+    },
+    {
+      "caseId": "case_dog_002",
+      "petId": "pet_corgi",
+      "petName": "波比",
+      "petSpecies": "dog",
+      "breed": "柯基",
+      "severity": "critical",
+      "story": "误食了桌上的巧克力，已经开始呕吐发抖。",
+      "symptoms": [
+        "呕吐",
+        "发抖",
+        "心跳过快"
+      ],
+      "diagnosisType": "auscultation",
+      "diagnosisTypes": ["auscultation", "lab"],
+      "diagnosisDifficulty": 3,
+      "lab": {
+        "pairs": [
+          {
+            "sample": "胃液样本",
+            "reagent": "毒物筛查"
+          },
+          {
+            "sample": "血液样本",
+            "reagent": "血常规"
+          },
+          {
+            "sample": "尿液样本",
+            "reagent": "尿检"
+          },
+          {
+            "sample": "血清样本",
+            "reagent": "电解质"
+          }
+        ],
+        "decoys": ["便检", "皮肤刮片"]
+      },
+      "treatment": {
+        "medicine": [
+          "催吐",
+          "活性炭",
+          "静养"
+        ],
+        "bed": [
+          "住院",
+          "门诊"
+        ],
+        "time": [
+          "正常",
+          "加速"
+        ],
+        "correct": {
+          "medicine": "活性炭",
+          "bed": "住院",
+          "time": "加速"
+        }
+      },
+      "baseRewards": {
+        "coins": 450,
+        "hearts": 3,
+        "affection": 3
+      },
+      "auscultation": {
+        "abnormalSpots": [
+          {
+            "id": "heart",
+            "x": -60,
+            "y": 50,
+            "label": "心音过速"
+          },
+          {
+            "id": "belly",
+            "x": 20,
+            "y": -40,
+            "label": "肠鸣音亢进"
+          },
+          {
+            "id": "throat",
+            "x": 0,
+            "y": 150,
+            "label": "喉部啰音"
+          },
+          {
+            "id": "flank",
+            "x": 90,
+            "y": 20,
+            "label": "腹部紧张"
+          }
+        ],
+        "distractors": [
+          {
+            "id": "ear",
+            "x": -100,
+            "y": 150
+          },
+          {
+            "id": "chest",
+            "x": 60,
+            "y": 100
+          },
+          {
+            "id": "back",
+            "x": 0,
+            "y": 90
+          },
+          {
+            "id": "leg",
+            "x": 100,
+            "y": -120
+          },
+          {
+            "id": "paw",
+            "x": -110,
+            "y": -140
+          },
+          {
+            "id": "tail",
+            "x": -40,
+            "y": -160
+          }
+        ]
+      }
+    },
+    {
+      "caseId": "case_dog_003",
+      "petId": "pet_husky",
+      "petName": "二黑",
+      "petSpecies": "dog",
+      "breed": "哈士奇",
+      "severity": "urgent",
+      "story": "拆完沙发又跳上窗台，落地之后右后腿一直悬着不敢踩。",
+      "symptoms": ["跛行", "拒绝上下楼", "后腿肿胀"],
+      "diagnosisType": "xray",
+      "diagnosisTypes": ["xray"],
+      "diagnosisDifficulty": 2,
+      "xray": {
+        "lesions": [{ "id": "hind_leg", "x": -90, "y": -110, "label": "右后腿骨裂" }],
+        "shadows": [{ "id": "shadow_hip", "x": 80, "y": 70 }]
+      },
+      "treatment": {
+        "medicine": ["止痛药", "固定绷带", "热敷"],
+        "bed": ["住院", "门诊"],
+        "time": ["正常", "加速"],
+        "correct": { "medicine": "固定绷带", "bed": "门诊", "time": "正常" }
+      },
+      "baseRewards": { "coins": 300, "hearts": 2, "affection": 2 }
+    },
+    {
+      "caseId": "case_dog_004",
+      "petId": "pet_collie",
+      "petName": "闪电",
+      "petSpecies": "dog",
+      "breed": "边境牧羊犬",
+      "severity": "critical",
+      "story": "突然在客厅转圈发抖，叫它名字没有反应，十几秒才缓过来。",
+      "symptoms": ["短暂失神", "转圈", "发抖"],
+      "diagnosisType": "lab",
+      "diagnosisTypes": ["lab", "auscultation"],
+      "diagnosisDifficulty": 3,
+      "lab": {
+        "pairs": [
+          { "sample": "血液样本", "reagent": "血常规" },
+          { "sample": "血清样本", "reagent": "电解质" },
+          { "sample": "尿液样本", "reagent": "尿比重" },
+          { "sample": "脑脊液样本", "reagent": "生化" }
+        ],
+        "decoys": ["便检", "皮肤刮片"]
+      },
+      "auscultation": {
+        "abnormalSpots": [
+          { "id": "heart", "x": -55, "y": 60, "label": "心律不齐" },
+          { "id": "lung", "x": 65, "y": 85, "label": "呼吸音粗" },
+          { "id": "throat", "x": 0, "y": 150, "label": "喉部紧张" },
+          { "id": "flank", "x": 95, "y": 10, "label": "腹壁紧张" }
+        ],
+        "distractors": [
+          { "id": "ear", "x": 110, "y": 145 },
+          { "id": "neck", "x": -110, "y": 150 },
+          { "id": "chest", "x": -120, "y": 20 },
+          { "id": "belly", "x": 15, "y": -45 },
+          { "id": "paw", "x": 100, "y": -145 },
+          { "id": "tail", "x": -85, "y": -155 }
+        ]
+      },
+      "treatment": {
+        "medicine": ["营养神经", "抗生素", "静养"],
+        "bed": ["住院", "门诊"],
+        "time": ["正常", "加速"],
+        "correct": { "medicine": "营养神经", "bed": "住院", "time": "加速" }
+      },
+      "baseRewards": { "coins": 450, "hearts": 3, "affection": 3 }
+    },
+    {
+      "caseId": "case_dog_005",
+      "petId": "pet_poodle",
+      "petName": "糯米",
+      "petSpecies": "dog",
+      "breed": "泰迪",
+      "severity": "normal",
+      "story": "走路时后腿会突然提起来跳一下，过一会儿又像没事一样。",
+      "symptoms": ["后腿弹跳", "不愿上下沙发", "膝部敏感"],
+      "diagnosisType": "xray",
+      "diagnosisTypes": ["xray"],
+      "diagnosisDifficulty": 1,
+      "xray": {
+        "lesions": [{ "id": "knee", "x": 70, "y": 20, "label": "髌骨外滑" }],
+        "shadows": [{ "id": "shadow_tail", "x": -60, "y": -80 }]
+      },
+      "treatment": {
+        "medicine": ["关节营养", "止痛药", "观察"],
+        "bed": ["住院", "门诊"],
+        "time": ["正常", "加速"],
+        "correct": { "medicine": "关节营养", "bed": "门诊", "time": "正常" }
+      },
+      "baseRewards": { "coins": 200, "hearts": 1, "affection": 1 }
+    },
+    {
+      "caseId": "case_dog_006",
+      "petId": "pet_bichon",
+      "petName": "棉花糖",
+      "petSpecies": "dog",
+      "breed": "比熊",
+      "severity": "normal",
+      "story": "换了新粮之后一天拉了四次，精神还在，就是不肯吃饭。",
+      "symptoms": ["腹泻", "食欲下降", "腹部咕咕响"],
+      "diagnosisType": "lab",
+      "diagnosisTypes": ["lab"],
+      "diagnosisDifficulty": 1,
+      "lab": {
+        "pairs": [
+          { "sample": "便检样本", "reagent": "粪便镜检" },
+          { "sample": "血液样本", "reagent": "血常规" },
+          { "sample": "尿液样本", "reagent": "尿比重" }
+        ],
+        "decoys": []
+      },
+      "treatment": {
+        "medicine": ["益生菌", "止泻药", "禁食观察"],
+        "bed": ["住院", "门诊"],
+        "time": ["正常", "加速"],
+        "correct": { "medicine": "益生菌", "bed": "门诊", "time": "正常" }
+      },
+      "baseRewards": { "coins": 200, "hearts": 1, "affection": 1 }
+    },
+    {
+      "caseId": "case_dog_007",
+      "petId": "pet_samoyed",
+      "petName": "笑笑",
+      "petSpecies": "dog",
+      "breed": "萨摩耶",
+      "severity": "urgent",
+      "story": "跟路人玩得太平，跑回来撞在桌角，肚子一直绷着不肯趴下。",
+      "symptoms": ["腹部紧张", "反复干呕", "拒绝趴下"],
+      "diagnosisType": "auscultation",
+      "diagnosisTypes": ["auscultation"],
+      "diagnosisDifficulty": 2,
+      "auscultation": {
+        "abnormalSpots": [
+          { "id": "belly", "x": 20, "y": -45, "label": "肠鸣音减弱" },
+          { "id": "flank", "x": 95, "y": 10, "label": "触痛反应" },
+          { "id": "heart", "x": -60, "y": 60, "label": "心音偏快" }
+        ],
+        "distractors": [
+          { "id": "chest", "x": 60, "y": 110 },
+          { "id": "neck", "x": -100, "y": 140 },
+          { "id": "leg", "x": 110, "y": -130 },
+          { "id": "tail", "x": -45, "y": -155 }
+        ]
+      },
+      "treatment": {
+        "medicine": ["止痛药", "手术评估", "观察"],
+        "bed": ["住院", "门诊"],
+        "time": ["正常", "加速"],
+        "correct": { "medicine": "手术评估", "bed": "住院", "time": "加速" }
+      },
+      "baseRewards": { "coins": 300, "hearts": 2, "affection": 2 }
+    },
+    {
+      "caseId": "case_dog_008",
+      "petId": "pet_labrador",
+      "petName": "大福",
+      "petSpecies": "dog",
+      "breed": "拉布拉多",
+      "severity": "critical",
+      "story": "趁没人把整个网球咽了下去，两天没排便，口水一直往下滴。",
+      "symptoms": ["流口水", "无排便", "呕吐"],
+      "diagnosisType": "xray",
+      "diagnosisTypes": ["xray", "auscultation"],
+      "diagnosisDifficulty": 3,
+      "xray": {
+        "lesions": [
+          { "id": "stomach", "x": 70, "y": 60, "label": "胃内异物影" },
+          { "id": "intestine", "x": -80, "y": -60, "label": "肠管胀气" }
+        ],
+        "shadows": [
+          { "id": "shadow_rib", "x": -120, "y": 120 },
+          { "id": "shadow_leg", "x": 120, "y": -140 }
+        ]
+      },
+      "auscultation": {
+        "abnormalSpots": [
+          { "id": "belly", "x": 20, "y": -45, "label": "肠鸣音消失" },
+          { "id": "chest", "x": -60, "y": 70, "label": "呼吸音弱" },
+          { "id": "heart", "x": -55, "y": 55, "label": "心音低钝" },
+          { "id": "throat", "x": 0, "y": 150, "label": "吞咽杂音" }
+        ],
+        "distractors": [
+          { "id": "ear", "x": 110, "y": 145 },
+          { "id": "neck", "x": -110, "y": 140 },
+          { "id": "flank", "x": 100, "y": 10 },
+          { "id": "paw", "x": 100, "y": -145 },
+          { "id": "leg", "x": -100, "y": -120 },
+          { "id": "tail", "x": -85, "y": -155 }
+        ]
+      },
+      "treatment": {
+        "medicine": ["催吐", "内镜取出", "灌肠"],
+        "bed": ["住院", "门诊"],
+        "time": ["正常", "加速"],
+        "correct": { "medicine": "内镜取出", "bed": "住院", "time": "加速" }
+      },
+      "baseRewards": { "coins": 450, "hearts": 3, "affection": 3 }
+    },
+    {
+      "caseId": "case_dog_009",
+      "petId": "pet_chihuahua",
+      "petName": "豆丁",
+      "petSpecies": "dog",
+      "breed": "吉娃娃",
+      "severity": "normal",
+      "story": "早饭没吃就出门吹风，走起来摇摇晃晃，趴在原地起不来。",
+      "symptoms": ["步态不稳", "体温偏低", "嗜睡"],
+      "diagnosisType": "lab",
+      "diagnosisTypes": ["lab"],
+      "diagnosisDifficulty": 1,
+      "lab": {
+        "pairs": [
+          { "sample": "血液样本", "reagent": "血糖" },
+          { "sample": "血清样本", "reagent": "电解质" },
+          { "sample": "尿液样本", "reagent": "尿比重" }
+        ],
+        "decoys": []
+      },
+      "treatment": {
+        "medicine": ["葡萄糖", "保温", "观察"],
+        "bed": ["住院", "门诊"],
+        "time": ["正常", "加速"],
+        "correct": { "medicine": "葡萄糖", "bed": "门诊", "time": "正常" }
+      },
+      "baseRewards": { "coins": 200, "hearts": 1, "affection": 1 }
+    },
+    {
+      "caseId": "case_dog_010",
+      "petId": "pet_golden",
+      "petName": "大黄",
+      "petSpecies": "dog",
+      "breed": "金毛",
+      "severity": "urgent",
+      "story": "才两岁就不爱起身，站起来的时候后腿要晃两下才站稳。",
+      "symptoms": ["起身迟缓", "后腿打晃", "不愿散步"],
+      "diagnosisType": "xray",
+      "diagnosisTypes": ["xray"],
+      "diagnosisDifficulty": 2,
+      "xray": {
+        "lesions": [{ "id": "hip", "x": -70, "y": -90, "label": "髋关节发育不良" }],
+        "shadows": [{ "id": "shadow_spine", "x": 40, "y": 90 }]
+      },
+      "treatment": {
+        "medicine": ["关节营养", "止痛药", "静养"],
+        "bed": ["住院", "门诊"],
+        "time": ["正常", "加速"],
+        "correct": { "medicine": "关节营养", "bed": "门诊", "time": "正常" }
+      },
+      "baseRewards": { "coins": 300, "hearts": 2, "affection": 2 }
+    },
+    {
+      "caseId": "case_cat_004",
+      "petId": "pet_british",
+      "petName": "奶豆",
+      "petSpecies": "cat",
+      "breed": "英国短毛猫",
+      "severity": "urgent",
+      "story": "一天跑七八趟猫砂盆，每次都只滴几滴，还一路大声叫。",
+      "symptoms": ["频繁进出砂盆", "尿量极少", "排尿时叫唤"],
+      "diagnosisType": "xray",
+      "diagnosisTypes": ["xray"],
+      "diagnosisDifficulty": 2,
+      "xray": {
+        "lesions": [{ "id": "bladder", "x": -40, "y": -60, "label": "膀胱充盈" }],
+        "shadows": [{ "id": "shadow_kidney", "x": 80, "y": 70 }]
+      },
+      "treatment": {
+        "medicine": ["导尿", "处方粮", "观察"],
+        "bed": ["住院", "门诊"],
+        "time": ["正常", "加速"],
+        "correct": { "medicine": "导尿", "bed": "住院", "time": "加速" }
+      },
+      "baseRewards": { "coins": 300, "hearts": 2, "affection": 2 }
+    },
+    {
+      "caseId": "case_cat_005",
+      "petId": "pet_american",
+      "petName": "银宝",
+      "petSpecies": "cat",
+      "breed": "美国短毛猫",
+      "severity": "urgent",
+      "story": "咬着窗帘绳玩了一下午，晚上开始吐泡沫，肚子一碰就叫。",
+      "symptoms": ["呕吐", "腹部敏感", "精神下降"],
+      "diagnosisType": "auscultation",
+      "diagnosisTypes": ["auscultation", "xray"],
+      "diagnosisDifficulty": 2,
+      "auscultation": {
+        "abnormalSpots": [
+          { "id": "belly", "x": 30, "y": -50, "label": "肠鸣音亢进" },
+          { "id": "throat", "x": 0, "y": 140, "label": "反复吞咽" },
+          { "id": "heart", "x": -60, "y": 60, "label": "心音偏快" }
+        ],
+        "distractors": [
+          { "id": "chest", "x": -80, "y": 80 },
+          { "id": "paw", "x": 100, "y": -120 },
+          { "id": "neck", "x": 90, "y": 130 },
+          { "id": "tail", "x": -40, "y": -150 }
+        ]
+      },
+      "xray": {
+        "lesions": [{ "id": "intestine", "x": -60, "y": -70, "label": "肠内线状异物影" }],
+        "shadows": [{ "id": "shadow_bladder", "x": 70, "y": 60 }]
+      },
+      "treatment": {
+        "medicine": ["催吐", "内镜取出", "润肠"],
+        "bed": ["住院", "门诊"],
+        "time": ["正常", "加速"],
+        "correct": { "medicine": "内镜取出", "bed": "住院", "time": "加速" }
+      },
+      "baseRewards": { "coins": 300, "hearts": 2, "affection": 2 }
+    },
+    {
+      "caseId": "case_cat_006",
+      "petId": "pet_siamese",
+      "petName": "阿棕",
+      "petSpecies": "cat",
+      "breed": "暹罗猫",
+      "severity": "normal",
+      "story": "连续打喷嚏，鼻子周围糊得发亮，连叫声都哑了。",
+      "symptoms": ["打喷嚏", "鼻涕", "叫声沙哑"],
+      "diagnosisType": "auscultation",
+      "diagnosisTypes": ["auscultation"],
+      "diagnosisDifficulty": 1,
+      "auscultation": {
+        "abnormalSpots": [
+          { "id": "nose", "x": 0, "y": 150, "label": "鼻腔杂音" },
+          { "id": "chest", "x": -65, "y": 60, "label": "呼吸音粗" }
+        ],
+        "distractors": [
+          { "id": "belly", "x": 40, "y": -60 },
+          { "id": "leg", "x": 100, "y": -130 }
+        ]
+      },
+      "treatment": {
+        "medicine": ["雾化", "抗生素", "滴鼻"],
+        "bed": ["住院", "门诊"],
+        "time": ["正常", "加速"],
+        "correct": { "medicine": "雾化", "bed": "门诊", "time": "正常" }
+      },
+      "baseRewards": { "coins": 200, "hearts": 1, "affection": 1 }
+    },
+    {
+      "caseId": "case_cat_007",
+      "petId": "pet_maine",
+      "petName": "大王",
+      "petSpecies": "cat",
+      "breed": "缅因猫",
+      "severity": "critical",
+      "story": "走两层楼梯就要停下来喘气，最近两次后腿突然软了一下。",
+      "symptoms": ["运动后喘气", "呼吸急促", "后肢无力"],
+      "diagnosisType": "auscultation",
+      "diagnosisTypes": ["auscultation", "lab"],
+      "diagnosisDifficulty": 3,
+      "auscultation": {
+        "abnormalSpots": [
+          { "id": "heart", "x": -60, "y": 60, "label": "心音杂音" },
+          { "id": "lung", "x": 70, "y": 85, "label": "呼吸音弱" },
+          { "id": "throat", "x": 0, "y": 150, "label": "气管痰音" },
+          { "id": "flank", "x": 100, "y": 10, "label": "腹壁起伏大" }
+        ],
+        "distractors": [
+          { "id": "ear", "x": 110, "y": 145 },
+          { "id": "neck", "x": -110, "y": 150 },
+          { "id": "chest", "x": -120, "y": 20 },
+          { "id": "belly", "x": 15, "y": -45 },
+          { "id": "paw", "x": 100, "y": -145 },
+          { "id": "tail", "x": -85, "y": -155 }
+        ]
+      },
+      "lab": {
+        "pairs": [
+          { "sample": "血液样本", "reagent": "心肌酶谱" },
+          { "sample": "血清样本", "reagent": "电解质" },
+          { "sample": "尿液样本", "reagent": "尿比重" },
+          { "sample": "胸腔积液", "reagent": "生化" }
+        ],
+        "decoys": ["便检", "皮肤刮片"]
+      },
+      "treatment": {
+        "medicine": ["强心药", "利尿剂", "吸氧"],
+        "bed": ["住院", "门诊"],
+        "time": ["正常", "加速"],
+        "correct": { "medicine": "强心药", "bed": "住院", "time": "加速" }
+      },
+      "baseRewards": { "coins": 450, "hearts": 3, "affection": 3 }
+    },
+    {
+      "caseId": "case_cat_008",
+      "petId": "pet_calico",
+      "petName": "花花",
+      "petSpecies": "cat",
+      "breed": "三花猫",
+      "severity": "normal",
+      "story": "明明想吃却不敢嚼，头一边歪着咽，口水拉成丝。",
+      "symptoms": ["流口水", "咀嚼困难", "口臭"],
+      "diagnosisType": "lab",
+      "diagnosisTypes": ["lab"],
+      "diagnosisDifficulty": 2,
+      "lab": {
+        "pairs": [
+          { "sample": "口腔拭子", "reagent": "细菌培养" },
+          { "sample": "血液样本", "reagent": "血常规" },
+          { "sample": "尿液样本", "reagent": "尿检" }
+        ],
+        "decoys": ["耳道分泌物"]
+      },
+      "treatment": {
+        "medicine": ["口腔溃疡膏", "洗牙", "抗生素"],
+        "bed": ["住院", "门诊"],
+        "time": ["正常", "加速"],
+        "correct": { "medicine": "口腔溃疡膏", "bed": "门诊", "time": "正常" }
+      },
+      "baseRewards": { "coins": 200, "hearts": 1, "affection": 1 }
+    }
+  ]
+}

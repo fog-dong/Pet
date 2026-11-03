@@ -141,9 +141,34 @@ interface WxCustomerServiceOptions {
   fail?: (error: unknown) => void;
 }
 
+interface WxRequestSuccess {
+  data?: unknown;
+  statusCode?: number;
+}
+
+interface WxRequestOptions {
+  url: string;
+  method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
+  data?: Record<string, unknown>;
+  header?: Record<string, string>;
+  success?: (res: WxRequestSuccess) => void;
+  fail?: (error: unknown) => void;
+}
+
+interface WxLoginResult {
+  code?: string;
+}
+
+interface WxLoginOptions {
+  success?: (res: WxLoginResult) => void;
+  fail?: (error: unknown) => void;
+}
+
 interface WxApi {
   cloud: WxCloudApi;
   env?: { USER_DATA_PATH: string };
+  request(options: WxRequestOptions): void;
+  login(options: WxLoginOptions): void;
   createImage?(): WxImageElement;
   createInnerAudioContext?(): WxInnerAudioContext;
   createWebAudioContext?(): WxWebAudioContext;

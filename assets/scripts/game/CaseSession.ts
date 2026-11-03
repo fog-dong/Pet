@@ -147,7 +147,14 @@ export class CaseSessionStore {
       return null;
     }
     const { diagnosis } = this;
-    return buildCaseSync({ sessionId: this.sid, item, diagnosis, treatment, durationMs });
+    return buildCaseSync({
+      sessionId: this.sid,
+      item,
+      diagnosis,
+      treatment,
+      durationMs,
+      adopted: this.adopted,
+    });
   }
 
   /** 进入 Result 前调用一次，重复调用返回同一份结算，保证幂等。 */

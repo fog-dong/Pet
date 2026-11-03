@@ -60,10 +60,20 @@ export function startCloudSync(): CloudSyncStart {
  * 返回 false 表示 login 失败（补发未执行），调用方可据此提示「暂时仍用本地存档」。
  */
 export async function syncCloud(): Promise<boolean> {
-  const login = await Net.call<LoginData>('login', {
+  const payload: Record<string, unknown> = {
     version: CLIENT_VERSION,
     channel: CLIENT_CHANNEL,
-  });
+  };
+  // Axum 后端需要微信 code 换 openid；云开发模式仍由云函数上下文取 OPENID。
+  if (Net.usesHttp) {
+    const code = await wxLoginCode();
+    if (!code) {
+      Track.track('boot_login_failed', { code: -1 });
+      return false;
+    }
+    payload.code = code;
+  }
+  const login = await Net.call<LoginData>('login', payload);
   if (login.code !== 0 || !login.data) {
     // 失败即视为 pending：Net 层已内建 8s 超时 + 2 次重试，仍失败则等下次启动按已同意状态重跑。
     Track.track('boot_login_failed', { code: login.code });
@@ -100,4 +110,17 @@ export async function refreshQuality(): Promise<void> {
     return;
   }
   await loadQuality();
+}
+
+function wxLoginCode(): Promise<string> {
+  return new Promise((resolve) => {
+    if (typeof wx === 'undefined' || !wx.login) {
+      resolve('');
+      return;
+    }
+    wx.login({
+      success: (res) => resolve(typeof res.code === 'string' ? res.code : ''),
+      fail: () => resolve(''),
+    });
+  });
 }

@@ -1,0 +1,71 @@
+name: Build Pet API image
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+    paths:
+      - "server/**"
+      - "deploy/**"
+      - ".github/workflows/api-image.yml"
+
+concurrency:
+  group: pet-api-image
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: registry.cn-hangzhou.aliyuncs.com
+          username: ${{ secrets.ALIYUN_REGISTRY_USER }}
+          password: ${{ secrets.ALIYUN_REGISTRY_PASSWORD }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: ./server
+          file: ./server/Dockerfile
+          push: true
+          platforms: linux/amd64
+          provenance: false
+          sbom: false
+          tags: |
+            registry.cn-hangzhou.aliyuncs.com/jiangker/pet-api:latest
+            registry.cn-hangzhou.aliyuncs.com/jiangker/pet-api:${{ github.sha }}
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
+    steps:
+      - uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          password: ${{ secrets.DEPLOY_PASSWORD }}
+          port: ${{ secrets.DEPLOY_PORT }}
+          script_stop: true
+          script: |
+            set -e
+            cd "${{ secrets.DEPLOY_PATH }}"
+            set -a && [ -f .env ] && . ./.env && set +a
+            HP="${HOST_PORT:-18766}"
+            if [ -f .env ] && grep -qE '^PORT=' .env; then
+              echo "WARN: .env 含 PORT=，建议仅使用 HOST_PORT=，避免容器内错绑端口"
+            fi
+            docker compose pull
+            docker compose up -d --remove-orphans --wait --wait-timeout 200
+            docker compose exec -T api wget -qO- http://127.0.0.1:3000/health
+            echo "container /health ok"
+            if curl -fsS "http://127.0.0.1:${HP}/health"; then
+              echo "host :${HP}/health ok"
+            else
+              echo "WARN: 宿主机 127.0.0.1:${HP}/health 未通过（若域名正常可忽略）"
+            fi
+            echo "deploy ok"

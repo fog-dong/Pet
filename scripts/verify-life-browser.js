@@ -220,7 +220,10 @@ function seedSave(options) {
     })()`);
 
   async function boot(seedOptions) {
+    // `pet_api_base_v1='off'`：源码里有自建 HTTP 默认地址（决策-6d），浏览器用例必须显式关掉这条通路，
+    // 否则会去请求真线上后端、且 mock 的 wx 没有 request；关掉后回落到下面 mock 的 wx.cloud。
     await ev(`localStorage.setItem('pet_cloud_env_v1','mock-env-id');
+      localStorage.setItem('pet_api_base_v1','off');
       localStorage.setItem('pet_save_v1', ${JSON.stringify(seedSave(seedOptions))});
       localStorage.setItem('pet_privacy_v1', JSON.stringify({ privacyAccepted: true, acceptedVersion: '1.0.1', guestMode: false }));
       location.replace('${SITE}/index.html?qa=1');`);

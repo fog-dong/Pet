@@ -274,7 +274,9 @@ function connect(url) {
     }
   };
 
-  cdp.send('Runtime.evaluate', { expression: `localStorage.removeItem('pet_save_v1'); location.replace('http://${SITE}/?qa=${TAG}');` });
+  // 用例必须保持自闭环：源码里的自建 HTTP 默认地址（决策-6d）在浏览器里没有 wx.request 可用，
+  // 且真线上后端不该被自动化用例打到，所以用 `off` 哨兵关掉这条通路。
+  cdp.send('Runtime.evaluate', { expression: `localStorage.setItem('pet_api_base_v1','off'); localStorage.removeItem('pet_save_v1'); location.replace('http://${SITE}/?qa=${TAG}');` });
   await sleep(9000);
   // 新 profile 首次启动会撞隐私弹窗：先勾选协议再点同意（老 profile 直接跳过）。
   if (await has('PrivacyOverlay')) {

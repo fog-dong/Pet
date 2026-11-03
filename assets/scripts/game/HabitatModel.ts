@@ -1,4 +1,5 @@
 // STATUS: implemented, W20-2 小屋数据层（读领养宠物 + 三项属性互动规则；全部只落本地存档）
+import { dayKeyToTime } from '../cache/DayKey';
 import { clampStat, HabitatPet, seedHabitat, STAT_MAX } from '../cache/HabitatCodec';
 import { Save } from '../cache/Save';
 import type { AudioCue } from '../config/AudioConfig';
@@ -7,6 +8,7 @@ import { CharacterConfig } from '../config/CharacterConfig';
 /**
  * 读小屋成员。habitat 字段是 W20 才加的，老存档里只有 petsAdopted；
  * 这里按 petsAdopted 补齐缺失条目并立刻写回，所以不会出现「图鉴已领养、小屋里缺席」。
+ * W22-3 追加：补齐出生时间与衰减水位（老档按领养日回填，水位从今天起算）。
  */
 export function habitatList(): HabitatPet[] {
   const missing = missingEntries();
@@ -15,7 +17,35 @@ export function habitatList(): HabitatPet[] {
       missing.forEach((petId) => data.habitat.push(seedHabitat(petId, CharacterConfig.petById(petId))));
     });
   }
+  backfillLifecycle();
   return Save.snapshot().habitat;
+}
+
+/**
+ * 老存档缺 `birthTimestamp` / `lastDecayAt`：生日按 `adoptedAt` 回填，回填不到才当今天出生；
+ * 衰减水位一律置为当前时间——不按领养日追溯扣属性，否则老玩家一进屋就看到数值掉光。
+ */
+function backfillLifecycle(): void {
+  const stale = Save.snapshot().habitat.filter((entry) => entry.birthTimestamp <= 0 || entry.lastDecayAt <= 0);
+  if (stale.length === 0) {
+    return;
+  }
+  const now = Date.now();
+  Save.mutate((data) => {
+    stale.forEach((entry) => {
+      const target = data.habitat.find((item) => item.petId === entry.petId);
+      if (!target) {
+        return;
+      }
+      if (target.birthTimestamp <= 0) {
+        const adopted = dayKeyToTime(Save.adoptionDate(entry.petId));
+        target.birthTimestamp = adopted > 0 && adopted <= now ? adopted : now;
+      }
+      if (target.lastDecayAt <= 0) {
+        target.lastDecayAt = now;
+      }
+    });
+  });
 }
 
 export type HabitatAction = 'feed' | 'bath' | 'pet';

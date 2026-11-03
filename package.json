@@ -13,6 +13,7 @@
     "deploy:cloud:tcb": "node scripts/deploy-all-cloud.js",
     "verify:idempotency": "node scripts/verify-idempotency.js",
     "verify:casescore": "node --experimental-strip-types --no-warnings scripts/verify-casescore.js",
+    "verify:age": "node --experimental-strip-types --no-warnings scripts/verify-age.js",
     "verify:sync": "node --experimental-strip-types --no-warnings scripts/verify-sync-retry.js",
     "serve:web": "node scripts/serve-web.js build/web-mobile 8095",
     "verify:habitat": "node scripts/verify-habitat-browser.js 9448 8095 w204",

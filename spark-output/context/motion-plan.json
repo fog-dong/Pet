@@ -1,0 +1,127 @@
+{
+  "skill": "motion-plan",
+  "generated_at": "2026-11-03T00:00:00+08:00",
+  "project_name": "萌宠救助日记",
+  "platform_note": "Cocos Creator 3.8 微信小游戏（非 Web）。所有规格以 cc.Tween 秒数与内置缓动名表达；CSS cubic-bezier 与 prefers-reduced-motion 已翻译为工程内的 Quality.low 降级开关。",
+  "scope": {
+    "target_pages": [
+      "ui/Lobby.ts + ui/LobbyScene.ts + ui/LobbyChrome.ts（大厅）",
+      "ui/HabitatPanel.ts + ui/HabitatRows.ts + ui/HabitatBars.ts + ui/HabitatFeedback.ts（宠物小屋）",
+      "ui/CodexPanel.ts（图鉴）"
+    ],
+    "target_elements": [
+      "抚摸立绘（Q 弹挤压 + 爱心粒子）",
+      "喂食/高级粮道具抛物线 + 咀嚼脉冲",
+      "洗澡泡泡上飘",
+      "小屋卡片与大厅散步带入场",
+      "按钮按下回弹"
+    ]
+  },
+  "personality": {
+    "archetype": "Playful",
+    "confirmed_by_user": true,
+    "confirmation": "2026-11-03 制作人 AskUserQuestion 拍板-2（四选一，未静默代选）",
+    "rationale": "治愈系 + 捏捏乐式解压感；与工程既有 backOut 回弹（UIButton.bindPress）和 PetBehavior 呼吸档位连续",
+    "emotional_target": "joy + calm（轻快但不焦躁）"
+  },
+  "brand_motion_identity": {
+    "signature_easing": "backOut（回弹/强调）+ quadOut（位移/入场）",
+    "duration_palette": {
+      "quick": "0.09-0.12（press / squashIn / chew）",
+      "standard": "0.18-0.26（release / squashOut / card / bandIn）",
+      "slow": "0.45-0.90（toss / particle / float）"
+    },
+    "entrance_pattern": "自下 RISE=14px 位移 + opacity 0→1，quadOut，stagger 0.06（沿用 ui/MotionKit.ts，不新发明）",
+    "overshoot": "10-20%（cc backIn/backOut 默认 1.7 强度即约 17% 过冲）"
+  },
+  "element_specs": [
+    {
+      "element": "抚摸立绘（宠物小屋卡片 + 大厅散步带）",
+      "visual_description": "手指按下去时宠物被压扁一点、松手时像果冻一样弹回并微微过头，同时从触点上方冒出一串爱心往上升",
+      "properties": ["scale.x", "scale.y", "position（跟随手指方向）", "particle opacity/position", "shadow scaleX"],
+      "layers": {
+        "primary": "scale (1,1) → (1.14,0.86) squashIn 0.09 quadOut → (0.96,1.06) → (1,1) squashOut 0.26 backOut；横向分量随触点在立绘左/右侧变号",
+        "secondary": "爱心粒子 6 颗，触点上方 +20px 出生，x 散 ±40，y 上升 120，±8° 摆动，0.75s quadOut + 尾段淡出；FloatText「+10 心情」COLORS.clay",
+        "ambient": "脚底阴影 ${name}Shadow 随 squash 同步 scaleX 1→1.08→1（沿用 MotionKit.withShadow）"
+      },
+      "disney_principles": ["squash & stretch", "secondary action", "follow through"],
+      "duration_ms": {"squashIn": 90, "squashOut": 260},
+      "easing": "quadOut → backOut",
+      "reduced": "Quality.low 时退回 playRock（±4°，4×0.12s）且不发粒子"
+    },
+    {
+      "element": "喂食 / 高级粮道具抛物线",
+      "visual_description": "一小块骨头从饱食图标飞起来、划一道弧落进宠物嘴里，宠物接着嚼两口",
+      "properties": ["position.x", "position.y", "scale", "opacity"],
+      "layers": {
+        "primary": "toss 0.45s：x 用 linear 分量、y 用 quadOut（上升）+ quadIn（下落）合成抛物线，弧高 ≈ 立绘宽 × 0.35",
+        "secondary": "到达后 chew 两次 scale(1.06,0.94)，每次 0.12s sineInOut，间隔 0.12s",
+        "ambient": "金币/爱心 −30 飘字走既有 FloatText（0.9s）"
+      },
+      "disney_principles": ["arcs", "anticipation（图标先缩 0.94 一下 60ms）", "follow through"],
+      "duration_ms": {"toss": 450, "chew_each": 120},
+      "easing": "x linear + y quadOut/quadIn（合成后非直线运动，符合『空间位移禁止 linear』）",
+      "reduced": "Quality.low 直接落点显示 0.15s，无弧线与咀嚼"
+    },
+    {
+      "element": "洗澡泡泡",
+      "visual_description": "一串大小不一的泡泡从宠物身下往上飘散，越往上越淡",
+      "properties": ["position.y", "position.x（漂移 −8）", "scale", "opacity"],
+      "layers": {
+        "primary": "8 颗 mist 色圆环（半径 8-18 随机），0.9s quadOut 上飘 140px",
+        "secondary": "出生错开 stagger 0.06（总 0.48s < 500ms 预算）",
+        "ambient": "立绘轻微 scale(0.98,1.02) 一次，0.18s"
+      },
+      "disney_principles": ["staging（其余行 UIOpacity→200）", "secondary action"],
+      "duration_ms": {"particle": 900, "stagger": 60},
+      "easing": "quadOut + fadeOut",
+      "reduced": "n 由 8 减到 3，禁用摆动"
+    },
+    {
+      "element": "大厅宠物散步带（新建 ui/LobbyPetRow.ts）",
+      "visual_description": "回到大厅时，自己领养的宠物一只接一只从地板下方轻轻弹进画面，然后各自呼吸、摇尾巴",
+      "properties": ["position.y", "opacity", "scale"],
+      "layers": {
+        "primary": "3 只依次入场，bandIn 0.30s backOut + RISE 14px，stagger 0.06（总 0.42s ≤ 500ms）",
+        "secondary": "落位后交给 game/PetBehavior.ts 既有五档循环（呼吸/摇尾/跳跃），不新增常驻 tween",
+        "ambient": "点击某只时其余两只 UIOpacity→150（0.18s）做 staging"
+      },
+      "disney_principles": ["staging", "entrance/exit asymmetry（入场 0.30 / 退场 0.18）"],
+      "duration_ms": {"bandIn": 300, "stagger": 60},
+      "easing": "backOut",
+      "reduced": "Quality.low 沿用 MotionKit.playStaggerIn 的早退（不播入场，直接落位）"
+    },
+    {
+      "element": "按钮 / 触点（UIButton）",
+      "visual_description": "按下去轻轻收一下，松手时弹回并略微过头一点，手感比现在快一档",
+      "properties": ["scale"],
+      "layers": {
+        "primary": "press 0.10 quadOut 到 PRESS_SCALE=0.96；release 0.18 backOut 回 1.0"
+      },
+      "disney_principles": ["squash & stretch"],
+      "duration_ms": {"press": 100, "release": 180},
+      "easing": "quadOut / backOut",
+      "reduced": "保留（反馈必需，时长不动）"
+    }
+  ],
+  "choreography": {
+    "stagger_budget_ms": 500,
+    "max_concurrent_motion": "同屏最多 1/3 元素处于主动作（粒子不计入，属 secondary）",
+    "note": "抚摸与喂食并发时先 Tween.stopAllByTarget(立绘) 再重放，禁止叠加（沿用 UIButton.bindPress 写法）"
+  },
+  "reduced_motion_fallback": {
+    "strategy": "工程内 Quality.low 开关（MotionKit / PageFade / HabitatFeedback.playRock 已消费）：去位移与粒子、保留 opacity、时长减半、禁阴影跟随",
+    "css_equivalent": "@media (prefers-reduced-motion: reduce) —— 本工程不适用，语义由 Quality.low 承担"
+  },
+  "token_alignment": {
+    "extended": ["Tokens.DURATION.squashIn 0.09", "squashOut 0.26", "toss 0.45", "chew 0.12", "particle 0.75", "bandIn 0.30"],
+    "adjusted": ["DURATION.press 0.12 → 0.10"],
+    "reused_unchanged": ["release 0.18", "card 0.24", "float 0.90", "fadeOut 0.18", "MotionKit.RISE 14", "MotionKit.STAGGER 0.06", "UIButton.PRESS_SCALE 0.96"],
+    "rule": "不新建第二套动效常量文件；所有新时长必须进 ui/Tokens.ts 的 DURATION"
+  },
+  "source_doc": "docs/plan/可玩性升级实施方案.md §4",
+  "not_verified": [
+    "真机帧率与低端机表现（需 W6-1 真机跑测）",
+    "音效还原度：9 条 cue 实际上传 0/9，本节只规定动效时机，不声称已接 ASMR"
+  ]
+}

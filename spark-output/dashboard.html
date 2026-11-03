@@ -8,7 +8,7 @@
   使用方式（详见 chain-protocol §九）：
     1. 读取本模板原文
     2. 扫描项目目录 `spark-output/context/*.json`，构造 STATE 对象
-    3. 将本文件中唯一占位符 `/*__SPARK_STATE_INJECT__*/null` 替换为 STATE JSON
+    3. 将本文件中唯一占位符 `/*__SPARK_STATE_INJECT__*/{"project":"萌宠救助日记","generated_at":"2026-11-03T09:34:08.823Z","contexts":{"audit":{"done":true,"summary":"6 opportunity / 15 finding（大厅重构、小屋起点化、内容量、经济曲线、虚拟化、提示位）","fields":{}},"motion-plan":{"done":true,"summary":"Personality=Playful（已拍板）+ 5 组 element_specs + Duration palette，cc.Tween 口径","fields":{}},"qa":{"done":true,"summary":"7 deviation（blocker 1：截图落后 HEAD；major 2：响应式、无逐帧动画与叫声）","fields":{}}}}` 替换为 STATE JSON
     4. 写入 `spark-output/dashboard.html`（覆盖式）
 
   STATE 形态：
@@ -225,7 +225,7 @@
 // ===========================================================
 // STATE 注入点（chain-protocol §九 Step 6 由各 Skill 替换）
 // ===========================================================
-const STATE = /*__SPARK_STATE_INJECT__*/{"project":"萌宠救助日记","generated_at":"2026-11-01T08:04:23.340Z","contexts":{"qa":{"done":true,"summary":"设计验收 7 项偏差（1 blocker / 2 major / 4 minor）","fields":{}},"audit":{"done":true,"summary":"体验走查 15 findings（1 blocker / 7 major / 7 minor），聚类 6 个机会点","fields":{}}}};
+const STATE = /*__SPARK_STATE_INJECT__*/null;
 
 // 默认空状态兜底（模板未被注入时仍可预览结构）
 const EFFECTIVE_STATE = STATE || {

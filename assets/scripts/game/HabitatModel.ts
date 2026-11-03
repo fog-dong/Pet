@@ -1,14 +1,21 @@
-// STATUS: implemented, W20-2 小屋数据层（读领养宠物 + 三项属性互动规则；全部只落本地存档）
-import { dayKeyToTime } from '../cache/DayKey';
+// STATUS: implemented, W20-2 小屋数据层 + W22-4 生命周期衰减接入
+// 互动规则表见 game/HabitatRules.ts，衰减倍率与老年小毛病见 game/HabitatDecay.ts；本文件只做编排与落盘（偏差 D19：全部只写本地存档）。
 import { clampStat, HabitatPet, seedHabitat, STAT_MAX } from '../cache/HabitatCodec';
+import { dayKeyToTime, todayKey } from '../cache/DayKey';
 import { Save } from '../cache/Save';
-import type { AudioCue } from '../config/AudioConfig';
 import { CharacterConfig } from '../config/CharacterConfig';
+import { getLifeStage, LifeStage } from './AgeSystem';
+import { ailmentCost, applyDecay, elapsedDecayHours, floatTextOf, statDelta } from './HabitatDecay';
+import { HabitatAction, HabitatRule, HABITAT_RULES } from './HabitatRules';
+
+export type HabitatOutcome =
+  | { kind: 'done'; entry: HabitatPet; rule: HabitatRule; delta: number; floatText: string; soothed: boolean }
+  | { kind: 'blocked'; text: string };
 
 /**
  * 读小屋成员。habitat 字段是 W20 才加的，老存档里只有 petsAdopted；
  * 这里按 petsAdopted 补齐缺失条目并立刻写回，所以不会出现「图鉴已领养、小屋里缺席」。
- * W22-3 追加：补齐出生时间与衰减水位（老档按领养日回填，水位从今天起算）。
+ * 读之前先补算衰减——属性只在玩家进屋时被结算，后台不跑定时器。
  */
 export function habitatList(): HabitatPet[] {
   const missing = missingEntries();
@@ -18,6 +25,7 @@ export function habitatList(): HabitatPet[] {
     });
   }
   backfillLifecycle();
+  settleDecay();
   return Save.snapshot().habitat;
 }
 
@@ -48,60 +56,30 @@ function backfillLifecycle(): void {
   });
 }
 
-export type HabitatAction = 'feed' | 'bath' | 'pet';
-export type HabitatStatKey = 'hunger' | 'cleanliness' | 'mood';
-
-export interface HabitatRule {
-  stat: HabitatStatKey;
-  delta: number;
-  costCoins: number;
-  costHearts: number;
-  cue: AudioCue;
-  /** 冷却毫秒：只有免费动作需要，否则能连点把属性刷满。 */
-  cooldownMs: number;
-  label: string;
-  costText: string;
-  fullText: string;
-  floatText: string;
+/** 按 `lastDecayAt` 水位一次性补算衰减；水位只向前推进，重复调用是幂等的。 */
+function settleDecay(): void {
+  const now = Date.now();
+  Save.mutate((data) => {
+    data.habitat.forEach((entry) => {
+      const hours = elapsedDecayHours(entry.lastDecayAt, now);
+      if (hours > 0) {
+        applyDecay(entry, stageOf(entry, now), hours, clampStat);
+      }
+    });
+  });
 }
-
-export const HABITAT_RULES: Record<HabitatAction, HabitatRule> = {
-  feed: {
-    stat: 'hunger', delta: 30, costCoins: 10, costHearts: 0, cue: 'feed', cooldownMs: 0,
-    label: '喂食', costText: '10 金币', fullText: '已经吃饱啦', floatText: '+30 饱食度',
-  },
-  bath: {
-    stat: 'cleanliness', delta: 40, costCoins: 0, costHearts: 5, cue: 'bath', cooldownMs: 0,
-    label: '洗澡', costText: '5 爱心', fullText: '已经很干净啦', floatText: '+40 清洁度',
-  },
-  pet: {
-    stat: 'mood', delta: 15, costCoins: 0, costHearts: 0, cue: 'pet', cooldownMs: 60 * 1000,
-    label: '抚摸', costText: '免费', fullText: '心情已经满格啦', floatText: '+15 心情',
-  },
-};
-
-export const HABITAT_ACTIONS: readonly HabitatAction[] = ['feed', 'bath', 'pet'];
-
-export type HabitatOutcome =
-  | { kind: 'done'; entry: HabitatPet; rule: HabitatRule }
-  | { kind: 'blocked'; text: string };
 
 /** 只读余额不扣费：互动菜单据此提前置灰，玩家不必点了才知道买不起（方案 §2.4）。 */
 export function affordShortfall(rule: HabitatRule): string | null {
-  if (rule.costCoins > 0 && Save.coins < rule.costCoins) {
-    return shortfallText('金币', rule.costCoins);
-  }
-  if (rule.costHearts > 0 && Save.hearts < rule.costHearts) {
-    return shortfallText('爱心', rule.costHearts);
-  }
-  return null;
+  return shortfallFor(rule.costCoins, rule.costHearts);
 }
 
-function shortfallText(kind: '金币' | '爱心', need: number): string {
-  return `${kind}不足（需 ${need}）`;
+/** 当前生命周期阶段：阈值只从 pets.json 的品种配置读，缺配由 AgeSystem 兜底，本文件无 petId 分支。 */
+export function stageOf(entry: HabitatPet, now: number = Date.now()): LifeStage {
+  return getLifeStage(entry.birthTimestamp, CharacterConfig.petById(entry.petId), now);
 }
 
-/** 一次互动：先验状态与消耗，通过后改属性并立刻落盘（偏差 D19：只写本地）。 */
+/** 一次互动：先补算衰减，再验状态与消耗，通过后改属性并立刻落盘。 */
 export function runHabitatAction(petId: string, action: HabitatAction): HabitatOutcome {
   const rule = HABITAT_RULES[action];
   const entry = habitatList().find((item) => item.petId === petId);
@@ -117,27 +95,49 @@ export function runHabitatAction(petId: string, action: HabitatAction): HabitatO
       return { kind: 'blocked', text: `刚摸过啦，${Math.ceil(remain / 1000)} 秒后再来` };
     }
   }
-  const shortfall = affordShortfall(rule);
+  const stage = stageOf(entry);
+  const dayKey = todayKey();
+  const soothCost = ailmentCost(entry, stage, dayKey);
+  const hearts = rule.costHearts + soothCost;
+  const shortfall = shortfallFor(rule.costCoins, hearts);
   if (shortfall) {
     return { kind: 'blocked', text: shortfall };
   }
   if (rule.costCoins > 0 && !Save.spendCoins(rule.costCoins)) {
     return { kind: 'blocked', text: shortfallText('金币', rule.costCoins) };
   }
-  if (rule.costHearts > 0 && !Save.spendHearts(rule.costHearts)) {
-    return { kind: 'blocked', text: shortfallText('爱心', rule.costHearts) };
+  if (hearts > 0 && !Save.spendHearts(hearts)) {
+    return { kind: 'blocked', text: shortfallText('爱心', hearts) };
   }
+  const delta = statDelta(rule, stage);
   Save.mutate((data) => {
     const target = data.habitat.find((item) => item.petId === petId);
     if (!target) {
       return;
     }
-    target[rule.stat] = clampStat(target[rule.stat] + rule.delta);
+    target[rule.stat] = clampStat(target[rule.stat] + delta);
     if (rule.cooldownMs > 0) {
       target.lastPettedAt = Date.now();
     }
+    if (soothCost > 0) {
+      target.soothedDay = dayKey;
+    }
   });
-  return { kind: 'done', entry, rule };
+  return { kind: 'done', entry, rule, delta, floatText: floatTextOf(rule, delta), soothed: soothCost > 0 };
+}
+
+function shortfallFor(coins: number, hearts: number): string | null {
+  if (coins > 0 && Save.coins < coins) {
+    return shortfallText('金币', coins);
+  }
+  if (hearts > 0 && Save.hearts < hearts) {
+    return shortfallText('爱心', hearts);
+  }
+  return null;
+}
+
+function shortfallText(kind: '金币' | '爱心', need: number): string {
+  return `${kind}不足（需 ${need}）`;
 }
 
 function missingEntries(): string[] {

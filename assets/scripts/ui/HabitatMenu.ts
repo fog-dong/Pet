@@ -3,9 +3,9 @@ import { Color, Button, Node, Tween, tween } from 'cc';
 import { HabitatPet } from '../cache/HabitatCodec';
 import { Quality } from '../config/Quality';
 import { CharacterConfig } from '../config/CharacterConfig';
-import {
-  affordShortfall, HabitatAction, HabitatRule, HabitatOutcome, HABITAT_ACTIONS, HABITAT_RULES,
-} from '../game/HabitatModel';
+import { affordShortfall, HabitatOutcome } from '../game/HabitatModel';
+import { AILMENT_HEART_COST } from '../game/HabitatDecay';
+import { HabitatAction, HabitatRule, HABITAT_ACTIONS, HABITAT_RULES } from '../game/HabitatRules';
 import { PetVisual } from '../game/PetVisual';
 import { Sfx } from '../game/Sfx';
 import { addCard } from './PanelKit';
@@ -122,7 +122,10 @@ function trigger(
   const root = menu;
   const rule = outcome.rule;
   Sfx.play(rule.cue);
-  floatText(root, rule.floatText, PORTRAIT_X, PORTRAIT_Y + 70, TINT[action]);
+  floatText(root, outcome.floatText, PORTRAIT_X, PORTRAIT_Y + 70, TINT[action]);
+  if (outcome.soothed) {
+    notify(`它有点闹脾气，顺手安抚了一下（−${AILMENT_HEART_COST} 爱心）`);
+  }
   if (action === 'pet') {
     playRock(visual.contentNode);
   }

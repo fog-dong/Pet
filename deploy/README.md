@@ -242,7 +242,55 @@ Process exited with status 15
 
 ---
 
-## 8. 核对清单
+## 8. 排错：`docker compose pull` 报 `yaml: control characters are not allowed`
+
+这是 **本机 compose 文件** 被写进了不可见控制字符（常见于从网页/带颜色终端复制），不是镜像问题。
+
+在 `/root/docker/pet-game` 执行：
+
+```bash
+# 看哪个文件有脏字节
+grep -nP '[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]' docker-compose.yml .env 2>/dev/null || echo "grep done"
+cat -v docker-compose.yml | head
+```
+
+然后**整文件重写**（不要用 nano 粘贴带格式的内容；用下面 heredoc）：
+
+```bash
+cd /root/docker/pet-game
+cp -a docker-compose.yml "docker-compose.yml.bak.$(date +%s)" 2>/dev/null || true
+
+cat > docker-compose.yml << 'EOF'
+services:
+  api:
+    image: ${API_IMAGE:-registry.cn-hangzhou.aliyuncs.com/jiangker/pet-api:latest}
+    container_name: pet-api
+    restart: unless-stopped
+    env_file: .env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "${HOST_PORT:-18766}:3000"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 25s
+EOF
+
+docker compose config
+docker compose pull
+```
+
+若仍报错，同样检查 `.env`：去掉 Windows 的 `\r`，并确认没有从彩色终端重定向进来的内容：
+
+```bash
+sed -i 's/\r$//' .env
+file .env docker-compose.yml
+```
+
+## 9. 核对清单
 
 - [ ] `/root/docker/pet-game/docker-compose.yml` 与 `.env` 已就位，`.env` 权限 600
 - [ ] `DATABASE_URL` / `JWT_SECRET` / `WX_*` 为生产真值

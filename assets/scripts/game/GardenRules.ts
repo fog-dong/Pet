@@ -4,6 +4,11 @@ import type { GardenPlot, GardenQuota } from '../cache/GardenCodec';
 
 export const MINUTE_MS = 60 * 1000;
 
+/** 墙钟只向前：系统时间回拨时停在上次水位，作物不会因回拨反复刷新生长。 */
+export function forwardNow(wallClock: number, stamp: number): number {
+  return Math.max(Math.floor(wallClock), Math.max(0, Math.floor(stamp)));
+}
+
 export function growMs(crop: Pick<CropConfig, 'growMinutes'>): number {
   return Math.max(1, Math.floor(crop.growMinutes)) * MINUTE_MS;
 }

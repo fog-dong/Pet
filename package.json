@@ -15,6 +15,7 @@
     "verify:casescore": "node --experimental-strip-types --no-warnings scripts/verify-casescore.js",
     "verify:age": "node --experimental-strip-types --no-warnings scripts/verify-age.js",
     "verify:decay": "node --experimental-strip-types --no-warnings scripts/verify-decay.js",
+    "verify:garden": "node --experimental-strip-types --no-warnings --import ./scripts/ts-resolve.mjs scripts/verify-garden.js",
     "verify:sync": "node --experimental-strip-types --no-warnings scripts/verify-sync-retry.js",
     "serve:web": "node scripts/serve-web.js build/web-mobile 8095",
     "verify:habitat": "node scripts/verify-habitat-browser.js 9448 8095 w204",

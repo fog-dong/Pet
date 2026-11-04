@@ -4,7 +4,7 @@ import { emptyPlot } from '../cache/GardenCodec';
 import { Save } from '../cache/Save';
 import type { CropConfig } from '../config/GardenDefaults';
 import { GardenConfig } from '../config/GardenConfig';
-import { nextPlotCost } from './GardenRules';
+import { forwardNow, nextPlotCost } from './GardenRules';
 
 export interface GardenResult {
   kind: 'done' | 'blocked';
@@ -35,7 +35,7 @@ export function done(text: string, extra: Partial<GardenResult> = {}): GardenRes
 
 /** 墙钟只向前：改系统时间往回拨时停在上次水位，作物不会因回拨反复刷新生长。 */
 export function gardenNow(): number {
-  return Math.max(Date.now(), Save.snapshot().gardenStamp);
+  return forwardNow(Date.now(), Save.snapshot().gardenStamp);
 }
 
 export function herbIdOf(crop: CropConfig): string {

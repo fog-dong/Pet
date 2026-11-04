@@ -98,4 +98,8 @@ export const DURATION = {
   particle: 0.75,
   /** 大厅散步带入场（入场比退场长一档）。 */
   bandIn: 0.3,
+  /** 小屋治愈气泡：弹出 / 停留 / 淡出。 */
+  bubbleIn: 0.2,
+  bubbleHold: 1.3,
+  bubbleOut: 0.3,
 } as const;

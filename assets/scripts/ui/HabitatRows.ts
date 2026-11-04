@@ -60,9 +60,10 @@ export function buildHabitatRow(
   entry: HabitatPet,
   cardWidth: number,
   onAction: RowAction,
+  cardColor: Color = CARD_BG,
 ): HabitatRow {
   const y = -(index * HABITAT_CARD_H) - HABITAT_CARD_H / 2;
-  const card = addRect(parent, `HabitatCard_${entry.petId}`, y, cardWidth, NODE_H, CARD_BG);
+  const card = addRect(parent, `HabitatCard_${entry.petId}`, y, cardWidth, NODE_H, cardColor);
   const look = CharacterConfig.petById(entry.petId);
   const visual = PetVisual.mount(card, PORTRAIT, false);
   visual.node.name = `HabitatPortrait_${entry.petId}`;

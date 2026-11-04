@@ -21,6 +21,10 @@ export interface SaveData {
    */
   pettedDay: string;
   pettedCount: number;
+  /** 小屋装修主题 id（W25 P1-C）。与小屋属性同属本地表现，不上云（偏差 D19）。 */
+  habitatTheme: string;
+  /** 已购买的主题 id；免费主题不入表，是否拥有由 game/HabitatThemes 判定。 */
+  habitatThemes: string[];
   bestStars: Record<string, number>;
   casesDone: number;
   items: Record<string, number>;
@@ -51,6 +55,8 @@ export function emptySave(): SaveData {
     habitatLastClaimAt: 0,
     pettedDay: '',
     pettedCount: 0,
+    habitatTheme: 'clinic',
+    habitatThemes: [],
     bestStars: {},
     casesDone: 0,
     items: { ...DEFAULT_ITEMS },
@@ -120,6 +126,8 @@ export function decodeSave(raw: string | null): SaveData {
       habitatLastClaimAt: Math.max(0, toNumber(parsed.habitatLastClaimAt, 0)),
       pettedDay: typeof parsed.pettedDay === 'string' ? parsed.pettedDay : '',
       pettedCount: Math.max(0, Math.floor(toNumber(parsed.pettedCount, 0))),
+      habitatTheme: typeof parsed.habitatTheme === 'string' && parsed.habitatTheme ? parsed.habitatTheme : 'clinic',
+      habitatThemes: toStringArray(parsed.habitatThemes),
       bestStars: toNumberMap(parsed.bestStars),
       casesDone: toNumber(parsed.casesDone, 0),
       items: parsed.items ? toNumberMap(parsed.items) : { ...DEFAULT_ITEMS },

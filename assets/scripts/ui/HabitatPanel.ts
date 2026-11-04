@@ -1,25 +1,27 @@
 // STATUS: implemented, W20-2 大厅内嵌宠物小屋面板（G3-A 不新建场景；整块盖在大厅之上，只让 Toast 压在它上面）
-// W25 P0-B：点行开互动弹窗的链已删，动作改由卡片内的图标 / 立绘直接触发；本文件只做列表编排与派发。
-import { BlockInputEvents, Color, Label, Mask, Node, ScrollView, UITransform, Vec2 } from 'cc';
-import { HabitatPet } from '../cache/HabitatCodec';
+// W25 P0-B：点行开互动弹窗的链已删，动作改由卡片内的图标 / 立绘直接触发。
+// W25 P1-C：面板与卡片随装修主题上色，右上角开装修弹窗，点立绘额外弹一条治愈气泡。
+import { BlockInputEvents, Color, Label, Node } from 'cc';
 import { Save } from '../cache/Save';
 import { habitatList, runHabitatAction } from '../game/HabitatModel';
 import { HabitatAction } from '../game/HabitatRules';
-import { addLabel, addRect, createNode, PALETTE } from './SceneUI';
+import { currentHabitatTheme } from '../game/HabitatThemes';
+import { addLabel, addRect, PALETTE } from './SceneUI';
 import { addCard, addDivider } from './PanelKit';
 import { fitWidth, screenHeight, screenWidth } from './ScreenMetrics';
 import { Point } from './ParticleKit';
-import { applyStats, buildHabitatRow, HABITAT_CARD_H, HabitatRow } from './HabitatRows';
+import { applyStats, HabitatRow } from './HabitatRows';
+import { buildHabitatList } from './HabitatList';
 import { habitatHintText, localToHost } from './HabitatTapActions';
 import { playFeedback } from './HabitatFeedback';
 import { buildHabitatFooter } from './HabitatFooter';
+import { showHealBubble } from './HabitatBubble';
+import { paintRoomHeader } from './HabitatThemeArt';
+import { addThemeEntry, closeThemePicker, openThemePicker } from './HabitatThemePanel';
 import { showToast } from './Toast';
+import { tint } from './Tokens';
 
 const PANEL_H = 780;
-/** 视口高度刻意留到 500：底部要空出 35px 给滚动提示，别让最后一张卡压着文字。 */
-const VIEW_H = 500;
-/** 卡片比旧版宽 20：立绘放大到 190 后左右两栏需要这点余量，560 是面板 660 减两侧 50。 */
-const CARD_SIDE = 50;
 const EMPTY_TEXT = '小屋空荡荡的，快去救助一只吧';
 
 let overlay: Node | null = null;
@@ -29,6 +31,7 @@ let toastHost: Node | null = null;
 let resourcesChanged: (() => void) | undefined;
 
 export function closeHabitatPanel(): void {
+  closeThemePicker();
   if (!overlay) {
     return;
   }
@@ -44,6 +47,7 @@ export function openHabitatPanel(parent: Node, onResourcesChanged?: () => void, 
   closeHabitatPanel();
   Save.load();
   const entries = habitatList();
+  const theme = currentHabitatTheme();
   // 大厅的木桌、按钮、提示都在同一层父节点上；追加到末尾 + 全屏遮罩才压得住，也不会被桌沿挡住。
   overlay = addRect(parent, 'HabitatOverlay', 0, screenWidth(), screenHeight(), new Color(0, 0, 0, 150));
   overlay.addComponent(BlockInputEvents);
@@ -52,14 +56,16 @@ export function openHabitatPanel(parent: Node, onResourcesChanged?: () => void, 
   resourcesChanged = onResourcesChanged;
 
   const width = fitWidth(1040, 30);
-  const panel = addCard(overlay, 'HabitatPanel', 0, width, PANEL_H, { color: PALETTE.panel });
-  addLabel(panel, 'HabitatTitle', `宠 物 小 屋　${entries.length} 只`, 340, { size: 34 });
+  const panel = addCard(overlay, 'HabitatPanel', 0, width, PANEL_H, { color: tint(theme.panel) });
+  paintRoomHeader(panel, width, theme);
+  addLabel(panel, 'HabitatTitle', `宠 物 小 屋　${entries.length} 只`, 352, { size: 34 });
   addDivider(panel, 302, width - 100);
+  addThemeEntry(panel, width, openDecor);
   if (entries.length === 0) {
     addLabel(panel, 'HabitatEmpty', EMPTY_TEXT, 40, { size: 28, color: PALETTE.sub, width: width - 120 });
   } else {
     hint = addLabel(panel, 'HabitatQuotaLabel', habitatHintText(), 272, { size: 18, color: PALETTE.sub, width: width - 60 });
-    buildList(panel, entries, width, focusPetId);
+    rows = buildHabitatList(panel, entries, width, focusPetId, tint(theme.card), fire);
     if (entries.length > 2) {
       addLabel(panel, 'HabitatScrollHint', '上下拖动可以翻看全部宠物', -285, { size: 20, color: PALETTE.sub });
     }
@@ -68,40 +74,22 @@ export function openHabitatPanel(parent: Node, onResourcesChanged?: () => void, 
   buildHabitatFooter(panel, width, parent, closeHabitatPanel, onResourcesChanged);
 }
 
-function buildList(panel: Node, entries: readonly HabitatPet[], panelWidth: number, focusPetId?: string): void {
-  const viewW = panelWidth - 80;
-  const cardW = panelWidth - CARD_SIDE * 2;
-  const scrollNode = createNode(panel, 'HabitatScroll', 0, viewW, VIEW_H);
-  const view = createNode(scrollNode, 'HabitatView', 0, viewW, VIEW_H);
-  view.addComponent(Mask).type = Mask.Type.GRAPHICS_RECT;
-  const content = new Node('HabitatContent');
-  content.parent = view;
-  const transform = content.addComponent(UITransform);
-  transform.setContentSize(cardW, Math.max(VIEW_H, entries.length * HABITAT_CARD_H));
-  transform.setAnchorPoint(0.5, 1);
-  content.setPosition(0, VIEW_H / 2, 0);
-  rows = entries.map((entry, index) => buildHabitatRow(content, index, entry, cardW, fire));
-
-  const scroll = scrollNode.addComponent(ScrollView);
-  scroll.content = content;
-  scroll.vertical = true;
-  scroll.horizontal = false;
-  scroll.brake = 0.72;
-  focusRow(scroll, entries, focusPetId);
+function openDecor(): void {
+  if (!overlay || !toastHost) {
+    return;
+  }
+  openThemePicker(overlay, toastHost, reskin, resourcesChanged);
 }
 
-/** 从大厅点进来时把被点的那只滚到视口中间；列表装不下才有滚动，装得下就原地不动。 */
-function focusRow(scroll: ScrollView, entries: readonly HabitatPet[], focusPetId?: string): void {
-  if (!focusPetId) {
+/** 装修切换后整块面板重建：底色、卡片底色与窗景都由主题重新算，比原地改色少一堆状态。 */
+function reskin(): void {
+  const host = toastHost;
+  const changed = resourcesChanged;
+  if (!host || !host.isValid) {
     return;
   }
-  const index = entries.findIndex((entry) => entry.petId === focusPetId);
-  const max = entries.length * HABITAT_CARD_H - VIEW_H;
-  if (index < 0 || max <= 0) {
-    return;
-  }
-  const offset = Math.max(0, Math.min(max, (index + 0.5) * HABITAT_CARD_H - VIEW_H / 2));
-  scroll.scrollToOffset(new Vec2(0, offset), 0);
+  closeHabitatPanel();
+  openHabitatPanel(host, changed);
 }
 
 /**
@@ -113,6 +101,10 @@ function fire(row: HabitatRow, action: HabitatAction, origin: Point, touchX: num
     return;
   }
   const host = overlay;
+  if (action === 'pet') {
+    const head = localToHost(row.node, host, { x: row.portrait.x, y: row.portrait.y + 132 });
+    showHealBubble(host, head.x, head.y);
+  }
   const outcome = runHabitatAction(row.entry.petId, action);
   if (outcome.kind === 'done') {
     applyStats(row.stats, outcome.entry);

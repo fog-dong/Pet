@@ -38,6 +38,31 @@ export const COPY = {
   habitatClaimed: '成功领取 {hours} 小时离线收益，获得 {coins} 金币',
   habitatClaimOffline: '云端还没接通，离线收益稍后再领~',
   habitatClaimFailed: '网络不太稳，离线收益没领到，待会儿再试一次~',
+  habitatThemeTitle: '装 修 小 屋',
+  habitatThemeEntry: '装 修',
+  habitatThemeUsing: '使用中',
+  habitatThemeUse: '使 用',
+  habitatThemeBuy: '{cost} 金币',
+  habitatThemeApplied: '小屋已换成「{name}」',
+  habitatThemeConfirm: '买下「{name}」？',
+  habitatThemeConfirmYes: '花 {cost} 金币买下',
+  habitatThemeConfirmNo: '再想想',
+  habitatThemeNoCoins: '金币不足（需 {cost}）',
+  /** 点宠物时随机一条，语气统一为「被照顾者的口头禅」，不用感叹号堆情绪。 */
+  healBubbleLines: [
+    '今天也要加油鸭~',
+    '谢谢你带我回家',
+    '摸摸头，我最喜欢你了',
+    '有你在，我一点都不疼了',
+    '尾巴摇成小风扇啦',
+    '今天也是被宠爱的一天',
+    '想和你一起晒太阳',
+    '你身上有让人安心的味道',
+    '我等你好久啦',
+    '轻轻摸，我会乖乖的',
+    '梦见我们一起去公园了',
+    '这里就是我的家呀',
+  ],
 } as const;
 
 /** 仅替换 `{name}` 占位，不做模板引擎。 */

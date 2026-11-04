@@ -1,18 +1,16 @@
-// STATUS: implemented, W23-2 小屋互动反馈（音效 + 飘字 + 安抚提示 + 抚摸 ±4° 摇摆；自 HabitatMenu 拆出保持单文件 ≤150 行）
-// 立绘位与四枚按钮的色相都归这里定义，菜单只负责摆按钮，飘字与摇摆用同一组常量对齐视觉。
-import { Color, Node, Tween, tween } from 'cc';
-import { Quality } from '../config/Quality';
+// STATUS: implemented, W25 P0-B 小屋互动反馈（音效 + 飘字 + 安抚提示 + Q 弹/抛物线/粒子；规格见方案 §4.3）
+// 坐标口径改了：W20-2 的弹窗是独立面板，立绘位置可以写死常量；现在反馈直接落在列表卡片上，
+// 立绘锚点与起飞点由触点侧按行传入，本文件不再持有任何绝对坐标。
+import { Color, Node } from 'cc';
 import { HabitatOutcome } from '../game/HabitatModel';
 import { AILMENT_HEART_COST } from '../game/HabitatDecay';
 import { HabitatAction } from '../game/HabitatRules';
 import { PetVisual } from '../game/PetVisual';
 import { Sfx } from '../game/Sfx';
 import { floatText } from './FloatText';
+import { chew, squash } from './MotionKit';
+import { Point, spawnBubbles, spawnHearts, tossTo } from './ParticleKit';
 import { COLORS } from './Tokens';
-
-export const PORTRAIT_X = -150;
-export const PORTRAIT_Y = -10;
-const ROCK_ANGLE = 4;
 
 export const TINT: Record<HabitatAction, Color> = {
   feed: COLORS.gold,
@@ -22,13 +20,19 @@ export const TINT: Record<HabitatAction, Color> = {
   pet: COLORS.clay,
 };
 
-/** 被拦住只说原因；成交才播音效与飘字，飘字落在立绘上方而不是按钮上，视线跟着宠物走。 */
+/**
+ * 被拦住只说原因；成交才播音效与飘字，飘字落在立绘上方而不是按钮上，视线跟着宠物走。
+ * portrait / origin 一律是 host 局部坐标：卡片在滚动容器里，遮罩在容器外，换算交给触点侧。
+ */
 export function playFeedback(
   host: Node,
   action: HabitatAction,
   visual: PetVisual,
   outcome: HabitatOutcome,
   notify: (text: string) => void,
+  portrait: Point,
+  origin?: Point,
+  touchX = 0,
 ): void {
   if (outcome.kind === 'blocked') {
     notify(outcome.text);
@@ -36,26 +40,18 @@ export function playFeedback(
   }
   const rule = outcome.rule;
   Sfx.play(rule.cue);
-  floatText(host, outcome.floatText, PORTRAIT_X, PORTRAIT_Y + 70, TINT[action]);
+  floatText(host, outcome.floatText, portrait.x, portrait.y + 70, TINT[action]);
   if (outcome.soothed) {
     notify(`它有点闹脾气，顺手安抚了一下（−${AILMENT_HEART_COST} 爱心）`);
   }
+  const content = visual.contentNode;
   if (action === 'pet') {
-    playRock(visual.contentNode);
+    squash(content, touchX);
+    spawnHearts(host, { x: portrait.x, y: portrait.y + 30 });
+  } else if (action === 'bath') {
+    spawnBubbles(host, { x: portrait.x, y: portrait.y - 30 });
+  } else if (origin && content) {
+    tossTo(host, origin, { x: portrait.x, y: portrait.y + 10 }, action === 'premium' ? 'pellet' : 'bone', () => chew(content));
   }
 }
 
-/** 一次性 ±4° 摇摆：借用行为层的幅度上限，但不像 recover 那样无限循环。 */
-function playRock(content: Node | null): void {
-  if (!content || Quality.low) {
-    return;
-  }
-  Tween.stopAllByTarget(content);
-  content.angle = 0;
-  tween(content)
-    .to(0.12, { angle: -ROCK_ANGLE })
-    .to(0.12, { angle: ROCK_ANGLE })
-    .to(0.12, { angle: -ROCK_ANGLE })
-    .to(0.12, { angle: 0 })
-    .start();
-}

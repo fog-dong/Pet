@@ -1,6 +1,6 @@
 // STATUS: implemented, W22-5 生命周期展示件（阶段标签 + 陪伴进度条 + 详情摘要；阈值一律来自 game/AgeSystem 读 pets.json）
 // 红线：本文件只做展示换算，不参与任何经济计价（方案 §2.2.1 与红线 G4）。
-import { Graphics, Node, UITransform } from 'cc';
+import { Graphics, Label, Node, UITransform } from 'cc';
 import type { HabitatPet } from '../cache/HabitatCodec';
 import type { PetConfigItem } from '../config/CharacterConfig';
 import { getAgeText, getLifeProgress, getLifeStage, lifespanText, STAGE_LABEL } from '../game/AgeSystem';
@@ -57,17 +57,23 @@ export function addLifeBar(
   }
 }
 
-/** 详情摘要一行：`陪伴 2 岁 3 个月 · 预计寿命：25 岁`，两个数字共用同一份阈值。 */
-export function addLifeSummary(
+/**
+ * 卡片内的紧凑寿命两行：`陪伴 8 岁 4 个月` / `预计寿命：25 岁`，两个数字共用同一份阈值。
+ * W25 P0-B 删掉互动弹窗后，这里是「预计寿命」唯一的露出口，所以改成两行贴名字下方，不再占整行宽度。
+ */
+export function addLifeCompact(
   parent: Node,
   name: string,
+  x: number,
   y: number,
   entry: HabitatPet,
   look: PetConfigItem | null,
 ): void {
-  makeLabel(parent, name, `陪伴 ${getAgeText(entry.birthTimestamp)} · ${lifespanText(look)}`, y, {
-    size: 22,
-    width: 460,
+  makeLabel(parent, name, `陪伴 ${getAgeText(entry.birthTimestamp)}\n${lifespanText(look)}`, y, {
+    size: 16,
+    width: 190,
+    x,
+    align: Label.HorizontalAlign.LEFT,
     color: STAGE_TINT[getLifeStage(entry.birthTimestamp, look)].text,
   });
 }

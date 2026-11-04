@@ -1,6 +1,7 @@
 // STATUS: implemented, W22-6 生命周期 UI 核验（CDP 驱动 web-mobile 构建，纯本地存档，不碰线上）
 // 覆盖：同一出生时间下金毛与布偶阶段不同（配置驱动证据）、阶段标签文案、卡片底部陪伴进度条、
-// 详情摘要「预计寿命」、幼年/成年/老年三档互动收益、老档缺字段回填生日且不追溯扣属性。
+// 卡片内陪伴摘要「预计寿命」、幼年/成年/老年三档互动收益、老档缺字段回填生日且不追溯扣属性。
+// W25 P0-B 起互动弹窗已删：三档收益改由「点立绘=抚摸」触发，摘要文本读 HabitatLife_<petId>（两行，用 ⏎ 展示）。
 // 前置：本地起 web-mobile 构建静态服务 + headless Chrome 开 CDP 端口。
 // 用法：node scripts/verify-life-browser.js <CDP端口> <站点端口> <截图前缀>
 'use strict';
@@ -208,7 +209,7 @@ function seedSave(options) {
           let tag = null, bar = 0;
           (function d(m) {
             if (m.name.startsWith('StageTag_')) { const c = m.getChildByName('StageTagText'); tag = c ? c.getComponent('cc.Label').string : '?'; }
-            if (m.name.startsWith('HabitatLife')) bar += 1;
+            if (m.name.startsWith('HabitatLifeBar_')) bar += 1;
             m.children.forEach(d);
           })(n);
           out[petId] = { tag, bar };
@@ -241,9 +242,8 @@ function seedSave(options) {
     await sleep(1200);
   }
 
-  async function openMenu(petId) {
-    await tap(`HabitatCard_${petId}`);
-    if (!(await waitFor('feed_btn'))) throw new Error('HabitatMenu buttons not found');
+  async function readyCard(petId) {
+    if (!(await waitFor(`HabitatZone_hunger_${petId}`))) throw new Error(`HabitatZone_hunger_${petId} not found`);
     await sleep(700);
   }
 
@@ -267,40 +267,38 @@ function seedSave(options) {
     `条数=${[info.pet_golden, info.pet_ragdoll, info.pet_shiba].map((c) => c.bar).join('/')}`,
   );
 
-  console.log('\n=== 2. 详情摘要「预计寿命」按品种阈值折算 ===');
-  await openMenu('pet_golden');
-  const goldenLife = await label('HabitatMenuLife');
-  await shot(`${OUT}-2-menu-adult`);
+  console.log('\n=== 2. 卡片陪伴摘要「预计寿命」按品种阈值折算 ===');
+  await readyCard('pet_golden');
+  const goldenLife = await label('HabitatLife_pet_golden');
+  await shot(`${OUT}-2-card-adult`);
   judge(
     'W22-2a',
-    '金毛摘要 = 陪伴 8 岁 4 个月 · 预计寿命：25 岁（300/12）',
-    goldenLife === '陪伴 8 岁 4 个月 · 预计寿命：25 岁',
-    String(goldenLife),
+    '金毛摘要 = 陪伴 8 岁 4 个月 / 预计寿命：25 岁（300/12），两行都在卡片上',
+    goldenLife === '陪伴 8 岁 4 个月\n预计寿命：25 岁',
+    String(goldenLife).replace(/\n/g, ' ⏎ '),
   );
-  await click('HabitatMenuClose');
-  await sleep(600);
-  await openMenu('pet_ragdoll');
+  await readyCard('pet_ragdoll');
   judge(
     'W22-2b',
-    '布偶同生日但摘要 = 预计寿命：42 岁（500/12），与金毛不同行',
-    (await label('HabitatMenuLife')) === '陪伴 8 岁 4 个月 · 预计寿命：42 岁',
-    String(await label('HabitatMenuLife')),
+    '布偶同生日但摘要第二行 = 预计寿命：42 岁（500/12），与金毛不同',
+    (await label('HabitatLife_pet_ragdoll')) === '陪伴 8 岁 4 个月\n预计寿命：42 岁',
+    String(await label('HabitatLife_pet_ragdoll')).replace(/\n/g, ' ⏎ '),
   );
 
-  console.log('\n=== 3. 阶段影响互动收益（模块三实测）===');
-  await click('pet_btn');
-  await sleep(500);
+  console.log('\n=== 3. 阶段影响互动收益（模块三实测；点立绘即抚摸）===');
+  await tap('HabitatPortrait_pet_ragdoll');
+  await sleep(400);
+  // 飘字节点 0.9 s 自毁：先抓飘字再抓属性，判定与日志共用同一份快照。
+  const ragdollFloat = await label('FloatText');
   const ragdollMood = await petState('pet_ragdoll', 'mood');
   judge('W22-3a', '幼年抚摸不打折：心情 70→80（§2.2 +10）', ragdollMood === 80, `mood=${ragdollMood}`);
-  judge('W22-3b', '飘字按实际收益生成 +10 心情', (await label('FloatText')) === '+10 心情', String(await label('FloatText')));
-  await click('HabitatMenuClose');
-  await sleep(700);
-  await openMenu('pet_shiba');
-  await click('pet_btn');
-  await sleep(500);
-  const shibaMood = await petState('pet_shiba', 'mood');
+  judge('W22-3b', '飘字按实际收益生成 +10 心情', ragdollFloat === '+10 心情', String(ragdollFloat));
+  await readyCard('pet_shiba');
+  await tap('HabitatPortrait_pet_shiba');
+  await sleep(400);
   const shibaFloat = await label('FloatText');
-  await shot(`${OUT}-3-menu-senior`);
+  const shibaMood = await petState('pet_shiba', 'mood');
+  await shot(`${OUT}-3-card-senior`);
   judge('W22-3c', '老年抚摸收益减半：心情 70→75（10×0.5）', shibaMood === 75, `mood=${shibaMood}`);
   judge('W22-3d', '老年飘字读作 +5 心情，不写死 +10', shibaFloat === '+5 心情', String(shibaFloat));
   const heartsAfterSoothe = await save('s.hearts');

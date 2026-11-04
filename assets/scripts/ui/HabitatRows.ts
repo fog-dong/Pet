@@ -1,85 +1,121 @@
-// STATUS: implemented, W20-2 小屋成员卡片（现成立绘 + 阶段标签 + 三项属性条 + 底部陪伴进度条；缺图由 PetVisual 自带占位块顶上）
-import { Color, EventTouch, Label, Node } from 'cc';
+// STATUS: implemented, W25 P0-B 小屋成员卡片（立绘 104→190 + 图标即按钮 + 卡内高级粮小键；点行开弹窗的旧链已删）
+// 几何口径见 docs/plan/可玩性升级实施方案.md §3.1：卡片节点高 210、列表间距 226，左立绘右两栏。
+// 数值一律不写在 UI 里：动作、价格、每日次数仍由 game/HabitatRules 与 game/HabitatModel 决定。
+import { Color, Label, Node } from 'cc';
 import { HabitatPet } from '../cache/HabitatCodec';
 import { CharacterConfig } from '../config/CharacterConfig';
 import { getLifeStage } from '../game/AgeSystem';
+import { HabitatAction, HabitatStatKey } from '../game/HabitatRules';
 import { PetVisual } from '../game/PetVisual';
 import { addLabel, addRect } from './SceneUI';
-import { addLifeBar, addStageTag } from './LifeBadge';
-import { addStatColumns, StatRow } from './HabitatBars';
+import { addLifeBar, addLifeCompact, addStageTag } from './LifeBadge';
+import { StatRow, STAT_ORDER, addStatBlock } from './HabitatBars';
+import { addPremiumChip } from './HabitatChip';
+import { STAT_ACTION, bindTapOrHold, bindTapZone, shortfallText } from './HabitatTapActions';
+import type { Point } from './ParticleKit';
 
-export const HABITAT_CARD_H = 150;
+/** 列表间距：卡片节点 210 + 16 呼吸，比旧版 150 高一档，换来 190 的立绘。 */
+export const HABITAT_CARD_H = 226;
+const NODE_H = 210;
 const CARD_BG = new Color(249, 239, 222, 255);
-const PORTRAIT = 104;
-/** 属性块：标签列宽 88 + 轨道 200，轨道左沿固定在 x=-44。 */
-const STAT_LEFT = -44;
-const STAT_WIDTH = 200;
-/** 名字左沿与属性标签列（-140）对齐，标签右沿与属性轨道右端（156）对齐，两列都落在既有栅格上。 */
-const NAME_X = -26;
-const NAME_W = 228;
-const NAME_Y = 34;
-const TAG_X = 125;
-/** 卡片竖直范围 ±69，心情条底沿 -63，所以 -67 是既不压条也不贴边的唯一落点。 */
-const LIFE_Y = -67;
-/** 列表要能上下拖，位移超过这个阈值算滚动而不是点选。 */
-const TAP_SLOP = 24;
+const PORTRAIT = 190;
+const PORTRAIT_X = -185;
+const PORTRAIT_Y = 2;
+const NAME_X = 41;
+const NAME_W = 218;
+const NAME_Y = 86;
+const TAG_X = 236;
+const LIFE_X = 7;
+const LIFE_Y = 48;
+const ICON_X = -46;
+const STAT_LEFT = -16;
+const STAT_WIDTH = 160;
+const STAT_TOP = 4;
+const CHIP_X = 204;
+const CHIP_Y = 4;
+/** 三行进度条最低一行在 -56，底部进度条要留出 30 的间距才不粘连。 */
+const LIFE_BAR_Y = -86;
+
+export type HabitatStats = Record<HabitatStatKey, StatRow>;
 
 export interface HabitatRow {
   entry: HabitatPet;
   node: Node;
   visual: PetVisual;
-  stats: Record<'hunger' | 'cleanliness' | 'mood', StatRow>;
+  stats: HabitatStats;
+  /** 立绘中心，卡片局部坐标；反馈层由触点侧换算到遮罩坐标。 */
+  portrait: Point;
+  /** 各动作的起飞点（卡片局部坐标）：道具从被点的那枚按钮飞出去，才读得出因果。 */
+  origins: Record<HabitatAction, Point>;
+  /** 买不起/次数用尽的档位变暗（决策-6b 的替代形态：动作名不写在按钮上，所以改画透明度）。 */
+  syncAfford(): void;
 }
+
+/** 触点只做转发，扣费与判定全在数据层；origin 与 touchX 让反馈层能演抛物线和形变方向。 */
+export type RowAction = (row: HabitatRow, action: HabitatAction, origin: Point, touchX: number) => void;
 
 export function buildHabitatRow(
   parent: Node,
   index: number,
   entry: HabitatPet,
   cardWidth: number,
-  onTap: (row: HabitatRow) => void,
+  onAction: RowAction,
 ): HabitatRow {
   const y = -(index * HABITAT_CARD_H) - HABITAT_CARD_H / 2;
-  const card = addRect(parent, `HabitatCard_${entry.petId}`, y, cardWidth, HABITAT_CARD_H - 12, CARD_BG);
-  const visual = PetVisual.mount(card, PORTRAIT, false);
-  visual.node.setPosition(-cardWidth / 2 + 70, 0, 0);
-  visual.apply(entry.petId);
+  const card = addRect(parent, `HabitatCard_${entry.petId}`, y, cardWidth, NODE_H, CARD_BG);
   const look = CharacterConfig.petById(entry.petId);
-  addLabel(card, 'HabitatName', look ? `${look.name} · ${look.breed}` : entry.petId, NAME_Y, {
+  const visual = PetVisual.mount(card, PORTRAIT, false);
+  visual.node.name = `HabitatPortrait_${entry.petId}`;
+  visual.node.setPosition(PORTRAIT_X, PORTRAIT_Y, 0);
+  visual.apply(entry.petId);
+
+  addLabel(card, 'HabitatName', look ? look.name : entry.petId, NAME_Y, {
     size: 26,
     width: NAME_W,
     x: NAME_X,
     align: Label.HorizontalAlign.LEFT,
   });
   addStageTag(card, getLifeStage(entry.birthTimestamp, look), TAG_X, NAME_Y);
-  const stats = addStatColumns(card, `HabitatStat${index}`, STAT_LEFT, 4, STAT_WIDTH);
-  applyStats(stats, entry);
-  addLifeBar(card, `HabitatLife${index}`, cardWidth - 32, LIFE_Y, entry, look);
-  const row: HabitatRow = { entry, node: card, visual, stats };
-  bindTap(card, () => onTap(row));
+  addLifeCompact(card, `HabitatLife_${entry.petId}`, LIFE_X, LIFE_Y, entry, look);
+  addLifeBar(card, `HabitatLifeBar_${entry.petId}`, cardWidth - 32, LIFE_BAR_Y, entry, look);
+
+  const block = addStatBlock(card, entry.petId, ICON_X, STAT_LEFT, STAT_TOP, STAT_WIDTH);
+  const origins: Record<HabitatAction, Point> = {
+    feed: block.origins.hunger,
+    bath: block.origins.cleanliness,
+    pet: block.origins.mood,
+    premium: { x: CHIP_X, y: CHIP_Y },
+  };
+  const chip = addPremiumChip(card, entry.petId, CHIP_X, CHIP_Y, (touchX) => {
+    onAction(row, 'premium', origins.premium, touchX);
+  });
+  const row: HabitatRow = {
+    entry,
+    node: card,
+    visual,
+    stats: block.rows,
+    portrait: { x: PORTRAIT_X, y: PORTRAIT_Y },
+    origins,
+    syncAfford(): void {
+      STAT_ORDER.forEach((key) => block.rows[key].setAffordable(shortfallText(STAT_ACTION[key]) === null));
+      chip.sync();
+    },
+  };
+  // 三枚图标钮各走自己的动作；立绘短按=抚摸、长按=高级粮（拍板-3：长按只是快捷方式，小键仍在）。
+  STAT_ORDER.forEach((key) => {
+    const action = STAT_ACTION[key];
+    bindTapZone(block.zones[key], (touchX) => onAction(row, action, origins[action], touchX));
+  });
+  bindTapOrHold(
+    visual.node,
+    (touchX) => onAction(row, 'pet', origins.pet, touchX),
+    () => onAction(row, 'premium', origins.premium, 0),
+  );
+  row.syncAfford();
+  applyStats(row.stats, entry);
   return row;
 }
 
-export function applyStats(
-  stats: Record<'hunger' | 'cleanliness' | 'mood', StatRow>,
-  entry: HabitatPet,
-): void {
-  stats.hunger.update(entry.hunger);
-  stats.cleanliness.update(entry.cleanliness);
-  stats.mood.update(entry.mood);
-}
-
-function bindTap(card: Node, onTap: () => void): void {
-  let startX = 0;
-  let startY = 0;
-  card.on(Node.EventType.TOUCH_START, (event: EventTouch) => {
-    const p = event.getUILocation();
-    startX = p.x;
-    startY = p.y;
-  });
-  card.on(Node.EventType.TOUCH_END, (event: EventTouch) => {
-    const p = event.getUILocation();
-    if (Math.abs(p.x - startX) + Math.abs(p.y - startY) < TAP_SLOP) {
-      onTap();
-    }
-  });
+export function applyStats(stats: HabitatStats, entry: HabitatPet): void {
+  STAT_ORDER.forEach((key) => stats[key].update(entry[key]));
 }

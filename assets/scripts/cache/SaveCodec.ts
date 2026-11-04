@@ -2,6 +2,7 @@
 import { HabitatPet, decodeHabitat } from './HabitatCodec';
 import { CareQuota, decodeCareQuota, emptyCareQuota } from './CareCodec';
 import { GardenPlot, GardenQuota, decodeGarden, decodeGardenQuota, emptyGardenQuota } from './GardenCodec';
+import { RehomeState, decodeRehome, emptyRehome } from './RehomeCodec';
 import { toNonNegativeInt, toNumber, toNumberMap, toStringArray, toStringMap } from './SaveFields';
 
 export interface SaveData {
@@ -58,6 +59,8 @@ export interface SaveData {
   gardenQuota: GardenQuota;
   /** 护理每日计数（剪指甲/驱虫），与 `todayKey()` 同日期键；跨天视为 0。 */
   careQuota: CareQuota;
+  /** 送养：已送走名单（M1 小屋过滤凭据）+ 单只待审核记录。 */
+  rehome: RehomeState;
 }
 
 /** 新档默认道具：听诊器电池 1 个，保证失败后有一条免费跳过路径。 */
@@ -98,6 +101,7 @@ export function emptySave(): SaveData {
     gardenStamp: 0,
     gardenQuota: emptyGardenQuota(),
     careQuota: emptyCareQuota(),
+    rehome: emptyRehome(),
   };
 }
 
@@ -138,6 +142,7 @@ export function decodeSave(raw: string | null): SaveData {
       gardenStamp: Math.max(0, toNumber(parsed.gardenStamp, 0)),
       gardenQuota: decodeGardenQuota(parsed.gardenQuota),
       careQuota: decodeCareQuota(parsed.careQuota),
+      rehome: decodeRehome(parsed.rehome),
     };
   } catch {
     return emptySave();

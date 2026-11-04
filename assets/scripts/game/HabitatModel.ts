@@ -4,6 +4,7 @@ import { clampStat, HabitatPet, seedHabitat, STAT_MAX } from '../cache/HabitatCo
 import { dayKeyToTime, todayKey } from '../cache/DayKey';
 import { Save } from '../cache/Save';
 import { PetQuota } from '../cache/PetQuota';
+import { isRehomed } from '../cache/RehomeCodec';
 import { CharacterConfig } from '../config/CharacterConfig';
 import { getLifeStage, LifeStage } from './AgeSystem';
 import { ailmentCost, applyDecay, elapsedDecayHours, floatTextOf, statDelta } from './HabitatDecay';
@@ -27,7 +28,9 @@ export function habitatList(): HabitatPet[] {
   }
   backfillLifecycle();
   settleDecay();
-  return Save.snapshot().habitat;
+  // M1 拆雷：送走的宠物即使旧档残留 habitat 条目，也绝不能再回屋。
+  const save = Save.snapshot();
+  return save.habitat.filter((entry) => !isRehomed(save.rehome, entry.petId));
 }
 
 /**
@@ -139,5 +142,6 @@ function shortfallText(kind: '金币' | '爱心', need: number): string {
 
 function missingEntries(): string[] {
   const save = Save.snapshot();
-  return save.petsAdopted.filter((petId) => !save.habitat.some((entry) => entry.petId === petId));
+  // 送走的宠物仍在 petsAdopted（图鉴点亮），补条目时必须排除，否则会「诈尸回屋」。
+  return save.petsAdopted.filter((petId) => !isRehomed(save.rehome, petId) && !save.habitat.some((entry) => entry.petId === petId));
 }

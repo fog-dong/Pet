@@ -113,6 +113,8 @@ export class SaveStore {
     if (!this.data.petsAdopted.includes(petKey)) {
       this.data.petsAdopted.push(petKey);
     }
+    // 重新领回同一只：撤掉送养记录，否则 M1 过滤会让它进不了小屋、领养位也永远少一个。
+    this.data.rehome.rehomed = this.data.rehome.rehomed.filter((id) => id !== petKey);
     if (!this.data.adoptedAt[petKey]) {
       this.data.adoptedAt[petKey] = todayKey();
     }

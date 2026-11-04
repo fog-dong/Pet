@@ -97,6 +97,12 @@ class GachaConfigStore {
     return this.ready;
   }
 
+  /** 送养感谢金按档位定价：宠物不在任何档位池里时返回 null，由调用方拒收而不是按普通档发钱。 */
+  tierOf(petId: string): GachaTier | null {
+    const tier = this.tiers.find((item) => item.pets.indexOf(petId) >= 0);
+    return tier ? tier.tier : null;
+  }
+
   /** 先按档位权重抽稀有度，再从该档池子里等概率取一只；传 only 时只在指定档位里按相对权重抽。 */
   roll(only?: readonly GachaTier[]): GachaRoll | null {
     const pool =

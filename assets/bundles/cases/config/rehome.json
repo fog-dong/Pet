@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "cost": { "coins": 150, "hearts": 5, "skipHearts": 3 },
+  "reviewMs": 1800000,
+  "rate": { "min": 0.55, "max": 0.95 },
+  "thanks": { "common": 600, "rare": 1200, "legendary": 2400 },
+  "affection": { "perPoint": 4, "maxBonus": 400 },
+  "generation": { "decay": 0.8, "floor": 0.25 }
+}

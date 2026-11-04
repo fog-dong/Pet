@@ -2,10 +2,16 @@
 import { GardenConfig } from './GardenConfig';
 import { GroomingConfig } from './GroomingConfig';
 import { RecipeConfig } from './RecipeConfig';
+import { RehomeConfig } from './RehomeConfig';
 
 /** 全部成功才返回 true；单表缺失只影响对应玩法，各自已留痕，不静默改口径。 */
 export function loadGameplayConfigs(): Promise<boolean> {
-  return Promise.all([GardenConfig.load(), RecipeConfig.load(), GroomingConfig.load()]).then(
-    ([gardenReady, recipeReady, groomingReady]) => gardenReady && recipeReady && groomingReady,
+  return Promise.all([
+    GardenConfig.load(),
+    RecipeConfig.load(),
+    GroomingConfig.load(),
+    RehomeConfig.load(),
+  ]).then(([gardenReady, recipeReady, groomingReady, rehomeReady]) =>
+    gardenReady && recipeReady && groomingReady && rehomeReady,
   );
 }

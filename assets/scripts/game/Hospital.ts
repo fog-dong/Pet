@@ -1,16 +1,10 @@
 // STATUS: implemented, W18-2 医院资源（等级 / 药品 / 床位 / 好感度 / 领养位），全部落本地存档；W25 P2-A 好感度支持扣减且余额不为负
 import { Save } from '../cache/Save';
+import { liveAdopted } from '../cache/RehomeCodec';
 import { HOSPITAL_LEVELS, HospitalLevelConfig } from './HospitalLevels';
+import { ADOPTION_BASE_SLOTS, DEFAULT_MEDICINE_STOCK } from './HospitalDefaults';
 
-/** 每种药首次遇到时补 3 个（05 文档 §9 初值）；每日补给在 P2 任务系统里做。 */
-export const DEFAULT_MEDICINE_STOCK = 3;
-/** 领养位基础数量，扩建或广告/好友可加成。 */
-export const ADOPTION_BASE_SLOTS = 3;
-/**
- * 领养好感门槛（06 §3.1 的 120 按单局折算为 35）：一局满分 45（诊断 15 + 治疗 20 + 对症 5 + 护理 5），
- * 低于满分就要靠分享/助力补 5，或再遇到同一只宠物累积。
- */
-export const AFFECTION_THRESHOLD = 35;
+export { ADOPTION_BASE_SLOTS, AFFECTION_THRESHOLD, DEFAULT_MEDICINE_STOCK } from './HospitalDefaults';
 
 export class HospitalStore {
   seedMedicines(names: readonly string[]): void {
@@ -113,7 +107,8 @@ export class HospitalStore {
   }
 
   get adoptedCount(): number {
-    return Save.snapshot().petsAdopted.length;
+    // M2 拆雷：送走的仍留在 petsAdopted（图鉴点亮），占位必须扣掉已送走的部分。
+    return liveAdopted(Save.snapshot().petsAdopted, Save.snapshot().rehome);
   }
 
   /** 06 §3.2：基础 3 位 + 等级加成 + 活动/广告临时加成。 */

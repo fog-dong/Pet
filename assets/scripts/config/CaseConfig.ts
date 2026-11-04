@@ -3,7 +3,7 @@ import { loadConfigJson } from './ConfigLoader';
 import { LOCAL_CASES } from './LocalCases';
 
 export type Severity = 'normal' | 'urgent' | 'critical';
-export type PetSpecies = 'cat' | 'dog';
+export type PetSpecies = 'cat' | 'dog' | 'rabbit' | 'bird';
 
 export interface TreatmentCorrect {
   medicine: string;
@@ -110,6 +110,11 @@ export class CaseConfigStore {
 
   byId(caseId: string): CaseConfigItem | null {
     return this.items.find((item) => item.caseId === caseId) ?? null;
+  }
+
+  /** 街头寻访按 petId 找病例：每只宠物都有一条可接诊的内容行。 */
+  byPet(petId: string): CaseConfigItem | null {
+    return this.items.find((item) => item.petId === petId) ?? null;
   }
 
   random(excludeCaseId?: string): CaseConfigItem | null {

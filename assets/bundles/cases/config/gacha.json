@@ -1,0 +1,52 @@
+{
+  "version": 1,
+  "costCoins": 100,
+  "adScene": "extra_check",
+  "tiers": [
+    {
+      "tier": "common",
+      "name": "普通",
+      "weight": 70,
+      "tint": "",
+      "duplicate": { "coins": 50, "hearts": 1 },
+      "pets": [
+        "pet_orange_cat",
+        "pet_tabby_cat",
+        "pet_british",
+        "pet_american",
+        "pet_siamese",
+        "pet_calico",
+        "pet_shiba",
+        "pet_corgi",
+        "pet_golden",
+        "pet_collie",
+        "pet_poodle",
+        "pet_bichon",
+        "pet_labrador",
+        "pet_chihuahua"
+      ]
+    },
+    {
+      "tier": "rare",
+      "name": "稀有",
+      "weight": 25,
+      "tint": "#E6F2FF",
+      "duplicate": { "coins": 120, "hearts": 3 },
+      "pets": [
+        "pet_ragdoll",
+        "pet_maine",
+        "pet_husky",
+        "pet_samoyed",
+        "pet_lop_rabbit"
+      ]
+    },
+    {
+      "tier": "legendary",
+      "name": "传说",
+      "weight": 5,
+      "tint": "#FFE9B0",
+      "duplicate": { "coins": 300, "hearts": 8 },
+      "pets": ["pet_budgie"]
+    }
+  ]
+}

@@ -950,6 +950,64 @@
         "correct": { "medicine": "口腔溃疡膏", "bed": "门诊", "time": "正常" }
       },
       "baseRewards": { "coins": 200, "hearts": 1, "affection": 1 }
+    },
+    {
+      "caseId": "case_rabbit_001",
+      "petId": "pet_lop_rabbit",
+      "petName": "雪球",
+      "petSpecies": "rabbit",
+      "breed": "垂耳兔",
+      "severity": "normal",
+      "story": "垂耳兔最近只肯吃软叶，硬草一根不碰，下巴还湿了一小块。",
+      "symptoms": ["拒食干草", "流口水", "体重下降"],
+      "diagnosisType": "xray",
+      "diagnosisTypes": ["xray"],
+      "diagnosisDifficulty": 2,
+      "xray": {
+        "lesions": [
+          { "id": "molar", "x": 70, "y": 40, "label": "臼齿过长" }
+        ],
+        "shadows": [
+          { "id": "shadow_jaw", "x": -90, "y": -40 },
+          { "id": "shadow_ear", "x": -100, "y": 130 }
+        ]
+      },
+      "treatment": {
+        "medicine": ["磨牙棒", "止痛药", "观察"],
+        "bed": ["住院", "门诊"],
+        "time": ["正常", "加速"],
+        "correct": { "medicine": "磨牙棒", "bed": "门诊", "time": "正常" }
+      },
+      "baseRewards": { "coins": 260, "hearts": 1, "affection": 1 }
+    },
+    {
+      "caseId": "case_bird_001",
+      "petId": "pet_budgie",
+      "petName": "小蓝",
+      "petSpecies": "bird",
+      "breed": "虎皮鹦鹉",
+      "severity": "urgent",
+      "story": "平时最爱叫的小蓝突然安静了，羽毛炸成一团，站在栖木上一动不动。",
+      "symptoms": ["不鸣叫", "羽毛蓬松", "食欲废绝"],
+      "diagnosisType": "xray",
+      "diagnosisTypes": ["xray"],
+      "diagnosisDifficulty": 2,
+      "xray": {
+        "lesions": [
+          { "id": "crop", "x": 40, "y": 60, "label": "嗉囊异物" }
+        ],
+        "shadows": [
+          { "id": "shadow_wing", "x": -100, "y": 60 },
+          { "id": "shadow_perch", "x": 90, "y": -130 }
+        ]
+      },
+      "treatment": {
+        "medicine": ["补液", "排异护理", "保温"],
+        "bed": ["住院", "门诊"],
+        "time": ["正常", "加速"],
+        "correct": { "medicine": "补液", "bed": "住院", "time": "加速" }
+      },
+      "baseRewards": { "coins": 300, "hearts": 2, "affection": 2 }
     }
   ]
 }

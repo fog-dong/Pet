@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "dailyCraftLimit": 3,
+  "recipes": [
+    {
+      "id": "premium_food",
+      "name": "高级粮",
+      "out": "item_premium_food",
+      "outQty": 2,
+      "ins": [{ "herb_mint": 2 }, { "herb_chamomile": 1 }],
+      "coins": 20
+    },
+    {
+      "id": "calming_balm",
+      "name": "舒缓药膏",
+      "out": "item_calming_balm",
+      "outQty": 1,
+      "ins": [{ "herb_chamomile": 2 }, { "herb_catnip": 1 }],
+      "coins": 30
+    },
+    {
+      "id": "deworm_drops",
+      "name": "驱虫药剂",
+      "out": "item_deworm",
+      "outQty": 1,
+      "ins": [{ "herb_catnip": 2 }, { "herb_mint": 1 }],
+      "coins": 40
+    }
+  ]
+}

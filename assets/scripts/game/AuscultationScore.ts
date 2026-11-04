@@ -41,3 +41,31 @@ export function buildResult(
     totalMs,
   };
 }
+
+/** P1-B 节奏听诊：全连 3 星，连击过半 2 星，其余完成 1 星。 */
+export function judgeRhythmStars(beats: number, maxCombo: number): number {
+  if (maxCombo >= beats) {
+    return 3;
+  }
+  return maxCombo >= Math.ceil(beats * 0.6) ? 2 : 1;
+}
+
+export function buildRhythmResult(
+  completed: boolean,
+  hits: number,
+  total: number,
+  mistakes: number,
+  maxCombo: number,
+  timeUsedMs: number,
+  totalMs: number,
+): AuscultationResult {
+  return {
+    completed,
+    stars: completed ? judgeRhythmStars(total, maxCombo) : 0,
+    found: hits,
+    total,
+    mistakes,
+    timeUsedMs,
+    totalMs,
+  };
+}

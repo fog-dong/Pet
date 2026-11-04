@@ -21,6 +21,7 @@ interface CrisisState {
   transferred: boolean;
   refunded: string[];
   heartsCost: number;
+  reputationCost: number;
 }
 
 function idleState(): CrisisState {
@@ -32,6 +33,7 @@ function idleState(): CrisisState {
     transferred: false,
     refunded: [],
     heartsCost: 0,
+    reputationCost: 0,
   };
 }
 
@@ -52,8 +54,9 @@ export const CaseCrisis = {
     return state.refunded;
   },
 
-  get heartsCost(): number {
-    return state.heartsCost;
+  /** 转院的两笔硬损失，结算页只展示非零项（口碑 0 分的人不会被扣成负数）。 */
+  get transferCost(): { hearts: number; reputation: number } {
+    return { hearts: state.heartsCost, reputation: state.reputationCost };
   },
 
   /** 倒计时总长，未启动为 0；验收用它确认配置真的读到了而不是走兜底。 */
@@ -134,11 +137,12 @@ export const CaseCrisis = {
   },
 
   /** 转院落地：记完账彻底结束本局危机，时钟清零。 */
-  noteTransfer(refunded: readonly string[], heartsCost: number): void {
+  noteTransfer(refunded: readonly string[], heartsCost: number, reputationCost: number): void {
     state.transferred = true;
     state.trigger = '';
     state.refunded = [...refunded];
     state.heartsCost = heartsCost;
+    state.reputationCost = reputationCost;
     CrisisTimer.reset();
   },
 };

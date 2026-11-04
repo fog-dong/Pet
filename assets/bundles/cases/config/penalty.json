@@ -19,5 +19,9 @@
     "refundRatio": 0.5,
     "heartsPenalty": 2
   },
+  "reputation": {
+    "gainPerStar": 1,
+    "transferPenalty": 1
+  },
   "severityOrder": ["normal", "urgent", "critical"]
 }

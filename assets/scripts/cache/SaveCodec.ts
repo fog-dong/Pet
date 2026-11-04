@@ -1,5 +1,6 @@
-// STATUS: implemented, W3 本地存档编解码（纯函数，无副作用）；W20-2 增小屋条目，编解码拆到 HabitatCodec；W23-1 增抚摸每日上限计数
-import { decodeHabitat, HabitatPet } from './HabitatCodec';
+// STATUS: implemented, W3 本地存档编解码（纯函数，无副作用）；W20-2 增小屋条目，编解码拆到 HabitatCodec；W23-1 增抚摸每日上限计数；W25 P2-A3 增口碑字段，解码工具抽到 SaveFields
+import { HabitatPet, decodeHabitat } from './HabitatCodec';
+import { toNonNegativeInt, toNumber, toNumberMap, toStringArray, toStringMap } from './SaveFields';
 
 export interface SaveData {
   coins: number;
@@ -35,6 +36,11 @@ export interface SaveData {
   slotBonus: number;
   adDay: string;
   adCounts: Record<string, number>;
+  /**
+   * 医院口碑（07 §5）。本地是唯一权威值，随 `saveGame` 快照进 `hospital_state.reputation`；
+   * 服务端白名单要求非负整数，所以这里扣到 0 为止，负数会让整份快照被拒。
+   */
+  reputation: number;
 }
 
 /** 新档默认道具：听诊器电池 1 个，保证失败后有一条免费跳过路径。 */
@@ -67,47 +73,9 @@ export function emptySave(): SaveData {
     slotBonus: 0,
     adDay: '',
     adCounts: {},
+    // 07 §5「新开张」档从 0 起算，不做乐观初值。
+    reputation: 0,
   };
-}
-
-function toNumber(value: unknown, fallback: number): number {
-  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
-}
-
-function toStringArray(value: unknown): string[] {
-  return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
-}
-
-function toNumberMap(value: unknown): Record<string, number> {
-  const result: Record<string, number> = {};
-  if (!value || typeof value !== 'object') {
-    return result;
-  }
-  const source = value as Record<string, unknown>;
-  for (const key in source) {
-    if (!Object.prototype.hasOwnProperty.call(source, key)) {
-      continue;
-    }
-    const raw = source[key];
-    if (typeof raw === 'number' && Number.isFinite(raw)) {
-      result[key] = raw;
-    }
-  }
-  return result;
-}
-
-function toStringMap(value: unknown): Record<string, string> {
-  const result: Record<string, string> = {};
-  if (!value || typeof value !== 'object') {
-    return result;
-  }
-  const source = value as Record<string, unknown>;
-  for (const key in source) {
-    if (Object.prototype.hasOwnProperty.call(source, key) && typeof source[key] === 'string') {
-      result[key] = source[key] as string;
-    }
-  }
-  return result;
 }
 
 export function decodeSave(raw: string | null): SaveData {
@@ -125,7 +93,7 @@ export function decodeSave(raw: string | null): SaveData {
       habitat: decodeHabitat(parsed.habitat),
       habitatLastClaimAt: Math.max(0, toNumber(parsed.habitatLastClaimAt, 0)),
       pettedDay: typeof parsed.pettedDay === 'string' ? parsed.pettedDay : '',
-      pettedCount: Math.max(0, Math.floor(toNumber(parsed.pettedCount, 0))),
+      pettedCount: toNonNegativeInt(parsed.pettedCount, 0),
       habitatTheme: typeof parsed.habitatTheme === 'string' && parsed.habitatTheme ? parsed.habitatTheme : 'clinic',
       habitatThemes: toStringArray(parsed.habitatThemes),
       bestStars: toNumberMap(parsed.bestStars),
@@ -139,6 +107,8 @@ export function decodeSave(raw: string | null): SaveData {
       slotBonus: Math.max(0, toNumber(parsed.slotBonus, 0)),
       adDay: typeof parsed.adDay === 'string' ? parsed.adDay : '',
       adCounts: toNumberMap(parsed.adCounts),
+      // 旧存档没有口碑：按 0 起算（与 emptySave 一致），不能给正数，否则等于凭空铸口碑。
+      reputation: toNonNegativeInt(parsed.reputation, 0),
     };
   } catch {
     return emptySave();

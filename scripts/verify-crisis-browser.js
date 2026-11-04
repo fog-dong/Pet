@@ -1,11 +1,12 @@
-// STATUS: implemented, W25 P2-A2 危重倒计时与转院失败核验（CDP 驱动 web-mobile 构建，纯本地存档，不碰线上）
+// STATUS: implemented, W25 P2-A3 危重倒计时 / 转院失败 / 口碑记账核验（CDP 驱动 web-mobile 构建，纯本地存档，不碰线上）
 // 覆盖两条触发源与一套终局账目：
 //   A「诊断恶化」= 连续失误 3 次 → 危急度上调一档（紧急 2/3 门槛被抬成危重 3/3）→ 抢救红条在治疗页倒数；
 //     切后台暂停（把时间整段拨过窗口也不归零）、回前台继续、运行中拨 100 秒要真的少 100 秒；
-//     治对以后红条随页销毁、康复时长按基准 20 秒、结算走成功终局（金币爱心照常进账、不出现转院文案）。
+//     治对以后红条随页销毁、康复时长按基准 20 秒、结算走成功终局（金币爱心照常进账、不出现转院文案）；
+//     种子塞非法负数口碑：解码必须归零，成功只按本局星级加一次，并随 saveGame 快照上报。
 //   B「重试用尽」= 同一局第 3 次治疗仍不达标 → 当场进入抢救窗口 → 时间拨到归零自动转院：
 //     结算页只有转院终局文案、按比例退药（3 份退 1）、爱心 −2 且扣到 0 为止、金币一分不进、
-//     星级不落 bestStars、床位不凭空多也不凭空少。
+//     星级不落 bestStars、床位不凭空多也不凭空少；口碑 −1 同样扣到 0 为止并随快照上报。
 // 时间不是真等：时钟只认 Date.now，所以页内给 Date.now 加一个可累加的偏移量（window.__bias），
 // 不碰生产代码、不给发布包留调试钩子。
 // 可选项：EXPECT_COUNTDOWN + ONLY + PARTIAL 用来跑「配置通路探针」——把 build/ 里打包的 penalty 资源
@@ -43,6 +44,8 @@ const RUNS = [
     lesionId: 'hip',
     affection: 5,
     hearts: 8,
+    // 故意种一个非法负值：解码必须归零，成功结算只按本局星级加一次。
+    reputation: -5,
     // 3 笔远离病灶的整笔 = 3 次误判 → harsh 档恶化升档；随后擦到显影才通关。
     strokes: [
       { from: [200, -150], to: [200, 150], steps: 8, label: '右侧整列' },
@@ -62,6 +65,8 @@ const RUNS = [
     lesionId: 'hip',
     affection: 10,
     hearts: 1,
+    // 只有 1 点口碑：转院扣 1 分到 0 为止，正好把「差评上墙」和「不扣成负数」一起验掉。
+    reputation: 1,
     // 只在病灶上来回擦：0 次误判，开局不进危重，把「重试用尽」这条触发源单独隔离出来。
     strokes: [],
     expectMistakes: 0,
@@ -145,7 +150,8 @@ const BOOT_SCRIPT = `(() => {
   window.wx = {
     cloud: {
       init(opt) { window.__init = opt; },
-      callFunction(opt) { return Promise.resolve({ result: reply(opt.name) }); },
+      // 记下每次调用的入参：口碑进不进 saveGame 快照，只能从真实出参里验，不能只看本地存档。
+      callFunction(opt) { (window.__calls || (window.__calls = [])).push({ name: opt.name, data: opt.data }); return Promise.resolve({ result: reply(opt.name) }); },
     },
   };
 })()`;
@@ -158,6 +164,8 @@ function seedSave(run) {
   return JSON.stringify({
     coins: 20000,
     hearts: run.hearts,
+    // P2-A3：口碑是本地权威值，种子故意给非法/极小值来验解码与扣量下限。
+    reputation: run.reputation,
     petsSeen: POOL.filter((id) => id !== run.petId),
     petsAdopted: [],
     habitat: [],
@@ -266,6 +274,10 @@ function seedSave(run) {
   const medStock = (name) => saveField(`s.medicines['${name}'] ?? null`);
   const coins = () => saveField('s.coins');
   const hearts = () => saveField('s.hearts');
+  const reputation = () => saveField('s.reputation ?? null');
+  /** 最近一次 saveGame 的快照：口碑要跟着快照上报，只看本地存档证明不了这条腿。 */
+  const lastSaveSnapshot = () =>
+    ev(`(() => { const c = (window.__calls || []).filter(x => x.name === 'saveGame').pop(); return c ? c.data.snapshot : null; })()`);
   const beds = () => saveField('s.bedsOccupied');
   const bestStars = (caseId) => saveField(`s.bestStars['${caseId}'] ?? null`);
   let vh = 1280;
@@ -614,6 +626,29 @@ function seedSave(run) {
         afterCoins > coinsAtCase && afterHearts >= heartsAtCase,
         `coins=${afterCoins}　hearts=${afterHearts}`,
       );
+      const rep = await reputation();
+      judge(
+        'A11',
+        '口碑非法负值解码归零，成功结算只按本局星级入账一次（1 ≤ 口碑 ≤ 3）',
+        typeof rep === 'number' && rep >= 1 && rep <= 3,
+        `种子 -5 → reputation=${rep}（只该等于 ★ 数 × gainPerStar，没被扣穿也没重复加）`,
+      );
+      const pushed = await ev(`(async () => {
+        const end = Date.now() + 8000;
+        while (Date.now() < end) {
+          const c = (window.__calls || []).filter(x => x.name === 'saveGame').pop();
+          const s = c && c.data && c.data.snapshot;
+          if (s && typeof s.reputation === 'number') return s.reputation;
+          await new Promise((r) => setTimeout(r, 200));
+        }
+        return null;
+      })()`, true);
+      judge(
+        'A12',
+        '口碑随 saveGame 快照上报，服务端白名单收得到，不必新增上云接口',
+        pushed === rep,
+        `快照.reputation=${pushed}　本地=${rep}`,
+      );
       await shot(`${OUT}-A-success-result`);
       continue;
     }
@@ -674,7 +709,7 @@ function seedSave(run) {
         page.Summary === TRANSFER_SUMMARY && page.PageTitle === '今日救助',
         `Summary=${page.Summary}　Title=${page.PageTitle}`,
       );
-      judge('B21', '转院账目上墙：按 refundRatio 退药 + 扣一笔爱心', page.TransferNote === '退回 1 份药品，爱心 −2', `TransferNote=${page.TransferNote}`);
+      judge('B21', '转院账目上墙：按 refundRatio 退药 + 扣爱心 + 扣口碑', page.TransferNote === '退回 1 份药品，爱心 −2，口碑 −1', `TransferNote=${page.TransferNote}`);
       judge('B22', '转院这局未领养', page.Adopted === NOT_ADOPTED, `Adopted=${page.Adopted}`);
       await shot(`${OUT}-B-transfer-result`);
       const afterCoins = await coins();
@@ -696,6 +731,29 @@ function seedSave(run) {
       );
       judge('B25', '三次消耗 3 份止痛药，转院按向下取整退 1 份（5 → 2 → 3）', stock === 3, `止痛药=${stock}`);
       judge('B26', '三次都是门诊：不占床，转院后床位余额不变', (await beds()) === 0, `bedsOccupied=${await beds()}`);
+      const rep = await reputation();
+      judge(
+        'B27',
+        '差评只扣到 0 为止：种 1 分口碑，转院 −1 后正好归零，不会成负数',
+        rep === 0,
+        `种子 1 → reputation=${rep}`,
+      );
+      const pushed = await ev(`(async () => {
+        const end = Date.now() + 8000;
+        while (Date.now() < end) {
+          const c = (window.__calls || []).filter(x => x.name === 'saveGame').pop();
+          const s = c && c.data && c.data.snapshot;
+          if (s && typeof s.reputation === 'number') return s.reputation;
+          await new Promise((r) => setTimeout(r, 200));
+        }
+        return null;
+      })()`, true);
+      judge(
+        'B28',
+        '转院后的口碑同样随 saveGame 快照上报（本地与服务端同口径都是 0）',
+        pushed === 0 && pushed === rep,
+        `快照.reputation=${pushed}　本地=${rep}`,
+      );
     }
   }
 

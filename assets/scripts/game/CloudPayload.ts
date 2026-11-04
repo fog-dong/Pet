@@ -44,11 +44,14 @@ export function buildCaseSync(input: CaseSnapshot): CaseSyncInput {
  * 只提交 saveGame 白名单字段（03 validate.ts），其余字段服务端保持原值。
  * W15-1 起不再提交 resources：金币/爱心/道具的云端账本只由 syncCaseResult 写入，
  * 客户端本地数值仅用于离线展示，不能作为服务端发放依据。
+ * reputation 是唯一例外的「客户端权威」数值：10 §3.2 把它放在 hospital_state，
+ * 深度化 §3.3 的口径也是本地计数 + 快照上报，不新增任何上云字段。
  */
 export function buildSaveSnapshot(save: Readonly<SaveData>): Record<string, unknown> {
   return {
     level: save.hospitalLevel,
     beds: Hospital.bedsOwned,
     adoptionSlots: Hospital.slots,
+    reputation: save.reputation,
   };
 }

@@ -54,7 +54,13 @@ async function main(event) {
         }
         // W15-1：users.resources 只由 syncCaseResult 在事务内按服务端配置入账。
         // 客户端快照里的 resources 一律忽略：否则改本地存档即可直接改云端金币/爱心（W12-B 同源）。
-        await userRef.update({ data: { revision } });
+        // reputation 是唯一被放行的例外：10 §3.2 标注 hospital_state.reputation「与 users 同步」，
+        // getProfile 两处都在读它，所以同事务镜像一次，避免两个口径长期分叉。
+        const userPatch = { revision };
+        if (typeof patch.state.reputation === 'number') {
+            userPatch.reputation = patch.state.reputation;
+        }
+        await userRef.update({ data: userPatch });
         return ok({ revision, serverTime: now });
     });
 }

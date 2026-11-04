@@ -1,5 +1,5 @@
-// STATUS: implemented, W25 P2-A2 负反馈兜底表（与 penalty.json 逐项同值，只在整份配置读不到时启用）
-import type { CrisisRules, DiagnosisRules, TreatmentRules } from './PenaltyConfig';
+// STATUS: implemented, W25 P2 负反馈与口碑兜底表（与 penalty.json 逐项同值，只在整份配置读不到时启用）
+import type { CrisisRules, DiagnosisRules, ReputationRules, TreatmentRules } from './PenaltyConfig';
 
 /** 同 AgeSystem.DEFAULT_LIFESPAN 口径：缺配回落并 Track 告警，不静默。 */
 export const PENALTY_FALLBACK = {
@@ -22,5 +22,9 @@ export const PENALTY_FALLBACK = {
     refundRatio: 0.5,
     heartsPenalty: 2,
   } as CrisisRules,
+  reputation: {
+    gainPerStar: 1,
+    transferPenalty: 1,
+  } as ReputationRules,
   severityOrder: ['normal', 'urgent', 'critical'],
 };

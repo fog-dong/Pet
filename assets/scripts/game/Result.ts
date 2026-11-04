@@ -16,7 +16,7 @@ import { CaseSession } from './CaseSession';
 import type { CaseReward } from './CaseSettle';
 import { buildSaveSnapshot } from './CloudPayload';
 import { DoubleReward } from './ResultAd';
-import { totalText } from './ResultText';
+import { totalText, transferText } from './ResultText';
 import { addBreakdown, addReward, floatReward, refreshReward } from './ResultView';
 import type { RewardHandle } from './ResultView';
 
@@ -69,16 +69,7 @@ export class Result extends Component {
     if (reward.firstClear) {
       addLabel(root, 'FirstClear', COPY.resultFirstClear, -98, { size: 22, color: PALETTE.primary });
     } else if (transferred) {
-      addLabel(
-        root,
-        'TransferNote',
-        fillCopy(COPY.transferSummary, {
-          refunded: CaseCrisis.refundedMedicines.length,
-          hearts: CaseCrisis.heartsCost,
-        }),
-        -98,
-        { size: 22, color: PALETTE.primary },
-      );
+      addLabel(root, 'TransferNote', transferText(), -98, { size: 22, color: PALETTE.primary });
     }
     this.totalLabel = addLabel(root, 'Total', totalText(), -136, { size: 20, color: PALETTE.sub });
     if (success && reward.coins > 0) {

@@ -34,6 +34,8 @@ export const COPY = {
   crisisPaused: '危重抢救 · 已暂停（回到游戏继续倒计时）',
   resultTransfer: '{pet} 病情恶化，已被转去上级医院',
   transferSummary: '退回 {refunded} 份药品，爱心 −{hearts}',
+  /** P2-A3 口碑差评：只在真扣到分时追加，0 口碑的新医院不会被扣成负数。 */
+  transferReputation: '口碑 −{reputation}',
   recoveryHome: '带它回家',
   codexEmpty: '图鉴还在整理中~',
   weakNetwork: '📡 信号有点弱，这局记录已经存好啦，稍后会自动同步~',

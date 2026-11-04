@@ -14,6 +14,8 @@ const LAB_COL_SPAN = 400;
 const LAB_COL_MAX_GAP = 96;
 /** 手指落点允许比卡片外扩 18，避免边缘松手白拖。 */
 const LAB_HIT_PAD = 18;
+/** 正确卡槽再外扩 46 作为磁吸区：松手差一点也会吸过去，错槽不吸。 */
+const LAB_MAGNET_PAD = 46;
 
 const CLEAR = new Color(0, 0, 0, 0);
 
@@ -95,6 +97,15 @@ export function isInsideCard(card: Node, world: Vec3): boolean {
   const size = card.getComponent(UITransform)?.contentSize;
   const halfW = (size?.width ?? LAB_ITEM_W) / 2 + LAB_HIT_PAD;
   const halfH = (size?.height ?? LAB_ITEM_H) / 2 + LAB_HIT_PAD;
+  return Math.abs(local.x) <= halfW && Math.abs(local.y) <= halfH;
+}
+
+/** 正确试剂卡外扩的磁吸范围：比普通命中宽松，松手差一点也能吸附。 */
+export function isWithinMagnet(card: Node, world: Vec3): boolean {
+  const local = toLocal(card, world);
+  const size = card.getComponent(UITransform)?.contentSize;
+  const halfW = (size?.width ?? LAB_ITEM_W) / 2 + LAB_HIT_PAD + LAB_MAGNET_PAD;
+  const halfH = (size?.height ?? LAB_ITEM_H) / 2 + LAB_HIT_PAD + LAB_MAGNET_PAD;
   return Math.abs(local.x) <= halfW && Math.abs(local.y) <= halfH;
 }
 

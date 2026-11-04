@@ -12,8 +12,8 @@ import {
   resolveLab,
   shakeCard,
 } from './LabView';
-import { drawPair } from './LabLines';
 import { LabDrag } from './LabDrag';
+import { LabSnap } from './LabSnap';
 import { DiagnosisHud } from './DiagnosisHud';
 import { mountPetAvatar } from './PetPortrait';
 import { PALETTE } from '../ui/SceneUI';
@@ -36,7 +36,8 @@ export class Lab extends Component {
   private mistakes = 0;
   private timeLeft = TOTAL_MS;
   private finished = false;
-  private drag: LabDrag | null = null;
+  private settling = false;
+  private snap: LabSnap | null = null;
 
   startWith(item: CaseConfigItem, onFinish: AuscultationFinish, setHint?: (text: string) => void): void {
     this.item = item;
@@ -57,17 +58,18 @@ export class Lab extends Component {
     );
     // 连线层必须最后添加：先建卡片再建画布，否则线会被卡片盖住，拖到卡片上的那一段看不见。
     this.dragLayer = buildDragLayer(root);
-    this.drag = new LabDrag({
-      active: () => !this.finished,
+    this.snap = new LabSnap(root, () => this.dragLayer, (sample, reagent) => this.complete(sample, reagent));
+    const drag = new LabDrag({
+      active: () => !this.finished && !this.settling && (this.snap?.idle ?? true),
       layer: () => this.dragLayer,
       reagents: () => this.reagents,
       expected: (sample) => this.expected(sample),
-      onMatch: (sample, reagent) => this.connect(sample, reagent),
+      onMatch: (sample, reagent, from) => this.snap?.play(sample, reagent, from),
       onMiss: (sample, reagent) => this.mismatch(sample, reagent),
       onEmpty: () => this.hud?.setHint('把样本拖到右侧对应的试剂上'),
       onHint: (text) => this.hud?.setHint(text),
     });
-    this.samples.forEach((card) => this.drag!.bind(card));
+    this.samples.forEach((card) => drag.bind(card));
     this.hud.paint(this.timeLeft);
     Track.track('diagnosis_start', { caseId: item.caseId, type: 'lab', difficulty: item.diagnosisDifficulty });
   }
@@ -81,12 +83,12 @@ export class Lab extends Component {
     if (!sample || !reagent || this.finished) {
       return;
     }
-    this.connect(sample, reagent);
+    this.snap?.play(sample, reagent);
     this.hud?.setHint('已自动匹配一组');
   }
 
   protected update(deltaTime: number): void {
-    if (this.finished) {
+    if (this.finished || this.settling) {
       return;
     }
     this.timeLeft = Math.max(0, this.timeLeft - deltaTime * 1000);
@@ -108,14 +110,16 @@ export class Lab extends Component {
     }
   }
 
-  private connect(sample: LabCard, reagent: LabCard): void {
-    sample.matched = true;
-    reagent.matched = true;
+  private complete(sample: LabCard, reagent: LabCard): void {
     this.trackAction(sample, reagent, 'hit');
-    drawPair(this.node, sample.node.getWorldPosition(), reagent.node.getWorldPosition());
-    if (this.samples.every((card) => card.matched)) {
-      this.finish(true);
+    if (!this.samples.every((card) => card.matched)) {
+      this.hud?.setHint('吸附成功，继续下一组');
+      return;
     }
+    // 最后一组定格半秒，让配对线、双卡绿光和回弹都看得见，再切治疗页。
+    this.settling = true;
+    this.hud?.setHint('全部匹配，指标很清楚。');
+    this.scheduleOnce(() => this.finish(true), 0.55);
   }
 
   private trackAction(sample: LabCard, reagent: LabCard, result: 'hit' | 'miss'): void {

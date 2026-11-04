@@ -1,7 +1,7 @@
 // STATUS: implemented, W18 化验拖拽连线（按住样本 → 绿线跟随手指 → 松开判定；失败卡片摇晃）
 import { EventTouch, Graphics, Node, Vec3 } from 'cc';
 import type { LabCard } from './LabView';
-import { isInsideCard } from './LabView';
+import { isInsideCard, isWithinMagnet } from './LabView';
 import { clearDrag, drawDrag } from './LabLines';
 
 export interface LabDragHooks {
@@ -9,7 +9,8 @@ export interface LabDragHooks {
   layer(): Graphics | null;
   reagents(): LabCard[];
   expected(sample: string): string;
-  onMatch(sample: LabCard, reagent: LabCard): void;
+  /** from 是松手点，LabSnap 用它把线吸到卡槽中心。 */
+  onMatch(sample: LabCard, reagent: LabCard, from: Vec3): void;
   onMiss(sample: LabCard, reagent: LabCard): void;
   onEmpty(): void;
   onHint(text: string): void;
@@ -69,21 +70,33 @@ export class LabDrag {
 
   private drop(world: Vec3): void {
     const card = this.dragging;
+    const from = this.lastWorld ?? world;
     this.dragging = null;
     this.lastWorld = null;
-    clearDrag(this.hooks.layer());
     if (!card || !this.hooks.active()) {
+      clearDrag(this.hooks.layer());
       return;
     }
-    const target = this.hooks.reagents().find((reagent) => !reagent.matched && isInsideCard(reagent.node, world));
+    const hit = this.hooks.reagents().find((reagent) => !reagent.matched && isInsideCard(reagent.node, world));
+    // 磁吸只对正确卡槽生效：松开在附近（外扩 46）也算连上，错槽仍按连错处理。
+    const near = this.hooks.reagents().find(
+      (reagent) =>
+        !reagent.matched &&
+        this.hooks.expected(card.name) === reagent.name &&
+        isWithinMagnet(reagent.node, world),
+    );
+    const target = hit ?? near;
     if (!target) {
+      clearDrag(this.hooks.layer());
       this.hooks.onEmpty();
       return;
     }
     if (this.hooks.expected(card.name) === target.name) {
-      this.hooks.onMatch(card, target);
+      // 不清线：交给 LabSnap 从松手点吸到卡槽中心，动画结束再收线。
+      this.hooks.onMatch(card, target, from);
       return;
     }
+    clearDrag(this.hooks.layer());
     this.hooks.onMiss(card, target);
   }
 }

@@ -9,6 +9,15 @@
   "treatment": {
     "wrongMedicineAffectionPenalty": 5,
     "wrongMedicineMoodPenalty": 20,
-    "recoveryTimeMultiplier": 2
-  }
+    "recoveryTimeMultiplier": 2,
+    "retryLimit": 3
+  },
+  "crisis": {
+    "countdownSeconds": 180,
+    "scope": ["Diagnosis", "Treatment"],
+    "pauseOnHide": true,
+    "refundRatio": 0.5,
+    "heartsPenalty": 2
+  },
+  "severityOrder": ["normal", "urgent", "critical"]
 }

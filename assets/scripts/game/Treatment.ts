@@ -2,6 +2,7 @@
 import { _decorator, Component } from 'cc';
 import type { CaseConfigItem } from '../config/CaseConfig';
 import { CaseSession } from './CaseSession';
+import { CaseCrisis } from './CaseCrisis';
 import { Hospital } from './Hospital';
 import { judgeTreatment, medicineMatches, treatmentThreshold } from './CaseScore';
 import { CasePressure, punishWrongMedicine } from './CasePenalty';
@@ -14,6 +15,7 @@ import { goState } from '../core/SceneFlow';
 import { Track } from '../track/Track';
 import { mountBackButton } from '../ui/BackButton';
 import { ChoicePanel } from '../ui/ChoicePanel';
+import { CrisisHud } from '../ui/CrisisHud';
 import { showNotice } from '../ui/Toast';
 
 const { ccclass } = _decorator;
@@ -55,9 +57,11 @@ export class Treatment extends Component {
         this.render();
       },
       onConfirm: () => this.confirm(),
-    });
+    }, CaseCrisis.effectiveSeverity(item.severity));
     this.render();
     mountBackButton(this.node, () => this.abandon(), true);
+    // 抢救红条只在治疗页倒数：危急判定在诊断收尾才落账，诊断页没有时间可倒数。
+    this.node.addComponent(CrisisHud);
     // 诊断阶段的失误后果在这一页公示，玩家能在治疗前看到已经损失的好感度。
     showNotice(this.node, CasePressure.takeNotice());
   }
@@ -153,16 +157,19 @@ export class Treatment extends Component {
       result: score,
     });
     CaseSession.finishTreatment([...this.selectedMedicines], this.selectedBed, this.selectedTime, score);
+    // 真正扣掉的药要记账：万一倒计时归零，转院按这串退一部分。
+    CaseCrisis.consume(this.selectedMedicines);
     // 药不对症（含多选带错药）当场结算后果：掉心情 + 扣好感 + 康复时长翻倍；一局只罚一次。
     const wrongMedicine = !medicineMatches(this.selectedMedicines, item.treatment.correct.medicine);
     const penaltyText = wrongMedicine ? punishWrongMedicine(item.petId) : '';
     this.render();
-    // 05 §3：危重病例必须 3/3 全对才进康复，普通/紧急 2/3 即可。
-    const threshold = treatmentThreshold(item.severity);
+    // 05 §3：危重病例必须 3/3 全对才进康复，普通/紧急 2/3 即可；病情恶化后按升档的危急度判。
+    const threshold = treatmentThreshold(CaseCrisis.effectiveSeverity(item.severity));
     if (score >= threshold) {
       this.panel.close();
       Sfx.play('treatOk');
-      // 治疗成功当场翻页，本页下一帧就销毁，后果交给康复页的 Toast。
+      // 治对了危机即解除，康复页不再倒数（避免「治完了干等一条红条」）。
+      CaseCrisis.clear();
       CasePressure.notice = penaltyText;
       void goState(GameState.Recovery, 'Recovery');
       return;
@@ -173,7 +180,12 @@ export class Treatment extends Component {
     this.submitting = false;
     this.selectedMedicines = [];
     this.render();
-    this.fallback.failure(score, item.treatment.correct.medicine, threshold);
+    this.fallback.failure(
+      score,
+      item.treatment.correct.medicine,
+      threshold,
+      CaseCrisis.addTreatmentRetry(item.caseId),
+    );
     // 面板打开后再弹 Toast，才不会被遮罩压暗（ChoicePanel 打开时把自己提到最上层）。
     showNotice(this.node, penaltyText);
   }

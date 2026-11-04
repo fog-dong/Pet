@@ -11,7 +11,7 @@ import { goState } from '../core/SceneFlow';
 import { adButtonText } from '../cache/AdQuota';
 import { adFailHint, canOfferAd, showAd } from '../net/AdGateway';
 import { mountBackButton } from '../ui/BackButton';
-import { showNotice, showToast } from '../ui/Toast';
+import { showNotice } from '../ui/Toast';
 import { addButton, addLabel, addProgressBar, PALETTE, setButtonState } from '../ui/SceneUI';
 import { fitWidth } from '../ui/ScreenMetrics';
 

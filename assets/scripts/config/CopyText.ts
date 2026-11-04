@@ -29,6 +29,11 @@ export const COPY = {
   resultFail: '这次没帮上忙，休息一下再来',
   resultFirstClear: '第一次救助成功，额外奖励！',
   resultNext: '下一位病患',
+  /** P2-A2 危重倒计时：红条只在本局诊断/治疗页出现，归零即转院。 */
+  crisisRunning: '危重抢救 · 剩 {seconds}s',
+  crisisPaused: '危重抢救 · 已暂停（回到游戏继续倒计时）',
+  resultTransfer: '{pet} 病情恶化，已被转去上级医院',
+  transferSummary: '退回 {refunded} 份药品，爱心 −{hearts}',
   recoveryHome: '带它回家',
   codexEmpty: '图鉴还在整理中~',
   weakNetwork: '📡 信号有点弱，这局记录已经存好啦，稍后会自动同步~',

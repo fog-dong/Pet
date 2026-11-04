@@ -1,4 +1,4 @@
-// STATUS: implemented, W5 单局会话（病例上下文 + 评分收集 + 上报快照）
+// STATUS: implemented, W5 单局会话（病例上下文 + 评分收集 + 上报快照）；W25 P2-A2 接管危重状态复位
 import type { CaseConfigItem } from '../config/CaseConfig';
 import type { CaseSyncInput } from '../net/SyncCaseResult';
 import { Save } from '../cache/Save';
@@ -10,6 +10,7 @@ import { trackDiagnosis, trackRecovery, trackTreatment } from './CaseTrack';
 import { affectionGain, medicineMatches, recoverySeconds, recoveryStars, treatmentStars } from './CaseScore';
 import { CaseReward, DiagnosisResult, RecoveryResult, TreatmentResult, emptyReward, settleCase, trackCaseComplete } from './CaseSettle';
 import { CasePressure } from './CasePenalty';
+import { CaseCrisis } from './CaseCrisis';
 
 export class CaseSessionStore {
   private item: CaseConfigItem | null = null;
@@ -72,10 +73,19 @@ export class CaseSessionStore {
   }
 
   finishTreatment(medicines: string[], bed: string, time: string, score: number): void {
-    const success = treatmentStars(score, this.item ? this.item.severity : 'normal') > 0;
-    this.treatment = { medicines, bed, time, score, success };
-    this.bedHeld = success && bed === '住院';
+    const severity = CaseCrisis.effectiveSeverity(this.item ? this.item.severity : 'normal');
+    this.treatment = { medicines, bed, time, score, success: treatmentStars(score, severity) > 0 };
+    this.bedHeld = this.treatment.success && bed === '住院';
     trackTreatment(this.item ? this.item.caseId : '', this.treatment);
+  }
+
+  /** 转院终局归还本局占用的住院床；没占过床的病例不能减，否则全院床位会凭空多出来。 */
+  releaseBed(): void {
+    if (!this.bedHeld) {
+      return;
+    }
+    Hospital.freeBed();
+    this.bedHeld = false;
   }
 
   /** 二次确认放弃：归还本局占用的住院床位并清空上下文，不结算任何奖励。 */
@@ -103,6 +113,7 @@ export class CaseSessionStore {
     this.bedHeld = false;
     this.adopted = false;
     CasePressure.reset();
+    CaseCrisis.reset();
   }
 
   /** 康复结束即按 06 §2.1 的来源累计好感度，领养页据此判断门槛。 */

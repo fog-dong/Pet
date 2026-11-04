@@ -1,4 +1,4 @@
-// STATUS: implemented, W16 P1 结算页（星级逐颗弹出 + 奖励上浮 + 同步状态走 Toast）
+// STATUS: implemented, W16 P1 结算页（星级逐颗弹出 + 奖励上浮 + 同步状态走 Toast）；W25 P2-A2 追加转院失败终局
 import { _decorator, Component, Label } from 'cc';
 import { Save } from '../cache/Save';
 import { COPY, fillCopy } from '../config/CopyText';
@@ -11,6 +11,7 @@ import { mountBackdrop } from '../ui/Backdrop';
 import { addButton, addLabel, PALETTE } from '../ui/SceneUI';
 import { showStars } from '../ui/StarRow';
 import { showToast } from '../ui/Toast';
+import { CaseCrisis } from './CaseCrisis';
 import { CaseSession } from './CaseSession';
 import type { CaseReward } from './CaseSettle';
 import { buildSaveSnapshot } from './CloudPayload';
@@ -39,13 +40,20 @@ export class Result extends Component {
     const item = CaseSession.current;
     const reward = CaseSession.settle();
     const success = reward.stars > 0;
+    // 转院是本局的第三种终局：不是「没帮上忙」，是抢救窗口归零后被送走去上级医院。
+    const transferred = CaseCrisis.transferred;
+    const pet = item ? item.petName : '宝贝';
     const root = this.node;
     mountBackdrop(root, 'result');
     addLabel(root, 'PageTitle', COPY.resultTitle, TITLE_Y, { size: 52 });
     addLabel(
       root,
       'Summary',
-      success ? fillCopy(COPY.resultSuccess, { pet: item ? item.petName : '宝贝' }) : COPY.resultFail,
+      transferred
+        ? fillCopy(COPY.resultTransfer, { pet })
+        : success
+          ? fillCopy(COPY.resultSuccess, { pet })
+          : COPY.resultFail,
       SUMMARY_Y,
       { size: 30, color: PALETTE.sub },
     );
@@ -60,6 +68,17 @@ export class Result extends Component {
     );
     if (reward.firstClear) {
       addLabel(root, 'FirstClear', COPY.resultFirstClear, -98, { size: 22, color: PALETTE.primary });
+    } else if (transferred) {
+      addLabel(
+        root,
+        'TransferNote',
+        fillCopy(COPY.transferSummary, {
+          refunded: CaseCrisis.refundedMedicines.length,
+          hearts: CaseCrisis.heartsCost,
+        }),
+        -98,
+        { size: 22, color: PALETTE.primary },
+      );
     }
     this.totalLabel = addLabel(root, 'Total', totalText(), -136, { size: 20, color: PALETTE.sub });
     if (success && reward.coins > 0) {

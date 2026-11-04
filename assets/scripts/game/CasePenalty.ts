@@ -3,6 +3,7 @@ import { clampStat } from '../cache/HabitatCodec';
 import { Save } from '../cache/Save';
 import { PenaltyConfig } from '../config/PenaltyConfig';
 import { Track } from '../track/Track';
+import { CaseCrisis } from './CaseCrisis';
 import { Hospital } from './Hospital';
 
 /**
@@ -63,11 +64,15 @@ export function diagnosisPenalty(mistakes: number): DiagnosisPenalty {
 /**
  * 首诊宠物只扣好感度（Q2 拍板）；心情只作用于已领养、已在小屋落档的个体。
  * 落账同时把提示写进压力状态，由下一页的 Toast 公示（旧页下一帧就销毁）。
+ * harsh 档再把危急度上调一档，后续所有门槛判定按升档后的值走。
  */
 export function penalizeDiagnosis(petId: string, mistakes: number): DiagnosisPenalty {
   const penalty = diagnosisPenalty(mistakes);
   if (!petId || penalty.level === 'none') {
     return penalty;
+  }
+  if (penalty.escalate) {
+    CaseCrisis.escalateSeverity();
   }
   Hospital.addAffection(petId, -penalty.affection);
   CasePressure.notice = penalty.text;

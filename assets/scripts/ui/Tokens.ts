@@ -102,4 +102,6 @@ export const DURATION = {
   bubbleIn: 0.2,
   bubbleHold: 1.3,
   bubbleOut: 0.3,
+  /** 危重红条心跳的半程（收缩→回弹各一次），整圈约 0.42s，够急但不抢操作。 */
+  crisisBeat: 0.21,
 } as const;

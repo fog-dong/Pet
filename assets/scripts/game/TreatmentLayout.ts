@@ -55,6 +55,8 @@ export function buildTreatmentLayout(
   root: Node,
   item: CaseConfigItem,
   handlers: TreatmentHandlers,
+  /** 升档后的危急度：门槛按它判，副标题也必须按它写，否则页面说 2/3、实际要 3/3。 */
+  severity: string = item.severity,
 ): TreatmentLayout {
   addLabel(root, 'PageTitle', '治 疗', 500, { size: 42 });
   addLabel(root, 'PetName', `${item.petName} · ${item.breed}`, 458, {
@@ -63,7 +65,7 @@ export function buildTreatmentLayout(
   });
   // 05 §3：把危急度的治疗门槛写在页面上，不让玩家靠猜。
   const severityHint =
-    item.severity === 'critical' ? '危重 · 药/床/时间必须全对（3/3）' : item.severity === 'urgent' ? '紧急 · 至少选对 2/3' : '普通 · 至少选对 2/3';
+    severity === 'critical' ? '危重 · 药/床/时间必须全对（3/3）' : severity === 'urgent' ? '紧急 · 至少选对 2/3' : '普通 · 至少选对 2/3';
   addLabel(root, 'SeverityLabel', severityHint, 420, { size: 21, color: PALETTE.primary });
   addLabel(root, 'StockLabel', '药品可多选，再点一次取消；床位不足可改门诊或免费腾床', 384, {
     size: 21,

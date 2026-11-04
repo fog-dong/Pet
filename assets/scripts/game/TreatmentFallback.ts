@@ -1,6 +1,7 @@
-// STATUS: implemented, W3 治疗兜底（缺药 / 缺床位 / 治疗失败的三条免费路径）
+// STATUS: implemented, W3 治疗兜底（缺药 / 缺床位 / 治疗失败的三条免费路径）；W25 P2-A2 重试用尽改为抢救窗口提示
 import type { Node } from 'cc';
 import { Hospital } from './Hospital';
+import { CaseCrisis } from './CaseCrisis';
 import { adButtonText } from '../cache/AdQuota';
 import { adFailHint, canOfferAd, showAd } from '../net/AdGateway';
 import { Track } from '../track/Track';
@@ -35,8 +36,18 @@ export class TreatmentFallback {
     this.panel.setHint('广告 / 好友送药 / 等待补给，三条免费路径都能继续。');
   }
 
-  failure(score: number, name: string, threshold = 2): void {
+  /**
+   * 治疗没达标。inCrisis 为重试用尽：不再给第 4 次免费重试之外的说法，
+   * 直接把抢救窗口写在面板上，倒计时归零就由 CrisisHud 触发转院。
+   */
+  failure(score: number, name: string, threshold = 2, inCrisis = false): void {
     this.focus = name || this.hooks.requiredMedicine();
+    if (inCrisis) {
+      const seconds = CaseCrisis.view().seconds;
+      this.panel.open(this.hooks.root(), `治疗评分 ${score}/3，重试用尽`, this.medicineActions(true));
+      this.panel.setHint(`病情在恶化，抢救只剩 ${seconds}s，时间到就得转院。`);
+      return;
+    }
     const reason = threshold >= 3 ? '危重病例需要 3/3 全对' : '还差一点';
     this.panel.open(this.hooks.root(), `治疗评分 ${score}/3，${reason}`, this.medicineActions(true));
     this.panel.setHint('可以免费重试，也可以补一个对症药再来。');

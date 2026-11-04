@@ -1,4 +1,4 @@
-// STATUS: implemented, W4 诊断调度（听诊/拍片/化验，最多 2 个，共用评分入口）
+// STATUS: implemented, W4 诊断调度（听诊/拍片/化验，最多 2 个，共用评分入口）；W25 P2-A2 失误恶化即启动危重倒计时
 import { _decorator, Button, Component, Label, Node, UITransform } from 'cc';
 import type { CaseConfigItem } from '../config/CaseConfig';
 import { CaseSession } from './CaseSession';
@@ -8,6 +8,7 @@ import { DiagnosisKind, diagnosisSequence } from './DiagnosisSequence';
 import { buildDiagnosisLayout, DIAGNOSIS_HINT, DIAGNOSIS_NAME } from './DiagnosisLayout';
 import { buildInspection, refreshInspection, watchInspection } from './DiagnosisInspection';
 import { penalizeDiagnosis } from './CasePenalty';
+import { CaseCrisis } from './CaseCrisis';
 import { Hintable, spawnDiagnosis } from './DiagnosisGames';
 import { DiagnosisFallback } from './DiagnosisFallback';
 import { GameState } from '../core/GameFSM';
@@ -117,7 +118,11 @@ export class Diagnosis extends Component {
     const stars = this.forceLow ? Math.min(1, merged.stars) : merged.stars;
     CaseSession.finishDiagnosis(stars, merged.mistakes, merged.timeUsedMs);
     // 失误后果在离开诊断页前落账，提示由治疗页的 Toast 公示。
-    penalizeDiagnosis(this.item ? this.item.petId : '', merged.mistakes);
+    const penalty = penalizeDiagnosis(this.item ? this.item.petId : '', merged.mistakes);
+    // 病情恶化（harsh 档）当场启动抢救窗口；倒计时归零由 CrisisHud 触发转院。
+    if (penalty.escalate) {
+      CaseCrisis.begin('diagnosis', this.item ? this.item.caseId : '');
+    }
     this.setHint('诊断明确，准备治疗。');
     void goState(GameState.Treatment, 'Treatment');
   }

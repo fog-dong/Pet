@@ -119,7 +119,8 @@ function refreshAll(): void {
 
 function notify(text: string): void {
   if (toastHost) {
-    showToast(toastHost, text);
+    // 后院面板 800 高，默认 -320 的 Toast 会压住 -352 的关闭键，往下挪到面板外。
+    showToast(toastHost, text, { y: -470 });
   }
 }
 

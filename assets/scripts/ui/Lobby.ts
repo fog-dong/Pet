@@ -2,22 +2,18 @@
 import { _decorator, Button, Component, Label, Node } from 'cc';
 import { PrivacyState } from '../cache/PrivacyState';
 import { Save } from '../cache/Save';
-import { CaseConfig } from '../config/CaseConfig';
 import { CharacterConfig } from '../config/CharacterConfig';
 import { CONFIG_BUNDLE } from '../config/ConfigLoader';
-import { COPY } from '../config/CopyText';
 import { PRIVACY_GUEST_TEXT } from '../config/LegalConfig';
 import { refreshQuality } from '../core/BootCloud';
-import { GameState } from '../core/GameFSM';
 import { Res } from '../core/Res';
-import { goState } from '../core/SceneFlow';
-import { CaseSession } from '../game/CaseSession';
 import { CharacterView } from '../game/CharacterView';
 import { habitatList } from '../game/HabitatModel';
 import { Profile } from '../net/Profile';
 import { Track } from '../track/Track';
 import { buildLobbyLinks, buildLobbyMenu, HudHandle } from './LobbyChrome';
 import { LobbyMenuHost, openLobbyMenu } from './LobbyMenu';
+import { openGachaFromLobby } from './LobbyStart';
 import { lobbyDoctorSize, lobbyDoctorY, lobbyHintY } from './LobbyLayout';
 import { mountLobbyScene } from './LobbyScene';
 import type { PetBandHandle } from './LobbyPetRow';
@@ -110,7 +106,7 @@ export class Lobby extends Component {
     openLobbyMenu(name, host, focusPetId);
   }
 
-  private refreshStats(): void {
+  refreshStats(): void {
     this.hud?.set(Save.coins, Save.hearts);
     this.refreshBand();
   }
@@ -123,15 +119,7 @@ export class Lobby extends Component {
   }
 
   private onStartClick(): void {
-    Track.track('lobby_start_click');
-    const item = CaseConfig.random();
-    if (!item) {
-      Track.track('lobby_cases_missing');
-      this.showHint(COPY.lobbyNoCase);
-      return;
-    }
-    CaseSession.start(item);
-    void goState(GameState.CaseIntro, 'CaseIntro');
+    openGachaFromLobby(this.node, this);
   }
 
   /** 常驻提示交给玩家看的，只放一层，避免多句叠字。 */

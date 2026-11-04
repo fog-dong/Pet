@@ -1,8 +1,9 @@
-// STATUS: implemented, W25 P1-A 寻访结果判定（新宠记图鉴，重复宠按稀有度转金币/爱心，不新增存档字段）
+// STATUS: implemented, W25 P1-A 寻访结果判定（新宠记图鉴，重复宠按稀有度转金币/爱心，不新增存档字段）；W25 P2-B1 计 gachaDraws / gachaLegendary 并支持券限档抽取
 import { Save } from '../cache/Save';
 import { CharacterConfig } from '../config/CharacterConfig';
 import { GachaConfig, GachaTier } from '../config/GachaConfig';
 import { Track } from '../track/Track';
+import { bumpCounter } from './Counters';
 
 export interface GachaDraw {
   petId: string;
@@ -17,10 +18,14 @@ export interface GachaDraw {
 }
 
 /** 已救助（petsAdopted）与已遇见（petsSeen）都算见过，只有完全陌生的才进接诊。 */
-export function drawGacha(): GachaDraw | null {
-  const roll = GachaConfig.roll();
+export function drawGacha(only?: readonly GachaTier[]): GachaDraw | null {
+  const roll = GachaConfig.roll(only);
   if (!roll) {
     return null;
+  }
+  bumpCounter('gachaDraws');
+  if (roll.tier === 'legendary') {
+    bumpCounter('gachaLegendary');
   }
   Save.load();
   const state = Save.snapshot();

@@ -1,0 +1,113 @@
+{
+  "version": 1,
+  "groups": [
+    {
+      "id": "medic",
+      "name": "悬壶",
+      "metric": "casesDone",
+      "tiers": [
+        {
+          "need": 5,
+          "reward": {
+            "coins": 200
+          }
+        },
+        {
+          "need": 20,
+          "reward": {
+            "coins": 600,
+            "hearts": 5
+          }
+        },
+        {
+          "need": 50,
+          "reward": {
+            "coins": 1200,
+            "hearts": 12,
+            "ticket": 1
+          }
+        }
+      ]
+    },
+    {
+      "id": "grower",
+      "name": "躬耕",
+      "metric": "gardenPlanted",
+      "tiers": [
+        {
+          "need": 3
+        },
+        {
+          "need": 15
+        },
+        {
+          "need": 40
+        }
+      ]
+    },
+    {
+      "id": "guardian",
+      "name": "照护",
+      "metric": "nailCare",
+      "tiers": [
+        {
+          "need": 3
+        },
+        {
+          "need": 10
+        },
+        {
+          "need": 30
+        }
+      ]
+    },
+    {
+      "id": "homework",
+      "name": "送家有道",
+      "metric": "rehomeCount",
+      "tiers": [
+        {
+          "need": 1
+        },
+        {
+          "need": 5
+        },
+        {
+          "need": 15
+        }
+      ]
+    },
+    {
+      "id": "seeker",
+      "name": "寻访",
+      "metric": "gachaDraws",
+      "tiers": [
+        {
+          "need": 5
+        },
+        {
+          "need": 20
+        },
+        {
+          "need": 60
+        }
+      ]
+    },
+    {
+      "id": "repute",
+      "name": "口碑",
+      "metric": "reputation",
+      "tiers": [
+        {
+          "need": 100
+        },
+        {
+          "need": 300
+        },
+        {
+          "need": 800
+        }
+      ]
+    }
+  ]
+}

@@ -1,7 +1,8 @@
-// STATUS: implemented, W25 P1-C 小屋装修主题表（纯数据 + 本地购买/切换；偏差 D19 只落本地存档）
+// STATUS: implemented, W25 P1-C 小屋装修主题表（纯数据 + 本地购买/切换；偏差 D19 只落本地存档）；W25 P2-B1 购买计数
 // 色值只存十六进制字符串，UI 侧统一走 Tokens.tint()，本文件不引用 cc，便于后续换成配置表。
 import { Save } from '../cache/Save';
 import { COPY, fillCopy } from '../config/CopyText';
+import { bumpCounter } from './Counters';
 
 export type HabitatThemeId = 'clinic' | 'bedroom' | 'balcony';
 
@@ -86,5 +87,6 @@ export function buyHabitatTheme(id: string): ThemeOutcome {
     }
     data.habitatTheme = theme.id;
   });
+  bumpCounter('themeBought');
   return { kind: 'done', theme, text: fillCopy(COPY.habitatThemeApplied, { name: theme.name }) };
 }

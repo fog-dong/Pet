@@ -1,5 +1,6 @@
-// STATUS: implemented, W25 P1-A 街头寻访抽卡配置（权重 70/25/5、花费与重复转化全部来自 gacha.json）
+// STATUS: implemented, W25 P1-A 街头寻访抽卡配置（权重 70/25/5、花费与重复转化全部来自 gacha.json）；W25 P2-B1 增盲盒券兑换口径
 import { loadConfigJson } from './ConfigLoader';
+import { TICKET_ITEM } from './AchievementDefaults';
 
 export type GachaTier = 'common' | 'rare' | 'legendary';
 
@@ -21,6 +22,10 @@ interface GachaFile {
   version: number;
   costCoins: number;
   adScene: string;
+  /** 券兑换用的道具 key，缺省或非法时回落到 AchievementDefaults.TICKET_ITEM。 */
+  ticketItem?: string;
+  /** 券能开出的档位；缺省或全非法时回落到 rare + legendary。 */
+  ticketTiers?: string[];
   tiers: GachaTierConfig[];
 }
 
@@ -33,11 +38,14 @@ export interface GachaRoll {
 }
 
 const TIERS: readonly GachaTier[] = ['common', 'rare', 'legendary'];
+const DEFAULT_TICKET_TIERS: readonly GachaTier[] = ['rare', 'legendary'];
 
 class GachaConfigStore {
   private tiers: GachaTierConfig[] = [];
   private cost = 0;
   private scene = '';
+  private ticket = TICKET_ITEM;
+  private ticketPool: GachaTier[] = [...DEFAULT_TICKET_TIERS];
 
   get ready(): boolean {
     return this.tiers.length > 0;
@@ -49,6 +57,14 @@ class GachaConfigStore {
 
   get adScene(): string {
     return this.scene;
+  }
+
+  get ticketItem(): string {
+    return this.ticket;
+  }
+
+  get ticketTiers(): readonly GachaTier[] {
+    return this.ticketPool;
   }
 
   async load(): Promise<boolean> {
@@ -68,23 +84,33 @@ class GachaConfigStore {
     );
     this.cost = Math.max(0, Math.round(file.costCoins));
     this.scene = file.adScene ?? '';
+    if (typeof file.ticketItem === 'string' && file.ticketItem.trim()) {
+      this.ticket = file.ticketItem.trim();
+    }
+    const wanted = Array.isArray(file.ticketTiers)
+      ? file.ticketTiers.filter((tier): tier is GachaTier => TIERS.includes(tier as GachaTier))
+      : [];
+    // 空集会让券永远开不出东西；与「非法即回落」同口径，不保留半套。
+    this.ticketPool = wanted.length > 0 ? [...new Set(wanted)] : [...DEFAULT_TICKET_TIERS];
     return this.ready;
   }
 
-  /** 先按档位权重抽稀有度，再从该档池子里等概率取一只。 */
-  roll(): GachaRoll | null {
-    const total = this.tiers.reduce((sum, tier) => sum + tier.weight, 0);
+  /** 先按档位权重抽稀有度，再从该档池子里等概率取一只；传 only 时只在指定档位里按相对权重抽。 */
+  roll(only?: readonly GachaTier[]): GachaRoll | null {
+    const pool =
+      only && only.length > 0 ? this.tiers.filter((tier) => only.includes(tier.tier)) : this.tiers;
+    const total = pool.reduce((sum, tier) => sum + tier.weight, 0);
     if (total <= 0) {
       return null;
     }
     let point = Math.random() * total;
-    for (const tier of this.tiers) {
+    for (const tier of pool) {
       point -= tier.weight;
       if (point < 0) {
         return pick(tier);
       }
     }
-    return pick(this.tiers[this.tiers.length - 1]);
+    return pick(pool[pool.length - 1]);
   }
 }
 

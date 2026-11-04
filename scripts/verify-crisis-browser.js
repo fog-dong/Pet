@@ -270,6 +270,7 @@ function seedSave(run) {
     );
   const saveField = (expr) =>
     ev(`(() => { const s = JSON.parse(localStorage.getItem('pet_save_v1')); return (${expr}); })()`);
+  const counter = (key) => saveField(`(s.counters || {})[${JSON.stringify(key)}] ?? 0`);
   const affection = (petId) => saveField(`s.affection['${petId}'] ?? null`);
   const medStock = (name) => saveField(`s.medicines['${name}'] ?? null`);
   const coins = () => saveField('s.coins');
@@ -396,6 +397,7 @@ function seedSave(run) {
     const READY = '花点金币';
     const SEARCH = '点一点纸箱';
     let rolls = 0;
+    let legendarySeen = 0;
     /** 相位守卫在 GachaFlow 里，页内点击偶发丢一帧；重试并留诊断，别把抽卡抖动当成玩法故障。 */
     async function payAndSearch() {
       for (let attempt = 1; attempt <= 4; attempt += 1) {
@@ -416,12 +418,14 @@ function seedSave(run) {
       if (!(await waitFor('GachaName', 8000))) throw new Error('结果卡没出来');
       const name = await label('GachaName');
       const primary = await label('GachaPrimaryLabel');
+      // 传说档在结果卡上有独立标签；计数器要对上「实际开出过的传说次数」，不能只对上总次数。
+      if ((await label('GachaTierLabel')) === '传说') legendarySeen += 1;
       if (name === run.petName && primary === '立即接诊') {
         await click('GachaPrimary');
         judge(`${run.key}00`, `寻访 ${rolls} 次后抽到 ${run.petName} 并进入接诊`, (await waitFor('AcceptButton', 12000)) === true, `抽卡次数=${rolls}`);
         await click('AcceptButton');
         if (!(await waitFor('XrayBoard', 12000))) throw new Error('没进拍片页');
-        return;
+        return { rolls, legendarySeen };
       }
       if (rolls % 5 === 0) console.log(`  roll#${rolls} ${name}（${primary}）`);
       if (primary === '立即接诊') {
@@ -511,7 +515,7 @@ function seedSave(run) {
   for (const run of RUNS) {
     console.log(`\n=== 用例 ${run.key}：${run.petName}（${run.caseId}，紧急度 urgent，爱心初始 ${run.hearts}）===`);
     await boot(run);
-    await intake(run);
+    const intakeInfo = await intake(run);
     await driveXray(run);
     if (!(await waitFor('ConfirmButton', 25000))) throw new Error(`用例 ${run.key}：诊断完成后没进治疗页`);
     await sleep(400);
@@ -649,6 +653,31 @@ function seedSave(run) {
         pushed === rep,
         `快照.reputation=${pushed}　本地=${rep}`,
       );
+      const draws = await counter('gachaDraws');
+      const legends = await counter('gachaLegendary');
+      judge(
+        'A13',
+        '寻访计数器真值：每次开箱 +1，传说档另记一次（与结果卡标签对得上）',
+        draws === intakeInfo.rolls && legends === intakeInfo.legendarySeen,
+        `gachaDraws=${draws}/${intakeInfo.rolls}　gachaLegendary=${legends}/${intakeInfo.legendarySeen}`,
+      );
+      const perfect = await counter('casePerfect');
+      const wrong = await counter('wrongMedicine');
+      const transferred = await counter('caseTransfer');
+      judge(
+        'A14',
+        '不误计：诊断 1★ 不算完美诊疗，本局没选错药、也没转院',
+        perfect === 0 && wrong === 0 && transferred === 0,
+        `casePerfect=${perfect}　wrongMedicine=${wrong}　caseTransfer=${transferred}`,
+      );
+      const snap = await lastSaveSnapshot();
+      const snapKeys = snap ? Object.keys(snap).sort() : null;
+      judge(
+        'A15',
+        '成就计数只落本地：saveGame 快照键集不变，不带 counters / achievementsClaimed',
+        JSON.stringify(snapKeys) === JSON.stringify(['adoptionSlots', 'beds', 'level', 'reputation']),
+        `快照键=${JSON.stringify(snapKeys)}`,
+      );
       await shot(`${OUT}-A-success-result`);
       continue;
     }
@@ -753,6 +782,22 @@ function seedSave(run) {
         '转院后的口碑同样随 saveGame 快照上报（本地与服务端同口径都是 0）',
         pushed === 0 && pushed === rep,
         `快照.reputation=${pushed}　本地=${rep}`,
+      );
+      const transferredCount = await counter('caseTransfer');
+      const wrongCount = await counter('wrongMedicine');
+      const drawCount = await counter('gachaDraws');
+      const legendCount = await counter('gachaLegendary');
+      judge(
+        'B29',
+        '转院与错药各记一次（重试 3 次错药只罚一次），寻访计数与实抽次数一致',
+        transferredCount === 1 && wrongCount === 1 && drawCount === intakeInfo.rolls && legendCount === intakeInfo.legendarySeen,
+        `caseTransfer=${transferredCount}　wrongMedicine=${wrongCount}　gachaDraws=${drawCount}/${intakeInfo.rolls}　gachaLegendary=${legendCount}/${intakeInfo.legendarySeen}`,
+      );
+      judge(
+        'B30',
+        '转院局没有成功结算，完美诊疗保持 0',
+        (await counter('casePerfect')) === 0,
+        `casePerfect=${await counter('casePerfect')}`,
       );
     }
   }

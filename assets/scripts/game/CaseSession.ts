@@ -1,4 +1,4 @@
-// STATUS: implemented, W5 单局会话（病例上下文 + 评分收集 + 上报快照）；W25 P2-A2 接管危重状态复位
+// STATUS: implemented, W5 单局会话（病例上下文 + 评分收集 + 上报快照）；W25 P2-A2 接管危重状态复位；W25 P2-B1 完美诊疗计数
 import type { CaseConfigItem } from '../config/CaseConfig';
 import type { CaseSyncInput } from '../net/SyncCaseResult';
 import { Save } from '../cache/Save';
@@ -12,6 +12,7 @@ import { CaseReward, DiagnosisResult, RecoveryResult, TreatmentResult, emptyRewa
 import { CasePressure } from './CasePenalty';
 import { CaseCrisis } from './CaseCrisis';
 import { Reputation } from './Reputation';
+import { bumpCounter } from './Counters';
 
 export class CaseSessionStore {
   private item: CaseConfigItem | null = null;
@@ -192,6 +193,9 @@ export class CaseSessionStore {
     }
     // 口碑按本局星级进账；0 星不进（apply 里 0 直接返回）。放在幂等的 settle 内，
     // 因为领养页会二次返回结算页，挂在 Result 上会重复计数。
+    if (this.reward.diagnosisStars === 3 && this.reward.treatmentScore === 3) {
+      bumpCounter('casePerfect');
+    }
     Reputation.awardCase(this.reward.stars);
     trackCaseComplete(item, this.reward);
     // settleCase 已归还住院床位，会话侧同步清标记，避免后续重复 freeBed。

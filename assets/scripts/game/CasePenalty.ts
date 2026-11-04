@@ -1,9 +1,10 @@
-// STATUS: implemented, W25 P2-A 负反馈结算（诊断失误扣好感 / 错药扣心情+好感+康复翻倍）
+// STATUS: implemented, W25 P2-A 负反馈结算（诊断失误扣好感 / 错药扣心情+好感+康复翻倍）；W25 P2-B1 错药计数
 import { clampStat } from '../cache/HabitatCodec';
 import { Save } from '../cache/Save';
 import { PenaltyConfig } from '../config/PenaltyConfig';
 import { Track } from '../track/Track';
 import { CaseCrisis } from './CaseCrisis';
+import { bumpCounter } from './Counters';
 import { Hospital } from './Hospital';
 
 /**
@@ -115,6 +116,7 @@ export function punishWrongMedicine(petId: string): string {
     return '';
   }
   CasePressure.medicinePunished = true;
+  bumpCounter('wrongMedicine');
   const penalty = applyMedicinePenalty(petId);
   CasePressure.recoveryMultiplier = Math.max(1, penalty.recoveryMultiplier);
   return penalty.text;

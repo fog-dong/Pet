@@ -11,6 +11,7 @@ import { PrivacyState } from '../cache/PrivacyState';
 import { WxPrivacy } from '../net/Privacy';
 import { CaseConfig } from '../config/CaseConfig';
 import { CharacterConfig } from '../config/CharacterConfig';
+import { AchievementConfig } from '../config/AchievementConfig';
 import { CONFIG_BUNDLE } from '../config/ConfigLoader';
 import { PenaltyConfig } from '../config/PenaltyConfig';
 import { BUNDLE_TIMEOUT_MS } from '../config/BundleConfig';
@@ -67,7 +68,7 @@ export class Boot extends Component {
       Track.track('boot_cases_bundle_missing');
     }
     const [casesReady, , penaltyReady] = await Promise.all([
-      CaseConfig.load(), CharacterConfig.load(), PenaltyConfig.load(),
+      CaseConfig.load(), CharacterConfig.load(), PenaltyConfig.load(), AchievementConfig.load(),
     ]);
     if (!casesReady) { Track.track('boot_cases_missing'); }
     // 惩罚数值缺失不阻塞启动（走内置同值兜底），但必须留痕，不允许静默改口径。

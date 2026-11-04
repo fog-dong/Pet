@@ -1,4 +1,4 @@
-// STATUS: implemented, W3 本地存档编解码（纯函数，无副作用）；W20-2 增小屋条目，编解码拆到 HabitatCodec；W23-1 增抚摸每日上限计数；W25 P2-A3 增口碑字段，解码工具抽到 SaveFields
+// STATUS: implemented, W3 本地存档编解码（纯函数，无副作用）；W20-2 增小屋条目，编解码拆到 HabitatCodec；W23-1 增抚摸每日上限计数；W25 P2-A3 增口碑字段，解码工具抽到 SaveFields；W25 P2-B1 增成就计数器与领取记录
 import { HabitatPet, decodeHabitat } from './HabitatCodec';
 import { toNonNegativeInt, toNumber, toNumberMap, toStringArray, toStringMap } from './SaveFields';
 
@@ -41,6 +41,13 @@ export interface SaveData {
    * 服务端白名单要求非负整数，所以这里扣到 0 为止，负数会让整份快照被拒。
    */
   reputation: number;
+  /**
+   * 成就计数器（§6.1）：key → 累计次数，只落本地、不上云。
+   * 成就条件只读这里（`game/Counters.ts` 是唯一生产口），新加成就只改 achievements.json。
+   */
+  counters: Record<string, number>;
+  /** 已领取的成就档位 id（`<group>#<index>`）；领取制，刷新/重进都不重复入账。 */
+  achievementsClaimed: string[];
 }
 
 /** 新档默认道具：听诊器电池 1 个，保证失败后有一条免费跳过路径。 */
@@ -75,6 +82,8 @@ export function emptySave(): SaveData {
     adCounts: {},
     // 07 §5「新开张」档从 0 起算，不做乐观初值。
     reputation: 0,
+    counters: {},
+    achievementsClaimed: [],
   };
 }
 
@@ -109,6 +118,8 @@ export function decodeSave(raw: string | null): SaveData {
       adCounts: toNumberMap(parsed.adCounts),
       // 旧存档没有口碑：按 0 起算（与 emptySave 一致），不能给正数，否则等于凭空铸口碑。
       reputation: toNonNegativeInt(parsed.reputation, 0),
+      counters: toNumberMap(parsed.counters),
+      achievementsClaimed: toStringArray(parsed.achievementsClaimed),
     };
   } catch {
     return emptySave();

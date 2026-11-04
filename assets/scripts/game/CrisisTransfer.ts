@@ -1,4 +1,4 @@
-// STATUS: implemented, W25 P2-A2 危重倒计时归零的转院终局（退药 + 扣爱心 + 释放床位 + 走失败结算）
+// STATUS: implemented, W25 P2-A2 危重倒计时归零的转院终局（退药 + 扣爱心 + 释放床位 + 走失败结算）；W25 P2-B1 转院计数
 import { Save } from '../cache/Save';
 import { PenaltyConfig } from '../config/PenaltyConfig';
 import { GameState } from '../core/GameFSM';
@@ -6,6 +6,7 @@ import { goState } from '../core/SceneFlow';
 import { Track } from '../track/Track';
 import { CaseCrisis } from './CaseCrisis';
 import { CaseSession } from './CaseSession';
+import { bumpCounter } from './Counters';
 import { Reputation } from './Reputation';
 import { refundUsedMedicines } from './TreatmentStock';
 
@@ -21,6 +22,7 @@ export function runCrisisTransfer(): void {
   const refunded = refundUsedMedicines(CaseCrisis.consumedMedicines, rules.refundRatio);
   Save.addHearts(-rules.heartsPenalty);
   const reputation = Reputation.punishTransfer();
+  bumpCounter('caseTransfer');
   CaseSession.releaseBed();
   CaseCrisis.noteTransfer(refunded, rules.heartsPenalty, -reputation.delta);
   const item = CaseSession.current;

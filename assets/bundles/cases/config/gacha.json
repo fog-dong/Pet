@@ -2,6 +2,8 @@
   "version": 1,
   "costCoins": 100,
   "adScene": "extra_check",
+  "ticketItem": "item_ticket_rare",
+  "ticketTiers": ["rare", "legendary"],
   "tiers": [
     {
       "tier": "common",

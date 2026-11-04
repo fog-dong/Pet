@@ -1,5 +1,6 @@
-// STATUS: implemented, W3 本地存档编解码（纯函数，无副作用）；W20-2 增小屋条目，编解码拆到 HabitatCodec；W23-1 增抚摸每日上限计数；W25 P2-A3 增口碑字段，解码工具抽到 SaveFields；W25 P2-B1 增成就计数器与领取记录；W25 P2-C 增后院地块/水位/每日计数
+// STATUS: implemented, W3 本地存档编解码（纯函数，无副作用）；W20-2 增小屋条目，编解码拆到 HabitatCodec；W23-1 增抚摸每日上限计数；W25 P2-A3 增口碑字段，解码工具抽到 SaveFields；W25 P2-B1 增成就计数器与领取记录；W25 P2-C 增后院地块/水位/每日计数；W25 P2-D 增护理每日计数
 import { HabitatPet, decodeHabitat } from './HabitatCodec';
+import { CareQuota, decodeCareQuota, emptyCareQuota } from './CareCodec';
 import { GardenPlot, GardenQuota, decodeGarden, decodeGardenQuota, emptyGardenQuota } from './GardenCodec';
 import { toNonNegativeInt, toNumber, toNumberMap, toStringArray, toStringMap } from './SaveFields';
 
@@ -55,6 +56,8 @@ export interface SaveData {
   gardenStamp: number;
   /** 后院每日计数（收获/合成），与 `todayKey()` 同日期键；跨天视为 0。 */
   gardenQuota: GardenQuota;
+  /** 护理每日计数（剪指甲/驱虫），与 `todayKey()` 同日期键；跨天视为 0。 */
+  careQuota: CareQuota;
 }
 
 /** 新档默认道具：听诊器电池 1 个，保证失败后有一条免费跳过路径。 */
@@ -94,6 +97,7 @@ export function emptySave(): SaveData {
     garden: [],
     gardenStamp: 0,
     gardenQuota: emptyGardenQuota(),
+    careQuota: emptyCareQuota(),
   };
 }
 
@@ -133,6 +137,7 @@ export function decodeSave(raw: string | null): SaveData {
       garden: decodeGarden(parsed.garden),
       gardenStamp: Math.max(0, toNumber(parsed.gardenStamp, 0)),
       gardenQuota: decodeGardenQuota(parsed.gardenQuota),
+      careQuota: decodeCareQuota(parsed.careQuota),
     };
   } catch {
     return emptySave();

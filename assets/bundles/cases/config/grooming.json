@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "nail": {
+    "costCoins": 15,
+    "dailyLimit": 2,
+    "dots": 4,
+    "hitRadius": 46,
+    "cleanGain": 12,
+    "moodGain": 8,
+    "wrongMoodLoss": 10
+  },
+  "deworm": {
+    "dailyLimit": 1,
+    "itemId": "item_deworm",
+    "cleanGain": 25,
+    "moodGain": 5
+  }
+}

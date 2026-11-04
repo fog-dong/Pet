@@ -1,4 +1,4 @@
-// STATUS: implemented, W25 P0-C 大厅外围：胶囊资源 HUD（扣安全区、数字右锚防溢出）、一行四枚玩法入口、底部合规文字链
+// STATUS: implemented, W25 P0-C 大厅外围：胶囊资源 HUD（扣安全区、数字右锚防溢出）、一行五枚玩法入口、底部合规文字链
 import { Button, Color, Graphics, Label, Node, UITransform } from 'cc';
 import { makeLabel } from './FontKit';
 import {
@@ -23,7 +23,7 @@ const PILL_DOT_R = 13;
 /** 数字右锚 + 96 上限 + SHRINK：五位数也只会缩字号，不会压到左边的色点（qa-7）。 */
 const PILL_NUM_W = 96;
 const PILL_NUM_RIGHT = 80;
-/** 四枚入口的半行宽：fitRow 在 ±325 里铺满，单枚 152（方案 §2.2 的 MENU_W）。 */
+/** 五枚入口的半行宽：fitRow 在 ±325 里铺满，单枚 118；字号 22 保证「宠物小屋」不缩字。 */
 const MENU_SPAN = 325;
 const MENU_GAP = 14;
 const MENU_H = 78;
@@ -33,9 +33,10 @@ const LINK_TOUCH_H = 44;
 /** 小屋是长线回访入口，用雾蓝和其余次级入口分开，但不去抢主按钮的陶土色。 */
 const MENU_TINT: Record<string, Color> = { HabitatButton: COLORS.mist };
 
-/** 玩法入口一行四枚：合规类另走底部文字链，同层同权重的问题（audit-10）在这里关掉。 */
+/** 玩法入口一行五枚：合规类另走底部文字链，同层同权重的问题（audit-10）在这里关掉。 */
 export const LOBBY_MENU: ReadonlyArray<readonly [string, string]> = [
   ['HospitalButton', '医院'],
+  ['GardenButton', '后院'],
   ['HabitatButton', '宠物小屋'],
   ['CodexButton', '图鉴'],
   ['LeaderboardButton', '排行榜'],
@@ -91,7 +92,7 @@ export function buildLobbyMenu(parent: Node, onMenuClick: (name: string) => void
       width: row.width,
       height: MENU_H,
       color: MENU_TINT[name] ?? COLORS.sage,
-      fontSize: 24,
+      fontSize: 22,
     });
     nodes.push(button.node);
   });

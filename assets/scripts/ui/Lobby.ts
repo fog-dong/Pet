@@ -106,6 +106,7 @@ export class Lobby extends Component {
       syncBadge: this.syncBadge,
       showHint: (text) => this.showHint(text),
       refreshStats: () => this.refreshStats(),
+      checkMilestones: () => this.achievements?.check(),
     };
     openLobbyMenu(name, host, focusPetId);
   }

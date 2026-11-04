@@ -1,4 +1,4 @@
-// STATUS: implemented, W18-2 大厅次级入口分派（医院 / 小屋 / 图鉴 / 排行榜 / 隐私 / 关于）
+// STATUS: implemented, W18-2 大厅次级入口分派（医院 / 后院 / 小屋 / 图鉴 / 排行榜 / 隐私 / 关于）
 import type { Node } from 'cc';
 import { PrivacyState } from '../cache/PrivacyState';
 import { CharacterConfig } from '../config/CharacterConfig';
@@ -6,6 +6,7 @@ import { COPY } from '../config/CopyText';
 import { Track } from '../track/Track';
 import { openAboutPanel } from './AboutPanel';
 import { Codex } from './CodexPanel';
+import { openGardenPanel } from './GardenPanel';
 import { openHabitatPanel } from './HabitatPanel';
 import { openHospitalPanel } from './HospitalPanel';
 import type { LeaderboardPanel } from './LeaderboardPanel';
@@ -14,6 +15,7 @@ import type { SyncBadge } from './SyncBadge';
 
 const MENU_TRACK: Record<string, string> = {
   HospitalButton: 'lobby_hospital_click',
+  GardenButton: 'lobby_garden_click',
   HabitatButton: 'lobby_habitat_click',
   CodexButton: 'lobby_codex_click',
   LeaderboardButton: 'lobby_leaderboard_click',
@@ -28,6 +30,8 @@ export interface LobbyMenuHost {
   syncBadge: SyncBadge;
   showHint(text: string): void;
   refreshStats(): void;
+  /** 后院收获/合成会推进里程计，关面板时补一次成就检查（方案 §18.4）。 */
+  checkMilestones(): void;
 }
 
 /** focusPetId 只来自大厅散步带：直接滚到被点的那只，不从第一只重新找。 */
@@ -35,6 +39,10 @@ export function openLobbyMenu(name: string, host: LobbyMenuHost, focusPetId?: st
   Track.track(MENU_TRACK[name] ?? 'lobby_menu_click');
   if (name === 'HospitalButton') {
     openHospitalPanel(host.node, () => host.refreshStats());
+    return;
+  }
+  if (name === 'GardenButton') {
+    openGardenPanel(host.node, () => host.refreshStats(), () => host.checkMilestones());
     return;
   }
   if (name === 'HabitatButton') {

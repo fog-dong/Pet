@@ -38,3 +38,10 @@ export function showToast(parent: Node, text: string, options: ToastOptions = {}
   active = root;
   return root;
 }
+
+/** 空文本不弹：跨页传递的惩罚提示经常是空串，省得每个调用点自己判空。 */
+export function showNotice(parent: Node, text: string, options: ToastOptions = {}): void {
+  if (text) {
+    showToast(parent, text, options);
+  }
+}

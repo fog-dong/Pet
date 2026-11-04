@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "diagnosis": {
+    "warnMistakes": 2,
+    "escalateMistakes": 3,
+    "affectionPenalty": 8,
+    "harshAffectionPenalty": 15
+  },
+  "treatment": {
+    "wrongMedicineAffectionPenalty": 5,
+    "wrongMedicineMoodPenalty": 20,
+    "recoveryTimeMultiplier": 2
+  }
+}

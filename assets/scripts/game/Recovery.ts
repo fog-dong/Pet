@@ -1,6 +1,7 @@
 // STATUS: implemented, W3 康复页（进度 + 广告加速 + 好感度结算）；W17-3 康复摇尾姿态 + 每 25% 轻响
 import { _decorator, Button, Component, Label } from 'cc';
 import { CaseSession } from './CaseSession';
+import { CasePressure } from './CasePenalty';
 import { CharacterView } from './CharacterView';
 import { RecoveryMilestones } from './RecoveryMilestones';
 import { Sfx } from './Sfx';
@@ -10,6 +11,7 @@ import { goState } from '../core/SceneFlow';
 import { adButtonText } from '../cache/AdQuota';
 import { adFailHint, canOfferAd, showAd } from '../net/AdGateway';
 import { mountBackButton } from '../ui/BackButton';
+import { showNotice, showToast } from '../ui/Toast';
 import { addButton, addLabel, addProgressBar, PALETTE, setButtonState } from '../ui/SceneUI';
 import { fitWidth } from '../ui/ScreenMetrics';
 
@@ -55,6 +57,8 @@ export class Recovery extends Component {
     addButton(root, 'AdoptButton', '进入领养', -330, () => void this.finish(), PALETTE.primary);
     this.mountPet(item.petId);
     mountBackButton(root, () => this.abandon(), true);
+    // 用药后果走到这里才公示：本页的「预计 N 秒」已经是拉长后的康复时长。
+    showNotice(root, CasePressure.takeNotice());
   }
 
   private abandon(): void {

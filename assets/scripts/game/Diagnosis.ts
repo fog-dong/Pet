@@ -7,6 +7,7 @@ import { combineDiagnosis, emptyOutcome } from './DiagnosisScore';
 import { DiagnosisKind, diagnosisSequence } from './DiagnosisSequence';
 import { buildDiagnosisLayout, DIAGNOSIS_HINT, DIAGNOSIS_NAME } from './DiagnosisLayout';
 import { buildInspection, refreshInspection, watchInspection } from './DiagnosisInspection';
+import { penalizeDiagnosis } from './CasePenalty';
 import { Hintable, spawnDiagnosis } from './DiagnosisGames';
 import { DiagnosisFallback } from './DiagnosisFallback';
 import { GameState } from '../core/GameFSM';
@@ -115,6 +116,8 @@ export class Diagnosis extends Component {
     const merged = combineDiagnosis(this.outcomes);
     const stars = this.forceLow ? Math.min(1, merged.stars) : merged.stars;
     CaseSession.finishDiagnosis(stars, merged.mistakes, merged.timeUsedMs);
+    // 失误后果在离开诊断页前落账，提示由治疗页的 Toast 公示。
+    penalizeDiagnosis(this.item ? this.item.petId : '', merged.mistakes);
     this.setHint('诊断明确，准备治疗。');
     void goState(GameState.Treatment, 'Treatment');
   }

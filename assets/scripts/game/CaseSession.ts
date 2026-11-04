@@ -9,6 +9,7 @@ import { newSessionId } from './SessionId';
 import { trackDiagnosis, trackRecovery, trackTreatment } from './CaseTrack';
 import { affectionGain, medicineMatches, recoverySeconds, recoveryStars, treatmentStars } from './CaseScore';
 import { CaseReward, DiagnosisResult, RecoveryResult, TreatmentResult, emptyReward, settleCase, trackCaseComplete } from './CaseSettle';
+import { CasePressure } from './CasePenalty';
 
 export class CaseSessionStore {
   private item: CaseConfigItem | null = null;
@@ -33,24 +34,17 @@ export class CaseSessionStore {
     return this.diagnosisStartedAt > 0 ? Date.now() - this.diagnosisStartedAt : 0;
   }
 
-  /** 康复时长由治疗阶段的时间选择决定（正常 14 秒 / 加速 9 秒）。 */
+  /** 康复时长由治疗阶段的时间选择决定（正常 20 秒 / 加速 12 秒），用错药再按惩罚倍数拉长。 */
   get plannedRecoverySeconds(): number {
-    return this.treatment ? recoverySeconds(this.treatment.time) : recoverySeconds('正常');
+    const base = this.treatment ? recoverySeconds(this.treatment.time) : recoverySeconds('正常');
+    return Math.round(base * CasePressure.recoveryMultiplier);
   }
 
   start(item: CaseConfigItem): void {
+    this.resetTransient();
     this.item = item;
     this.sid = newSessionId();
     this.startedAt = Date.now();
-    this.diagnosisStartedAt = 0;
-    this.diagnosis = null;
-    this.treatment = null;
-    this.recovery = null;
-    this.reward = null;
-    this.retryCount = 0;
-    this.affection = 0;
-    this.bedHeld = false;
-    this.adopted = false;
     Save.load();
     Save.markSeen(item.petId);
     Hospital.seedMedicines(item.treatment.medicine);
@@ -89,12 +83,16 @@ export class CaseSessionStore {
     const item = this.item;
     if (this.bedHeld) {
       Hospital.freeBed();
-      this.bedHeld = false;
     }
     Track.track('case_abandon', { caseId: item ? item.caseId : '' });
     this.item = null;
     this.sid = '';
     this.startedAt = 0;
+    this.resetTransient();
+  }
+
+  /** 本局瞬时字段复位：开局与放弃共用，避免两处漏清把上一局的后果带进下一局。 */
+  private resetTransient(): void {
     this.diagnosisStartedAt = 0;
     this.diagnosis = null;
     this.treatment = null;
@@ -102,7 +100,9 @@ export class CaseSessionStore {
     this.reward = null;
     this.retryCount = 0;
     this.affection = 0;
+    this.bedHeld = false;
     this.adopted = false;
+    CasePressure.reset();
   }
 
   /** 康复结束即按 06 §2.1 的来源累计好感度，领养页据此判断门槛。 */

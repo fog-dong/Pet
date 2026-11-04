@@ -12,6 +12,7 @@ import { WxPrivacy } from '../net/Privacy';
 import { CaseConfig } from '../config/CaseConfig';
 import { CharacterConfig } from '../config/CharacterConfig';
 import { CONFIG_BUNDLE } from '../config/ConfigLoader';
+import { PenaltyConfig } from '../config/PenaltyConfig';
 import { BUNDLE_TIMEOUT_MS } from '../config/BundleConfig';
 import { COPY } from '../config/CopyText';
 import { AGE_RATING_TEXT, GAME_NAME, HEALTH_GAME_NOTICE_TEXT, LEGAL_VERSION, legalUrlsReady } from '../config/LegalConfig';
@@ -65,10 +66,12 @@ export class Boot extends Component {
     } else if (!bundle) {
       Track.track('boot_cases_bundle_missing');
     }
-    const [casesReady] = await Promise.all([CaseConfig.load(), CharacterConfig.load()]);
-    if (!casesReady) {
-      Track.track('boot_cases_missing');
-    }
+    const [casesReady, , penaltyReady] = await Promise.all([
+      CaseConfig.load(), CharacterConfig.load(), PenaltyConfig.load(),
+    ]);
+    if (!casesReady) { Track.track('boot_cases_missing'); }
+    // 惩罚数值缺失不阻塞启动（走内置同值兜底），但必须留痕，不允许静默改口径。
+    if (!penaltyReady) { Track.track('boot_penalty_missing'); }
     // 配置已缓存进内存，释放 Boot 持有的分包引用，交给大厅按页引用。
     Res.release(CONFIG_BUNDLE);
     Track.track('fsm_chain_check', { ok: chainAllowed() });

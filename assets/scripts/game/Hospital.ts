@@ -1,4 +1,4 @@
-// STATUS: implemented, W18-2 医院资源（等级 / 药品 / 床位 / 好感度 / 领养位），全部落本地存档
+// STATUS: implemented, W18-2 医院资源（等级 / 药品 / 床位 / 好感度 / 领养位），全部落本地存档；W25 P2-A 好感度支持扣减且余额不为负
 import { Save } from '../cache/Save';
 import { HOSPITAL_LEVELS, HospitalLevelConfig } from './HospitalLevels';
 
@@ -104,11 +104,11 @@ export class HospitalStore {
   }
 
   addAffection(petId: string, amount: number): void {
-    if (!petId || amount <= 0) {
+    if (!petId || amount === 0) {
       return;
     }
     Save.mutate((data) => {
-      data.affection[petId] = (data.affection[petId] ?? 0) + Math.round(amount);
+      data.affection[petId] = Math.max(0, (data.affection[petId] ?? 0) + Math.round(amount));
     });
   }
 

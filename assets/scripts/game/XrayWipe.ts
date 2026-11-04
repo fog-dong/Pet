@@ -1,4 +1,4 @@
-// STATUS: implemented, W25 P1-B 拍片刮擦手势（透明命中层 → 胶片局部坐标，按步长回报擦雾）
+// STATUS: implemented, W25 P1-B 拍片刮擦手势（透明命中层 → 胶片局部坐标，按步长回报擦雾）；W25 P2-A 追加笔迹起止用于失误统计
 import { EventTouch, Node, UITransform, Vec3 } from 'cc';
 
 const STEP = 12;
@@ -7,6 +7,9 @@ export interface XrayWipeHooks {
   active(): boolean;
   film(): Node | null;
   onWipe(x: number, y: number): void;
+  /** 一次落指到抬手算一笔，整笔都没靠近病灶才算一次误判。 */
+  onStrokeStart?(): void;
+  onStrokeEnd?(): void;
 }
 
 function toFilmLocal(film: Node, event: EventTouch): Vec3 {
@@ -19,6 +22,10 @@ function toFilmLocal(film: Node, event: EventTouch): Vec3 {
 /** 累计移动超过 STEP 才回报一次，避免同一片雾在一帧里被反复清。 */
 export function bindXrayWipe(layer: Node, hooks: XrayWipeHooks): void {
   let last: Vec3 | null = null;
+  const strokeEnd = (): void => {
+    last = null;
+    hooks.onStrokeEnd?.();
+  };
   const emit = (event: EventTouch): void => {
     if (!hooks.active()) {
       return;
@@ -26,6 +33,9 @@ export function bindXrayWipe(layer: Node, hooks: XrayWipeHooks): void {
     const film = hooks.film();
     if (!film) {
       return;
+    }
+    if (!last) {
+      hooks.onStrokeStart?.();
     }
     const point = toFilmLocal(film, event);
     if (last && Math.hypot(point.x - last.x, point.y - last.y) < STEP) {
@@ -36,11 +46,7 @@ export function bindXrayWipe(layer: Node, hooks: XrayWipeHooks): void {
   };
   layer.on(Node.EventType.TOUCH_START, emit);
   layer.on(Node.EventType.TOUCH_MOVE, emit);
-  layer.on(Node.EventType.TOUCH_END, () => {
-    last = null;
-  });
+  layer.on(Node.EventType.TOUCH_END, strokeEnd);
   // 指针滑出胶片范围时浏览器改发 touchcancel，同样要清掉起点，否则下一次起点会跳。
-  layer.on(Node.EventType.TOUCH_CANCEL, () => {
-    last = null;
-  });
+  layer.on(Node.EventType.TOUCH_CANCEL, strokeEnd);
 }

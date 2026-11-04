@@ -28,6 +28,7 @@ export class GachaFlow {
   private phase: Phase = 'offer';
   private offer: GachaOfferHandle | null = null;
   private result: Node | null = null;
+  private ticketDraw = false;
 
   constructor(private readonly deps: GachaFlowDeps) {}
 
@@ -48,6 +49,19 @@ export class GachaFlow {
     Track.track('gacha_pay_coins', { cost: GachaConfig.costCoins });
     this.deps.host.refreshStats();
     this.deps.stage.setCoins(Save.coins);
+    this.enterSearch();
+  }
+
+  spendTicket(): void {
+    if (this.phase !== 'offer' || !this.offer) {
+      return;
+    }
+    if (!Save.useItem(GachaConfig.ticketItem)) {
+      this.deps.stage.setHint(COPY.gachaNoTicket);
+      return;
+    }
+    Track.track('gacha_pay_ticket', { item: GachaConfig.ticketItem });
+    this.ticketDraw = true;
     this.enterSearch();
   }
 
@@ -77,9 +91,15 @@ export class GachaFlow {
       return;
     }
     this.phase = 'revealing';
-    const draw = drawGacha();
+    const draw = drawGacha(this.ticketDraw ? GachaConfig.ticketTiers : undefined);
     if (!draw) {
+      // 配置坏了开不出东西：券退回，不让玩家白丢道具。
+      if (this.ticketDraw) {
+        Save.addItem(GachaConfig.ticketItem);
+        this.ticketDraw = false;
+      }
       this.phase = 'offer';
+      this.offer?.setTickets(Save.itemCount(GachaConfig.ticketItem));
       this.offer?.show();
       this.deps.stage.setHint(COPY.gachaMissing);
       return;
@@ -93,7 +113,7 @@ export class GachaFlow {
   private enterSearch(): void {
     this.phase = 'searching';
     this.offer?.hide();
-    this.deps.stage.setHint(COPY.gachaSearch);
+    this.deps.stage.setHint(this.ticketDraw ? COPY.gachaTicketHint : COPY.gachaSearch);
     this.deps.stage.beginSearch();
   }
 
@@ -118,10 +138,12 @@ export class GachaFlow {
   private reset(): void {
     this.result?.destroy();
     this.result = null;
+    this.ticketDraw = false;
     this.deps.stage.reset();
     this.deps.stage.setHint(COPY.gachaReady);
     this.deps.stage.setCoins(Save.coins);
     this.offer?.setCoins(Save.coins);
+    this.offer?.setTickets(Save.itemCount(GachaConfig.ticketItem));
     this.offer?.show();
     this.phase = 'offer';
   }

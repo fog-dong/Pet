@@ -12,6 +12,7 @@ import { habitatList } from '../game/HabitatModel';
 import { Profile } from '../net/Profile';
 import { Track } from '../track/Track';
 import { buildLobbyLinks, buildLobbyMenu, HudHandle } from './LobbyChrome';
+import { LobbyAchievementsHandle, mountLobbyAchievements } from './LobbyAchievements';
 import { LobbyMenuHost, openLobbyMenu } from './LobbyMenu';
 import { openGachaFromLobby } from './LobbyStart';
 import { lobbyDoctorSize, lobbyDoctorY, lobbyHintY } from './LobbyLayout';
@@ -33,6 +34,7 @@ export class Lobby extends Component {
   private hud: HudHandle | null = null;
   private band: PetBandHandle | null = null;
   private doctorSlot: Node | null = null;
+  private achievements: LobbyAchievementsHandle | null = null;
   private readonly leaderboard = new LeaderboardPanel();
   private readonly syncBadge = new SyncBadge();
 
@@ -44,8 +46,10 @@ export class Lobby extends Component {
     this.band = scene.band;
     buildLobbyMenu(this.node, (name) => this.onMenuClick(name));
     buildLobbyLinks(this.node, (name) => this.onMenuClick(name));
+    this.achievements = mountLobbyAchievements(this.node, () => this.refreshStats());
     this.hideLegacyStats();
     this.refreshStats();
+    this.achievements.check();
     if (PrivacyState.isGuest()) {
       // 游客：不拉云资料、不碰排行榜，本地单局照常。
       Track.track('lobby_guest_mode');
@@ -109,6 +113,7 @@ export class Lobby extends Component {
   refreshStats(): void {
     this.hud?.set(Save.coins, Save.hearts);
     this.refreshBand();
+    this.achievements?.refresh();
   }
 
   /** 散步带的重建判定在 LobbyPetRow 内部（人没变就跳过），这里只负责拿最新列表。 */

@@ -91,7 +91,9 @@ class GachaConfigStore {
       ? file.ticketTiers.filter((tier): tier is GachaTier => TIERS.includes(tier as GachaTier))
       : [];
     // 空集会让券永远开不出东西；与「非法即回落」同口径，不保留半套。
-    this.ticketPool = wanted.length > 0 ? [...new Set(wanted)] : [...DEFAULT_TICKET_TIERS];
+    // 去重不用 Set 展开：构建把 `[...new Set(x)]` 编成 `[].concat(new Set(x))`，concat 不拆 Set。
+    const unique = wanted.filter((tier, index) => wanted.indexOf(tier) === index);
+    this.ticketPool = unique.length > 0 ? unique : [...DEFAULT_TICKET_TIERS];
     return this.ready;
   }
 

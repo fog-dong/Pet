@@ -36,7 +36,8 @@ export function mountGachaStage(parent: Node, onBoxTap: () => void): GachaStageH
   addLabel(root, 'GachaTitle', COPY.gachaTitle, top - 96, { size: 40 });
   addLabel(root, 'GachaSubtitle', COPY.gachaSubtitle, top - 146, { size: 22, color: COLORS.sub });
   const coins = mountCoins(root, top - 42);
-  const hint = addLabel(root, 'GachaHint', COPY.gachaReady, -height / 2 + 250, {
+  // 出价区多了稀有券一行（bottom+260），提示抬到 +322 保持 10px 间距。
+  const hint = addLabel(root, 'GachaHint', COPY.gachaReady, -height / 2 + 322, {
     size: 22,
     color: COLORS.sub,
     width: 620,

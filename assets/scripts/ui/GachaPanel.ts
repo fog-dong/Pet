@@ -17,6 +17,10 @@ import { addUIButton } from './UIButton';
 
 let overlay: Node | null = null;
 
+export function isGachaOpen(): boolean {
+  return !!overlay && overlay.isValid;
+}
+
 export function closeGachaPanel(): void {
   if (!overlay) {
     return;
@@ -64,10 +68,15 @@ export function openGachaPanel(parent: Node, host: GachaHost): void {
       stage.setHint(COPY.gachaMissing);
       return;
     }
-    const offer = buildGachaOffer(stage.root, GachaConfig.costCoins, () => active.spendCoins(), () =>
-      active.watchAd(),
+    const offer = buildGachaOffer(
+      stage.root,
+      GachaConfig.costCoins,
+      () => active.spendCoins(),
+      () => active.watchAd(),
+      () => active.spendTicket(),
     );
     offer.setCoins(Save.coins);
+    offer.setTickets(Save.itemCount(GachaConfig.ticketItem));
     active.attach(offer);
     stage.setHint(COPY.gachaReady);
   });

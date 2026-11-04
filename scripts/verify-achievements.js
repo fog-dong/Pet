@@ -1,17 +1,20 @@
 // STATUS: implemented, W25 P2-B1 成就表口径回归（纯函数 + 静态扫描，不开浏览器）
 // 用法：node --experimental-strip-types --no-warnings scripts/verify-achievements.js
 // 断言：achievements.json 与内置兜底逐项同值、整表校验会拒绝坏表、状态机 locked→claimable→claimed、
-//       券口径三处同值，以及 14 个计数器的「已接线 6 / 待接线 8」清单不被悄悄改动。
+//       券口径三处同值、称号阶梯按领满组数进档且末阶封顶，以及 14 个计数器的「已接线 6 / 待接线 8」清单不被悄悄改动。
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { ACHIEVEMENT_FALLBACK, TICKET_ITEM } from '../assets/scripts/config/AchievementDefaults.ts';
+import { COPY } from '../assets/scripts/config/CopyText.ts';
 import { normalizeGroups } from '../assets/scripts/game/AchievementSchema.ts';
 import {
   canClaim,
   claimableCount,
+  completedGroups,
   findTier,
   groupView,
   tierId,
+  titleIndex,
 } from '../assets/scripts/game/AchievementRules.ts';
 
 let failures = 0;
@@ -91,6 +94,22 @@ check('已接线清单', produced.sort(), ['casePerfect', 'caseTransfer', 'gacha
 const pending = declared.filter((key) => !produced.includes(key)).sort();
 check('待接线清单（P2-C/D 接）', pending, ['craftCount', 'deworm', 'gardenHarvested', 'gardenPlanted', 'herbCount', 'nailCare', 'rehomeCoins', 'rehomeCount']);
 check('成就指标都来自已有字段或计数器', groups.every((group) => ['casesDone', 'reputation', ...declared].includes(group.metric)), true);
+
+console.log('[5] 称号阶梯：领满组数进档，末阶封顶');
+const titles = COPY.achievementTitles;
+check('称号共 7 阶（首阶 / 末阶）', [titles.length, titles[0], titles[titles.length - 1]], [7, '实习医生', '华佗再世']);
+const full = ['medic#1', 'medic#2', 'medic#3'];
+check('三档全领算 1 组', completedGroups([groupView(medic, 60, full)]), 1);
+check('只领两档不算整组', completedGroups([groupView(medic, 60, full.slice(0, 2))]), 0);
+check('空成就表停在首阶', titleIndex([], titles.length), 0);
+check('领满 1 组进一阶', titleIndex([groupView(medic, 60, full)], titles.length), 1);
+check('只有两阶时 1 组即封顶', titleIndex([groupView(medic, 60, full)], 2), 1);
+check('levels=0 不越界', titleIndex([groupView(medic, 60, full)], 0), 0);
+const seven = Array.from({ length: 7 }, (_, index) => {
+  const id = `g${index}`;
+  return groupView({ ...medic, id }, 60, ['#1', '#2', '#3'].map((suffix) => id + suffix));
+});
+check('领满 7 组封顶末阶', titleIndex(seven, titles.length), 6);
 
 console.log('');
 console.log(failures === 0 ? '结果：全部通过' : `结果：${failures} 个用例失败`);

@@ -19,21 +19,40 @@ fs.mkdirSync(SHOT_DIR, { recursive: true });
 const VARIANT = ['auscultation', 'lab'].includes(process.argv[5]) ? process.argv[5] : 'xray';
 const TAG = String(Date.now());
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+/** 听诊判定线在一个拍周期里的位置：波纹缩放 1.46→0.52，缩到 1 的那一帧与金圈重合。 */
+const CROSS_RATIO = (1.46 - 1) / (1.46 - 0.52);
+/** 落指按住时长：太短怕 Cocos 把一次点击吞成手势噪声，太长把判定推过线。 */
+const TAP_HOLD_MS = 20;
 
-const CASE_NAMES = (() => {
+const CASES = (() => {
   const raw = fs.readFileSync(path.join(__dirname, '../assets/bundles/cases/config/cases.json'), 'utf8');
   const list = JSON.parse(raw);
   const arr = Array.isArray(list) ? list : list.cases;
-  const kinds = (c) => c.diagnosisTypes || [c.diagnosisType];
-  return {
-    // 首段为当前变体的病例（换例是随机的，命中即停）。
-    variant: arr.filter((c) => kinds(c)[0] === VARIANT).map((c) => c.petName),
-    // 其中多段诊断的病例优先：单段跑不到「诊断 2/2 推进」这条分支。
-    multi: arr.filter((c) => kinds(c)[0] === VARIANT && kinds(c).length > 1).map((c) => c.petName),
-  };
+  return arr.map((c) => ({ ...c, kinds: c.diagnosisTypes || [c.diagnosisType] }));
 })();
-// CASE=大福 锁定单个病例：新档的初始病例是固定的，不锁就反复跑同一条分支、覆盖不到别的组合。
-const ONLY = process.env.CASE || '';
+
+const GACHA_POOL = (() => {
+  const raw = fs.readFileSync(path.join(__dirname, '../assets/bundles/cases/config/gacha.json'), 'utf8');
+  const g = JSON.parse(raw);
+  return (g.tiers || []).reduce((ids, t) => ids.concat(t.pets || []), []);
+})();
+
+/** 病例选择口径：首段为当前变体；其中多段诊断的优先（单段跑不到「诊断 2/2 推进」这条分支）。 */
+const CANDIDATES = (() => {
+  const hit = CASES.filter((c) => c.kinds[0] === VARIANT && (!process.env.CASE || c.petName === process.env.CASE));
+  const multi = hit.filter((c) => c.kinds.length > 1);
+  return { names: [...new Set(hit.map((c) => c.petName))], ids: [...new Set(hit.map((c) => c.petId))], multiFirst: [...multi, ...hit] };
+})();
+
+/**
+ * 空候选集只能靠 150 连抽撞运气，抽到才怪——在浏览器还没起之前就按口径报错，
+ * 别让人对着 timeout 猜原因。
+ */
+if (!CANDIDATES.names.length) {
+  throw new Error(
+    `变体 ${VARIANT} 里没有首段匹配${process.env.CASE ? `、且宠名为 ${process.env.CASE}` : ''}的病例（换 VARIANT 或 CASE）`,
+  );
+}
 
 const results = [];
 function judge(id, title, pass, detail) {
@@ -174,6 +193,15 @@ function connect(url) {
   };
   const label = (nm) =>
     ev(`(() => { const n = (${FIND})('${nm}'); if (!n) return null; const c = n.getComponent('cc.Label'); return c ? c.string : null; })()`);
+  /** 等某个 Label 的文字出现目标片段；面板相位只能靠文案区分时用（节点从挂舞台起就存在）。 */
+  const waitForText = async (nm, sub, ms = 8000) => {
+    const end = Date.now() + ms;
+    while (Date.now() < end) {
+      if (String(await label(nm)).includes(sub)) return true;
+      await sleep(120);
+    }
+    return false;
+  };
   let vh = 1280;
   const css = (p) => ({ x: p.x, y: vh - p.y });
   const touch = async (type, p) =>
@@ -193,12 +221,12 @@ function connect(url) {
     await sleep(120);
   };
   /** 真实轻点：先落到目标世界坐标再抬起，让 Cocos 自己派发 TOUCH_END。 */
-  const tapAt = async (p) => {
+  const tapAt = async (p, hold = 60, tail = 120) => {
     const a = css(p);
     await touch('touchStart', a);
-    await sleep(60);
+    await sleep(hold);
     await touch('touchEnd', null);
-    await sleep(120);
+    await sleep(tail);
   };
   const shot = async (name) => {
     const img = await cdp.call('Page.captureScreenshot', { format: 'png' });
@@ -218,26 +246,32 @@ function connect(url) {
         pending: g.lesions.filter((l) => !l.done).map((l) => l.id),
         fog: g.fog ? +g.fog.remaining().toFixed(2) : null, timeLeft: Math.round(g.timeLeft) }; })()`,
     );
-  /** 听诊页内部计数：found 只由真实命中累加，误听与剩余时间一并输出。 */
+  /**
+   * 听诊页节奏状态探针（P1-B-1 起没有「点位」概念，改读 rhythm 模型）。
+   * elapsed 是本拍已经走掉的游戏毫秒，判定线固定在 period × 0.4894，两者一减就是真实余量，
+   * 比反推 ripple 更准；ripple 只作交叉校验。
+   * 一次求值顺带取棋盘坐标、把 onFinish 包好、并把 rhythm.tap 包一层留下每次落指的真实误差
+   * （多段病例里第二段的进场延迟直接决定首拍赶不赶得上：判定线 ≈685ms、≈895ms 自动判漏，
+   * 每少一个 CDP 往返就多几十毫秒断言余量）。
+   */
   const auscultState = () =>
     ev(
-      `(() => { const g = (${FINDCOMP})('Auscultation'); if (!g || !g.view || !g.layout) return null;
-      return { finished: g.finished, found: g.found, mistakes: g.mistakes, timeLeft: Math.round(g.timeLeft),
-        total: g.layout.abnormal.length, pending: g.view.spots.filter((s) => s.abnormal && !s.resolved).map((s) => s.def.id) }; })()`,
+      `(() => { const g = (${FINDCOMP})('Auscultation'); if (!g || !g.rhythm) return null;
+      if (!g.__armed && typeof g.onFinish === 'function') {
+        g.__armed = true; const inner = g.onFinish;
+        g.onFinish = (r) => { (window.__diags = window.__diags || []).push(Object.assign({ variant: 'Auscultation' }, r)); return inner && inner(r); };
+      }
+      if (!g.__tapped) { const R = g.rhythm; const raw = R.tap.bind(R); g.__tapped = true; g.__taps = [];
+        R.tap = () => { const b = R.beatIndex, e = R.elapsed; const grade = raw();
+          g.__taps.push({ beat: b, elapsed: Math.round(e), grade }); return grade; }; }
+      const b = (${FIND})('RhythmBoard'); const w = b ? b.getWorldPosition() : null; const r = g.rhythm;
+      return { armed: !!g.__armed, pt: w ? { x: w.x, y: w.y } : null,
+        finished: g.finished, hits: r.hits, misses: r.misses, combo: r.combo, maxCombo: r.maxCombo,
+        beat: r.beatIndex, total: r.rule.beats, period: r.rule.periodMs, good: r.rule.goodMs,
+        done: r.done, traveling: r.traveling, ripple: +r.ripple.toFixed(4),
+        elapsed: Math.round(r.elapsed), timeLeft: Math.round(g.timeLeft),
+        taps: (g.__taps || []).slice(-3) }; })()`,
     );
-  const abnormalPoint = async (id) => {
-    const p = await ev(
-      `(() => { const g = (${FINDCOMP})('Auscultation'); if (!g || !g.view) return { err: 'no-comp' };
-      const spot = g.view.spots.find((s) => s.def.id === ${JSON.stringify(id)});
-      if (!spot) return { err: 'no-spot:' + g.view.spots.map((s) => s.def.id).join('|') };
-      const w = spot.node.getWorldPosition(); return { x: w.x, y: w.y }; })()`,
-    );
-    if (!p || p.err) {
-      console.log(`  spot#${id} 取点失败：${(p && p.err) || 'eval-returned-null'}`);
-      return null;
-    }
-    return p;
-  };
   /** 取病灶节点的世界坐标；取不到时打印原因，避免分支静默 break 造成假通过。 */
   const lesionPoint = async (id) => {
     const p = await ev(
@@ -252,24 +286,35 @@ function connect(url) {
     }
     return p;
   };
-  /** 换到目标病例：先尽量换到多段诊断的（单段跑不到「诊断 2/2 推进」分支），换不到再退回同变体病例。 */
+  /**
+   * P1-A 入口：大厅主按钮 → 街头寻访 → 抽到候选病例的目标宠立即接诊。
+   * 目标宠之外全部预置成「已见」，所以只有抽到候选宠才会出现「立即接诊」。
+   * 相位只能看提示文字：GachaOffer 的 show/hide 只切 active，GachaBox 从挂舞台起就存在。
+   */
   const openTargetCase = async () => {
+    const READY = '花点金币';
+    const SEARCH = '点一点纸箱';
+    const wanted = new Set(CANDIDATES.names);
     await click('StartButton');
-    if (!(await waitFor('AcceptButton'))) throw new Error('no CaseIntro');
-    const plans = ONLY ? [[ONLY]] : [CASE_NAMES.multi, CASE_NAMES.variant];
-    for (const names of plans) {
-      if (!names.length) continue;
-      for (let i = 0; i < 30; i += 1) {
-        const name = await label('PetName');
-        if (name && names.some((cn) => name.includes(cn))) return;
-        await click('SwapButton');
-        await sleep(450);
-        await waitFor('AcceptButton', 3000);
+    if (!(await waitForText('GachaHint', READY, 15000))) throw new Error('寻访出价区没就绪');
+    for (let rolls = 1; rolls <= 150; rolls += 1) {
+      await click('GachaPay');
+      if (!(await waitForText('GachaHint', SEARCH, 8000))) throw new Error('没进入拍箱阶段');
+      await click('GachaBox');
+      if (!(await waitFor('GachaName', 8000))) throw new Error('结果卡没出来');
+      const name = await label('GachaName');
+      const primary = await label('GachaPrimaryLabel');
+      if (name && wanted.has(name) && primary === '立即接诊') {
+        await click('GachaPrimary');
+        if (!(await waitFor('AcceptButton', 12000))) throw new Error('接诊卡没出来');
+        judge('C01b', `寻访 ${rolls} 次后抽到候选病例 ${name} 并进入接诊`, true, `抽卡次数=${rolls} 主按钮=${primary}`);
+        return;
       }
+      console.log(`  roll#${rolls} ${name}（${primary}）`);
+      await click('GachaPrimary');
+      if (!(await waitForText('GachaHint', READY, 10000))) throw new Error('再寻访一次后没回到出价区');
     }
-    if (ONLY) {
-      throw new Error(`CASE=${ONLY} 没换到（当前 ${await label('PetName')}）`);
-    }
+    throw new Error(`寻访 150 次没抽到候选病例（候选=${[...wanted].join('/')}）`);
   };
 
   // 用例必须保持自闭环：源码里的自建 HTTP 默认地址（决策-6d）在浏览器里没有 wx.request 可用，
@@ -288,6 +333,26 @@ function connect(url) {
   vh = await ev('cc.view.getVisibleSize().height');
   console.log('visible height', vh);
   judge('C01', '隐私门后大厅入口就绪', (await has('StartButton')) === true, `visibleHeight=${vh}`);
+
+  // 寻访是概率抽取，主链用例必须锁定候选病例，所以把候选之外的宠物预置成「已见」：
+  // 抽到已见宠只会出「再寻访一次」，只有候选宠才会出「立即接诊」。
+  // 金币只在这条用例通路上加量，其余存档字段一律沿用游戏自己写出的默认快照（不手编字段形状）。
+  const seenIds = GACHA_POOL.filter((id) => !CANDIDATES.ids.includes(id));
+  const seeded = await ev(
+    `(() => { const raw = localStorage.getItem('pet_save_v1'); if (!raw) return 'no-save';
+    const s = JSON.parse(raw); const want = ${JSON.stringify(seenIds)};
+    if ((s.petsSeen || []).join('|') === want.join('|') && s.coins >= 20000) return 'ready';
+    s.coins = 20000; s.petsSeen = want; localStorage.setItem('pet_save_v1', JSON.stringify(s)); return 'written'; })()`,
+  );
+  if (seeded === 'no-save') throw new Error('大厅没写出 pet_save_v1 存档，无法预置寻访池');
+  if (seeded === 'written') {
+    console.log(`寻访池预置：已见 ${seenIds.length} 只 / 候选 ${CANDIDATES.ids.length} 只，重载页面生效`);
+    cdp.send('Runtime.evaluate', { expression: 'location.reload()' });
+    await sleep(9000);
+    if (!(await waitFor('StartButton', 15000))) throw new Error('重载后大厅没就绪');
+    vh = await ev('cc.view.getVisibleSize().height');
+  }
+  judge('C01a', '寻访池预置完成（候选宠是唯一未见面）', seeded === 'written' || seeded === 'ready', `seed=${seeded} 池=${GACHA_POOL.length}`);
 
   // 接诊页 = sick 静态姿态（两帧采样不变）
   await openTargetCase();
@@ -312,7 +377,9 @@ function connect(url) {
   judge('A01', 'art 分包就绪且缺音频不触发加载报错', bundleReady === true && (dirProbe === 0 || typeof dirProbe === 'number'), `bundle=${bundleReady} dirProbe=${dirProbe}`);
 
   await click('AcceptButton');
-  await sleep(1000);
+  // 段间不做大块盲等：听诊首拍的判定线只有 685ms（period 1400 × 0.4894），
+  // 895ms 后游戏自己判漏拍，届时再进场最多拿 6/7，C03 的「全部命中」必然假失败。
+  await sleep(150);
 
   // 诊断有三种变体，且 18 局里 6 局是多段组合（如 xray→听诊），按当前页逐段驱动到通关。
   // 通关瞬间当前组件会随页面销毁，页内计数读不到，所以在拖拽前把 onFinish 包一层，
@@ -362,7 +429,7 @@ function connect(url) {
   /** 当前诊断页上跑的是哪个小游戏板；化验只作为诊断阶段出现（DiagnosisGames.ts:26）。 */
   const stageKind = () =>
     ev(
-      `(() => { if ((${FIND})('XrayBoard')) return 'xray'; if ((${FIND})('AuscultationBoard')) return 'auscultation';
+      `(() => { if ((${FIND})('XrayBoard')) return 'xray'; if ((${FIND})('RhythmBoard')) return 'auscultation';
       if ((${FINDCOMP})('Lab')) return 'lab'; return null; })()`,
     );
   const waitForStage = async (ms) => {
@@ -371,11 +438,33 @@ function connect(url) {
       const kind = await stageKind();
       if (kind) return kind;
       if (Date.now() >= end) return null;
-      await sleep(200);
+      await sleep(80);
     }
   };
-  /** 本局的诊断序列：18 局里有 6 局配了两种类型，游戏按段推进（Diagnosis.ts:107）。 */
+  /**
+   * 本局的诊断序列：18 局里有 6 局配了两种类型，游戏按段推进（Diagnosis.ts:107）。
+   * 必须在进场后轮询——接诊卡到诊断页有转场动画，Diagnosis 组件挂载前读 kinds 只会拿到 null，
+   * 读不到序列就得回退到「探测到几段算几段」，转场残留的上一段会被当成新的一段跑第二遍。
+   */
   const diagPlan = () => ev(`(() => { const d = (${FINDCOMP})('Diagnosis'); return d ? (d.kinds || []).slice() : null; })()`);
+  const waitForPlan = async (ms) => {
+    const end = Date.now() + ms;
+    for (;;) {
+      const plan = await diagPlan();
+      if (plan && plan.length) return plan;
+      if (Date.now() >= end) return null;
+      await sleep(80);
+    }
+  };
+  /** 等本段诊断把结果写进 window.__diags；写进去了才继续探下一段。 */
+  const waitStageRecord = async (from, ms) => {
+    const end = Date.now() + ms;
+    while (Date.now() < end) {
+      if ((await ev('window.__diags.length')) > from) return true;
+      await sleep(120);
+    }
+    return false;
+  };
   /** 刮擦：以病灶为中心左右往返拖三道（每道 190px），模拟玩家擦雾；雾层按 12px 步长结算。 */
   const scrubAround = async (target) => {
     for (const dy of [-26, 0, 26]) {
@@ -410,38 +499,134 @@ function connect(url) {
     }
     return { variant: 'xray', expect, hits, armed };
   };
+  /**
+   * 听诊按时间判定：每拍判定线固定在 period × 0.4894（AuscultationRhythm.ts:17），
+   * 落指的 TOUCH_END 那一刻的 elapsed 减判定线就是误差，|误差| > goodMs 算漏拍，
+   * 晚过 goodMs 还会被 update() 抢先自动判漏（那时 rhythm.tap() 返回 null，点击整个作废）。
+   * 所以真正要控的是「读数之后到落指之间这条管线吃掉多少游戏毫秒」：读数本身一个 CDP 往返，
+   * 接着 touchStart 一个往返、按住 hold、再 touchEnd 一个往返，实测 150–300 毫秒——
+   * 等波纹贴环再发指必然晚过窗。做法是留一个提前量 lead，用每次落指记在 __taps 里的真实误差
+   * 闭环校正（收敛后稳定在 ±20ms，七拍全完美）；墙钟与游戏时钟的倍率也按相邻两次 timeLeft
+   * 实测换算，不写死——headless SwiftShader 下帧率抖动时这个倍率会跟着漂。
+   */
+  let gameClock = 1;
+  let lastAuscult = null;
+  const readAuscult = async () => {
+    const t0 = Date.now();
+    const s = await auscultState();
+    if (s && lastAuscult) {
+      const wall = t0 - lastAuscult.t;
+      const drop = lastAuscult.s.timeLeft - s.timeLeft;
+      if (wall >= 60 && drop > 0 && drop < wall * 3) {
+        gameClock = Math.min(2, Math.max(0.2, drop / wall));
+      }
+    }
+    if (s) lastAuscult = { t: t0, s };
+    return { state: s, rtt: Date.now() - t0 };
+  };
+  /** 还剩多少游戏毫秒到判定线（可为负：已经越过）。 */
+  const toCrossMs = (s) => s.period * CROSS_RATIO - s.elapsed;
+  /** 游戏毫秒换算成墙钟毫秒：headless 里 deltaTime 慢于真实时间，按实测倍率折算。 */
+  const wallMs = (gameMs) => Math.min(1200, Math.max(10, Math.round(gameMs / gameClock)));
+  const GRADE_TEXT = { perfect: '完美', good: '接住', miss: '漏拍', null: '点击作废' };
   const driveAuscult = async () => {
     let expect = 0;
     let hits = 0;
-    const armed = await armDiagnosis('Auscultation');
-    for (let guard = 0; guard < 12; guard += 1) {
-      const before = await auscultState();
+    let armed = false;
+    let pt = null;
+    const grades = [];
+    let entryMisses = 0;
+    // 落指提前量（游戏毫秒）：初值按「读数 + touchStart + 按住 + touchEnd」的往返开销估，
+    // 之后每拍用实测误差往「正好压线」收敛。
+    let lead = 190;
+    lastAuscult = null;
+    for (let guard = 0; guard < 40; guard += 1) {
+      const entry = await readAuscult();
+      const before = entry.state;
       if (!before) {
-        console.log('  auscult#probe 取不到 Auscultation 组件（分支将不可验证）');
+        // 最后拍打完页面立刻推进到下一段，组件随之销毁：取不到读数在这里是正常收尾，不是探针失效。
+        if (grades.length) {
+          console.log(`  auscult#end 本段 ${grades.length}/${expect} 拍已落指，诊断页已推进到下一段`);
+          break;
+        }
+        if (guard < 8) {
+          await sleep(40);
+          continue;
+        }
+        console.log('  auscult#probe 取不到 Auscultation.rhythm（P1-B 探针失效，分支不可验证）');
         break;
       }
+      armed = before.armed;
+      pt = before.pt;
       expect = before.total;
-      hits = before.found;
-      if (before.finished || before.found >= before.total) break;
-      const target = await abnormalPoint(before.pending[0]);
-      if (!target) break;
-      await tapAt(target);
-      await sleep(300);
-      const after = await auscultState();
-      const progress = after ? `${before.found}/${before.total} → ${after.found}/${after.total} miss=${after.mistakes} t=${after.timeLeft}` : '页面已推进';
-      console.log(`  auscult#${guard} ${before.pending[0]} ${progress} 目标=(${Math.round(target.x)},${Math.round(target.y)})`);
-      if (!after || after.finished) break;
+      hits = before.hits;
+      if (guard === 0) {
+        entryMisses = before.misses;
+        console.log(
+          `  auscult#enter 进场：拍${before.beat + 1}/${before.total} 已漏拍=${before.misses} ` +
+            `距判定线=${Math.round(toCrossMs(before))}ms 时钟倍率=${gameClock.toFixed(2)}`,
+        );
+      }
+      if (before.finished || before.done) break;
+      if (!pt) {
+        console.log('  auscult#board 取不到 RhythmBoard 世界坐标，无法真实落指');
+        break;
+      }
+      if (!before.traveling) {
+        await sleep(60);
+        continue;
+      }
+      // 逐跳收敛到「提前量」：每睡一步重新读，倍率或提前量估偏了也只多睡/少睡一跳。
+      let cur = { ...before, rtt: entry.rtt };
+      let chased = 0;
+      while (toCrossMs(cur) > lead && chased < 8) {
+        await sleep(Math.max(10, wallMs(toCrossMs(cur) - lead) - cur.rtt));
+        const next = await readAuscult();
+        if (!next.state || !next.state.traveling || next.state.beat !== cur.beat) {
+          cur = next.state ? { ...next.state, traveling: false, rtt: next.rtt } : { ...cur, traveling: false };
+          break;
+        }
+        cur = { ...next.state, rtt: next.rtt };
+        chased += 1;
+      }
+      if (!cur.traveling) {
+        console.log(`  auscult#${guard} 拍${cur.beat + 1}/${cur.total} 收敛中本拍已结束（miss=${cur.misses}），进入下一拍`);
+        continue;
+      }
+      await tapAt(pt, TAP_HOLD_MS, 40);
+      const after = await readAuscult();
+      const landed = (after.state && after.state.taps || []).filter((t) => t.beat === cur.beat).pop();
+      if (landed) {
+        grades.push(landed.grade === null ? '点击作废' : GRADE_TEXT[landed.grade] || String(landed.grade));
+        const err = Math.round(landed.elapsed - cur.period * CROSS_RATIO);
+        lead = Math.round(Math.min(600, Math.max(40, lead + err)));
+        console.log(
+          `  auscult#${guard} 拍${cur.beat + 1}/${cur.total} 收${chased}步 落指误差=${err}ms 提前量→${lead}ms ` +
+            `倍率=${gameClock.toFixed(2)} → ${grades[grades.length - 1]}` +
+            (after.state ? ` hits=${after.state.hits}/${after.state.total} miss=${after.state.misses} combo=${after.state.combo}/${after.state.maxCombo}` : ''),
+        );
+      } else {
+        grades.push('未结算');
+        console.log(`  auscult#${guard} 拍${cur.beat + 1}/${cur.total} 落指后没读到 __taps 记录（探针或页面已推进）`);
+      }
+      if (after.state) {
+        hits = after.state.hits;
+        if (after.state.finished || after.state.done) break;
+      } else {
+        break;
+      }
     }
-    return { variant: 'auscultation', expect, hits, armed };
+    return { variant: 'auscultation', expect, hits, armed, grades, entryMisses };
   };
   const driveLab = async () => {
     const matched = await runLabConnect();
     return { variant: 'lab', expect: 0, hits: 0, armed: true, matched };
   };
 
-  const stagePlan = await diagPlan();
+  const stagePlan = await waitForPlan(1500);
+  const maxStages = stagePlan ? stagePlan.length : 3;
   const stages = [];
-  for (let s = 0; s < 3; s += 1) {
+  for (let s = 0; s < maxStages; s += 1) {
     const kind = await waitForStage(s === 0 ? 5000 : 4000);
     if (!kind) break;
     const emittedBefore = await ev('window.__diags.length');
@@ -449,8 +634,9 @@ function connect(url) {
       kind === 'xray' ? await driveXray() : kind === 'auscultation' ? await driveAuscult() : await driveLab(),
     );
     // 本段没回包说明没查完（超时走了兜底面板），不必再探测下一段。
-    if ((await ev('window.__diags.length')) <= emittedBefore) break;
-    await sleep(900);
+    // 回包落在 onFinish 里，收尾动画可能比驱动结束稍晚，所以要轮询等而不是定长睡——
+    // 定长睡既会漏掉刚推进的下一段，也会把下一段（听诊）的首拍睡进漏拍窗。
+    if (!(await waitStageRecord(emittedBefore, 4000))) break;
   }
   const records = await ev('window.__diags || []');
   const driven = stages.map((s) => s.variant).join('→') || 'none';
@@ -465,13 +651,19 @@ function connect(url) {
   const advanced = diagnosisState !== 'still-on-page';
   const stagesPassed =
     records.length >= expectedStages && records.every((r) => r.completed === true && r.found === r.total);
+  const rhythmStage = stages.filter((s) => s.variant === 'auscultation').pop();
+  const rhythmNote = rhythmStage
+    ? ` 听诊进场漏拍=${rhythmStage.entryMisses} 判定=${JSON.stringify(rhythmStage.grades)}（` +
+      `${rhythmStage.grades.filter((g) => g === '完美').length}完美/` +
+      `${rhythmStage.grades.filter((g) => g === '接住').length}接住/${rhythmStage.grades.length}拍）`
+    : '';
   judge(
     'C03',
     `诊断 ${records.length}/${expectedStages} 段（${driven}）全部命中并通关`,
     records.length ? stagesPassed && advanced : expect > 0 && hits === expect && advanced,
     `段数=${records.length}/${expectedStages} 序列=${(stagePlan || []).join('→') || '未读到'} 命中=${hits}/${expect} ` +
       `state=${diagnosisState} probe=${stages.every((s) => s.armed) ? 'on' : 'off'}` +
-      ` 各段=${JSON.stringify(records.map((r) => `${r.variant}:${r.found}/${r.total}${r.completed === true ? '' : ':未完成'}`))}`,
+      ` 各段=${JSON.stringify(records.map((r) => `${r.variant}:${r.found}/${r.total}${r.completed === true ? '' : ':未完成'}`))}${rhythmNote}`,
   );
 
   // 化验只作为诊断阶段出现，已在上面的阶段循环里驱动完；证据同样落在 __diags。
@@ -587,8 +779,8 @@ function connect(url) {
   judge(
     'C08',
     canAdopt ? '领养寄语页在动（跳跃相位变化）' : '领养门槛未达：寄语页为 sleep 静态 + 好感差值提示',
-    canAdopt ? moving : !moving && /好感还差/.test(String(gateHint)),
-    `adoptable=${canAdopt} range=${range}${canAdopt ? '' : ' ' + gateHint}`,
+    canAdopt ? moving : !moving && /好感还差/.test(String(lockHint)),
+    `adoptable=${canAdopt} range=${range}${canAdopt ? '' : ' ' + lockHint}`,
   );
   await shot('w19-adoption.png');
 

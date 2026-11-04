@@ -1,0 +1,136 @@
+// STATUS: implemented, W25 P2-D 日常护理面板（左立绘右两张卡；按钮置灰时原因单独一行，不抢动作名）
+import { BlockInputEvents, Color, Node } from 'cc';
+import { HabitatPet } from '../cache/HabitatCodec';
+import { Save } from '../cache/Save';
+import { CareQuota } from '../cache/CareQuota';
+import { GroomingConfig } from '../config/GroomingConfig';
+import { findCareEntry } from '../game/CareModel';
+import { dewormPet, dewormStatus } from '../game/Deworming';
+import { nailStatus } from '../game/NailCare';
+import { addCareCard, CareCardHandle } from './CareCard';
+import { CareProfileHandle, buildCareProfile } from './CareProfile';
+import { addCard } from './PanelKit';
+import { addLabel, addRect } from './SceneUI';
+import { fitWidth, screenHeight, screenWidth } from './ScreenMetrics';
+import { showToast } from './Toast';
+import { addUIButton } from './UIButton';
+import { COLORS, HEX, tint } from './Tokens';
+import { closeNailGame, openNailGame } from './NailGame';
+
+const PANEL_H = 760;
+
+let overlay: Node | null = null;
+let petId = '';
+let toastHost: Node | null = null;
+let changed: ((entry: HabitatPet) => void) | undefined;
+let profile: CareProfileHandle | null = null;
+let nailCard: CareCardHandle | null = null;
+let dewormCard: CareCardHandle | null = null;
+
+export function closeCarePanel(): void {
+  closeNailGame();
+  if (overlay) {
+    overlay.destroy();
+  }
+  overlay = null;
+  toastHost = null;
+  changed = undefined;
+  profile = null;
+  nailCard = null;
+  dewormCard = null;
+}
+
+export function openCarePanel(parent: Node, id: string, onChanged?: (entry: HabitatPet) => void): void {
+  closeCarePanel();
+  Save.load();
+  if (!findCareEntry(id)) {
+    showToast(parent, '这只宠物还没领养');
+    return;
+  }
+  petId = id;
+  toastHost = parent;
+  changed = onChanged;
+  overlay = addRect(parent, 'CareOverlay', 0, screenWidth(), screenHeight(), new Color(0, 0, 0, 150));
+  overlay.addComponent(BlockInputEvents);
+  overlay.setSiblingIndex(parent.children.length - 1);
+  const panel = addCard(overlay, 'CarePanel', 0, fitWidth(1040, 30), PANEL_H, { color: tint(HEX.wall) });
+  addLabel(panel, 'CareTitle', '日 常 护 理', 340, { size: 36 });
+  profile = buildCareProfile(panel, id);
+
+  const nail = GroomingConfig.nail;
+  nailCard = addCareCard(panel, 'CareNail', 155, 150, {
+    title: '剪指甲',
+    desc: `点掉 ${nail.dots} 个红点，点错会中断`,
+    meta: `${nail.costCoins} 金币 · 清洁 +${nail.cleanGain} / 心情 +${nail.moodGain}`,
+    action: '开始剪指甲',
+    color: COLORS.mist,
+    onFire: startNail,
+  });
+  const deworm = GroomingConfig.deworm;
+  dewormCard = addCareCard(panel, 'CareDeworm', 155, -60, {
+    title: '驱虫',
+    desc: '消耗 1 支驱虫药剂（后院合成）',
+    meta: `每日 ${deworm.dailyLimit} 次 · 清洁 +${deworm.cleanGain} / 心情 +${deworm.moodGain}`,
+    action: '用驱虫药剂',
+    color: COLORS.sage,
+    onFire: runDeworm,
+  });
+
+  addUIButton(panel, 'CareClose', '关 闭', closeCarePanel, {
+    y: -320,
+    width: 260,
+    height: 68,
+    color: COLORS.sage,
+    fontSize: 28,
+  });
+  refresh();
+}
+
+/** 每次结算后重读：属性、两项置灰原因、药剂余量都可能同时变。 */
+function refresh(): void {
+  const entry = findCareEntry(petId);
+  if (!entry) {
+    closeCarePanel();
+    return;
+  }
+  profile?.sync(entry);
+  const nailWhy = nailStatus(petId);
+  const remain = CareQuota.remaining('nail', GroomingConfig.nail.dailyLimit);
+  nailCard?.update(!nailWhy, nailWhy ?? (remain === null ? '不限次数' : `今日剩 ${remain} 次`));
+  const dewormWhy = dewormStatus(petId);
+  const stock = Save.itemCount(GroomingConfig.deworm.itemId);
+  dewormCard?.update(!dewormWhy, dewormWhy ?? `药剂 ${stock} 支 · 每日 ${GroomingConfig.deworm.dailyLimit} 次`);
+}
+
+function startNail(): void {
+  if (!overlay) {
+    return;
+  }
+  const blocked = nailStatus(petId);
+  if (blocked) {
+    notify(blocked);
+    return;
+  }
+  openNailGame(overlay, petId, (outcome) => {
+    notify(outcome.text);
+    refresh();
+    if (outcome.kind !== 'blocked') {
+      changed?.(outcome.entry);
+    }
+  });
+}
+
+function runDeworm(): void {
+  const outcome = dewormPet(petId);
+  notify(outcome.text);
+  refresh();
+  if (outcome.kind !== 'blocked') {
+    changed?.(outcome.entry);
+  }
+}
+
+function notify(text: string): void {
+  if (toastHost) {
+    showToast(toastHost, text);
+  }
+}

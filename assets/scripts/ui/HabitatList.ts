@@ -2,7 +2,7 @@
 import { Color, Mask, Node, ScrollView, UITransform, Vec2 } from 'cc';
 import { HabitatPet } from '../cache/HabitatCodec';
 import { createNode } from './SceneUI';
-import { buildHabitatRow, HABITAT_CARD_H, HabitatRow, RowAction } from './HabitatRows';
+import { buildHabitatRow, HABITAT_CARD_H, HabitatRow, RowAction, RowCommand } from './HabitatRows';
 
 /** 视口高度刻意留到 500：底部要空出 35px 给滚动提示，别让最后一张卡压着文字。 */
 const VIEW_H = 500;
@@ -16,6 +16,8 @@ export function buildHabitatList(
   focusPetId: string | undefined,
   cardColor: Color,
   fire: RowAction,
+  onCare: RowCommand,
+  onRehome: RowCommand,
 ): HabitatRow[] {
   const viewW = panelWidth - 80;
   const cardW = panelWidth - CARD_SIDE * 2;
@@ -28,7 +30,9 @@ export function buildHabitatList(
   transform.setContentSize(cardW, Math.max(VIEW_H, entries.length * HABITAT_CARD_H));
   transform.setAnchorPoint(0.5, 1);
   content.setPosition(0, VIEW_H / 2, 0);
-  const rows = entries.map((entry, index) => buildHabitatRow(content, index, entry, cardW, fire, cardColor));
+  const rows = entries.map((entry, index) =>
+    buildHabitatRow(content, index, entry, cardW, fire, onCare, onRehome, cardColor),
+  );
 
   const scroll = scrollNode.addComponent(ScrollView);
   scroll.content = content;

@@ -24,6 +24,26 @@ export function generationScale(generation: number, config: RehomeConfigData['ge
   return Math.max(config.floor, Number.isFinite(raw) ? raw : config.floor);
 }
 
+export interface ThanksParts {
+  /** 好感度加成（已按每点折算并封顶）。 */
+  bonus: number;
+  /** 世代衰减系数，UI 明细行直接展示。 */
+  scale: number;
+  total: number;
+}
+
+/** 拆出明细供 UI 复述，避免面板自己再算一遍导致与结算口径漂移。 */
+export function thanksParts(
+  base: number,
+  affection: number,
+  generation: number,
+  config: Pick<RehomeConfigData, 'affection' | 'generation'>,
+): ThanksParts {
+  const bonus = Math.min(config.affection.maxBonus, Math.max(0, Math.floor(affection)) * config.affection.perPoint);
+  const scale = generationScale(generation, config.generation);
+  return { bonus, scale, total: Math.max(0, Math.round((Math.max(0, base) + bonus) * scale)) };
+}
+
 /** 感谢金 = (档位基础 + 好感度加成) × 世代衰减；好感度按每点折算并封顶，爱心不在感谢金里发。 */
 export function thanksCoins(
   base: number,
@@ -31,7 +51,5 @@ export function thanksCoins(
   generation: number,
   config: Pick<RehomeConfigData, 'affection' | 'generation'>,
 ): number {
-  const bonus = Math.min(config.affection.maxBonus, Math.max(0, Math.floor(affection)) * config.affection.perPoint);
-  const total = (Math.max(0, base) + bonus) * generationScale(generation, config.generation);
-  return Math.max(0, Math.round(total));
+  return thanksParts(base, affection, generation, config).total;
 }

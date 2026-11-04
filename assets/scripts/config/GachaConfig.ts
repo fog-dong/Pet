@@ -103,6 +103,12 @@ class GachaConfigStore {
     return tier ? tier.tier : null;
   }
 
+  /** 送养面板展示用：档位名来自 gacha.json，找不到时返回空串由调用方省略。 */
+  tierNameOf(petId: string): string {
+    const tier = this.tiers.find((item) => item.pets.indexOf(petId) >= 0);
+    return tier ? tier.name : '';
+  }
+
   /** 先按档位权重抽稀有度，再从该档池子里等概率取一只；传 only 时只在指定档位里按相对权重抽。 */
   roll(only?: readonly GachaTier[]): GachaRoll | null {
     const pool =

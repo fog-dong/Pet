@@ -134,7 +134,8 @@ function settle(review: RehomeReview, forced: boolean): RehomeClaim {
   return { kind: 'adopted', petId: review.petId, coins, rate: review.rate, generation };
 }
 
-function waitText(ms: number): string {
+/** 倒计时文案：面板每秒刷新时复用同一句口径。 */
+export function waitText(ms: number): string {
   const minutes = Math.ceil(Math.max(0, ms) / 60000);
   if (minutes < 60) {
     return `${minutes} 分钟`;

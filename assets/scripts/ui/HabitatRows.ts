@@ -11,6 +11,7 @@ import { addLabel, addRect } from './SceneUI';
 import { addLifeBar, addLifeCompact, addStageTag } from './LifeBadge';
 import { StatRow, STAT_ORDER, addStatBlock } from './HabitatBars';
 import { addPremiumChip } from './HabitatChip';
+import { addActionChips } from './HabitatActionChips';
 import { STAT_ACTION, bindTapOrHold, bindTapZone, shortfallText } from './HabitatTapActions';
 import type { Point } from './ParticleKit';
 
@@ -32,7 +33,10 @@ const STAT_LEFT = -16;
 const STAT_WIDTH = 160;
 const STAT_TOP = 4;
 const CHIP_X = 204;
-const CHIP_Y = 4;
+/** 高级粮上移一档，给"护理 / 送养"两枚小键腾出下半栏；三者的 x 都贴右沿，不压属性条。 */
+const CHIP_Y = 30;
+/** 【护理】中心，与属性行同一列；【送养】在它下方 40。 */
+const ACTION_TOP = -16;
 /** 三行进度条最低一行在 -56，底部进度条要留出 30 的间距才不粘连。 */
 const LIFE_BAR_Y = -86;
 
@@ -54,12 +58,17 @@ export interface HabitatRow {
 /** 触点只做转发，扣费与判定全在数据层；origin 与 touchX 让反馈层能演抛物线和形变方向。 */
 export type RowAction = (row: HabitatRow, action: HabitatAction, origin: Point, touchX: number) => void;
 
+/** 护理 / 送养只带行本身：两套面板各自从 petId 重新取数，不在这里传业务字段。 */
+export type RowCommand = (row: HabitatRow) => void;
+
 export function buildHabitatRow(
   parent: Node,
   index: number,
   entry: HabitatPet,
   cardWidth: number,
   onAction: RowAction,
+  onCare: RowCommand,
+  onRehome: RowCommand,
   cardColor: Color = CARD_BG,
 ): HabitatRow {
   const y = -(index * HABITAT_CARD_H) - HABITAT_CARD_H / 2;
@@ -90,6 +99,7 @@ export function buildHabitatRow(
   const chip = addPremiumChip(card, entry.petId, CHIP_X, CHIP_Y, (touchX) => {
     onAction(row, 'premium', origins.premium, touchX);
   });
+  const chips = addActionChips(card, entry.petId, CHIP_X, ACTION_TOP, () => onCare(row), () => onRehome(row));
   const row: HabitatRow = {
     entry,
     node: card,
@@ -100,6 +110,7 @@ export function buildHabitatRow(
     syncAfford(): void {
       STAT_ORDER.forEach((key) => block.rows[key].setAffordable(shortfallText(STAT_ACTION[key]) === null));
       chip.sync();
+      chips.sync();
     },
   };
   // 三枚图标钮各走自己的动作；立绘短按=抚摸、长按=高级粮（拍板-3：长按只是快捷方式，小键仍在）。

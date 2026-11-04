@@ -10,7 +10,7 @@ import { addLabel, addRect, PALETTE } from './SceneUI';
 import { addCard, addDivider } from './PanelKit';
 import { fitWidth, screenHeight, screenWidth } from './ScreenMetrics';
 import { Point } from './ParticleKit';
-import { applyStats, HabitatRow } from './HabitatRows';
+import { HabitatRow } from './HabitatRows';
 import { buildHabitatList } from './HabitatList';
 import { habitatHintText, localToHost } from './HabitatTapActions';
 import { playFeedback } from './HabitatFeedback';
@@ -18,6 +18,9 @@ import { buildHabitatFooter } from './HabitatFooter';
 import { showHealBubble } from './HabitatBubble';
 import { paintRoomHeader } from './HabitatThemeArt';
 import { addThemeEntry, closeThemePicker, openThemePicker } from './HabitatThemePanel';
+import { openCareFromRow, makeRowRefresh, openRehomeFromRow, RowRefresh } from './HabitatCardActions';
+import { closeCarePanel } from './CarePanel';
+import { closeRehomePanel } from './RehomePanel';
 import { showToast } from './Toast';
 import { tint } from './Tokens';
 
@@ -29,9 +32,12 @@ let rows: HabitatRow[] = [];
 let hint: Label | null = null;
 let toastHost: Node | null = null;
 let resourcesChanged: (() => void) | undefined;
+let refreshRow: RowRefresh | null = null;
 
 export function closeHabitatPanel(): void {
   closeThemePicker();
+  closeRehomePanel();
+  closeCarePanel();
   if (!overlay) {
     return;
   }
@@ -41,6 +47,7 @@ export function closeHabitatPanel(): void {
   hint = null;
   toastHost = null;
   resourcesChanged = undefined;
+  refreshRow = null;
 }
 
 export function openHabitatPanel(parent: Node, onResourcesChanged?: () => void, focusPetId?: string): void {
@@ -65,7 +72,19 @@ export function openHabitatPanel(parent: Node, onResourcesChanged?: () => void, 
     addLabel(panel, 'HabitatEmpty', EMPTY_TEXT, 40, { size: 28, color: PALETTE.sub, width: width - 120 });
   } else {
     hint = addLabel(panel, 'HabitatQuotaLabel', habitatHintText(), 272, { size: 18, color: PALETTE.sub, width: width - 60 });
-    rows = buildHabitatList(panel, entries, width, focusPetId, tint(theme.card), fire);
+    const refresh = makeRowRefresh(() => rows, () => hint, () => resourcesChanged);
+    refreshRow = refresh;
+    const onCare = (row: HabitatRow): void => {
+      if (overlay) {
+        openCareFromRow(overlay, row, refresh);
+      }
+    };
+    const onRehome = (row: HabitatRow): void => {
+      if (overlay) {
+        openRehomeFromRow(overlay, row, refresh, reskin);
+      }
+    };
+    rows = buildHabitatList(panel, entries, width, focusPetId, tint(theme.card), fire, onCare, onRehome);
     if (entries.length > 2) {
       addLabel(panel, 'HabitatScrollHint', '上下拖动可以翻看全部宠物', -285, { size: 20, color: PALETTE.sub });
     }
@@ -107,14 +126,7 @@ function fire(row: HabitatRow, action: HabitatAction, origin: Point, touchX: num
   }
   const outcome = runHabitatAction(row.entry.petId, action);
   if (outcome.kind === 'done') {
-    applyStats(row.stats, outcome.entry);
-    rows.forEach((item) => item.syncAfford());
-    if (hint && hint.isValid) {
-      hint.string = habitatHintText();
-    }
-    if (resourcesChanged) {
-      resourcesChanged();
-    }
+    refreshRow?.(row, outcome.entry);
   }
   playFeedback(
     host,

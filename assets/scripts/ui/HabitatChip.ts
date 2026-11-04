@@ -38,7 +38,7 @@ export function addPremiumChip(
   makeLabel(node, 'HabitatChipCost', rule.costText, -12, { size: 14, width: CHIP_W - 8, color: COLORS.white });
   node.addComponent(UIOpacity);
   bindTapZone(node, onFire);
-  bindPress(node);
+  bindChipPress(node);
   const chip: PremiumChip = {
     node,
     sync(): void {
@@ -53,8 +53,8 @@ export function addPremiumChip(
   return chip;
 }
 
-/** 按下缩、抬手 backOut 回弹，与 UIButton 同一套 Playful 按压语言。 */
-function bindPress(node: Node): void {
+/** 按下缩、抬手 backOut 回弹，与 UIButton 同一套 Playful 按压语言；护理/送养小键复用。 */
+export function bindChipPress(node: Node): void {
   node.on(Node.EventType.TOUCH_START, () => {
     tween(node).to(DURATION.press, { scale: new Vec3(0.94, 0.94, 1) }).start();
   });

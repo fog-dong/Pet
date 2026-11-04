@@ -1,77 +1,72 @@
-// STATUS: implemented, W4 拍片小游戏（拖拽标记框找病灶，卡通占位，04 §4）
+// STATUS: implemented, W25 P1-B 拍片改为刮擦显影（雾气覆盖 + 滑动擦除 + 区域显影判定）
 import { _decorator, Component, Node } from 'cc';
 import type { CaseConfigItem } from '../config/CaseConfig';
 import type { AuscultationFinish } from './AuscultationScore';
 import { judgeStars } from './AuscultationScore';
-import {
-  buildFilm,
-  buildMarker,
-  paintClue,
-  paintHit,
-  paintLesions,
-  resolveLesions,
-  XRAY_START_Y,
-  XrayLesion,
-} from './XrayBoard';
-import { bindXrayDrag } from './XrayDrag';
+import { buildFilm, paintHit, paintLesions, resolveLesions, XrayLesion } from './XrayBoard';
+import { FOG_H, FOG_W, XrayFog } from './XrayFog';
+import { bindXrayWipe } from './XrayWipe';
 import { DiagnosisHud } from './DiagnosisHud';
+import { createNode } from '../ui/SceneUI';
 import { Track } from '../track/Track';
 
 const { ccclass } = _decorator;
 
 const TOTAL_MS = 25000;
-const PENALTY_MS = 5000;
+const WIPE_RADIUS = 52;
+const REVEAL_RADIUS = 86;
+const REVEAL_RATIO = 0.6;
 
 @ccclass('Xray')
 export class Xray extends Component {
   private item: CaseConfigItem | null = null;
   private onFinish: AuscultationFinish | null = null;
   private board: Node | null = null;
-  private marker: Node | null = null;
   private hud: DiagnosisHud | null = null;
-  private clue: Node | null = null;
+  private fog: XrayFog | null = null;
   private lesions: XrayLesion[] = [];
-  private tolerance = 90;
-  private mistakes = 0;
   private timeLeft = TOTAL_MS;
   private finished = false;
+  private settling = false;
 
   startWith(item: CaseConfigItem, onFinish: AuscultationFinish, setHint?: (text: string) => void): void {
     this.item = item;
     this.onFinish = onFinish;
-    const plan = resolveLesions(item);
-    this.lesions = plan.lesions;
-    this.tolerance = plan.tolerance;
+    this.lesions = resolveLesions(item).lesions;
     const root = this.node;
     this.hud = new DiagnosisHud(root, 'Xray', setHint ?? (() => undefined));
     this.board = buildFilm(root);
-    // 病灶先挂，放大镜后挂，镜片透明中心才能压住红晕而不遮住它。
+    // 病灶先挂、雾后盖：红晕只能透出一点，擦开才看得清。
     paintLesions(this.board, this.lesions);
-    this.marker = buildMarker(this.board);
-    bindXrayDrag(this.marker, {
+    this.fog = new XrayFog(this.board);
+    const layer = createNode(this.board, 'XrayWipeLayer', 0, FOG_W, FOG_H);
+    bindXrayWipe(layer, {
       active: () => !this.finished,
-      board: () => this.board,
-      marker: () => this.marker,
-      onDrop: () => this.dropMarker(),
+      film: () => this.board,
+      onWipe: (x, y) => this.scrape(x, y),
     });
     this.hud.paint(this.timeLeft);
     Track.track('diagnosis_start', { caseId: item.caseId, type: 'xray', difficulty: item.diagnosisDifficulty });
   }
 
-  /** 广告提示：在未找到的病灶外画一个 3 秒圆圈。 */
+  /** 广告提示：擦开病灶上的一小片雾，红晕露出来但还不到判定阈值。 */
   revealHint(): void {
     const target = this.lesions.find((lesion) => !lesion.done);
-    if (!target || !this.board || this.finished) {
+    if (!target || !this.fog || this.finished || this.settling) {
       return;
     }
-    this.clue?.destroy();
-    const node = paintClue(this.board, target);
-    this.clue = node;
-    this.scheduleOnce(() => node.destroy(), 3);
+    this.fog.wipe(target.x, target.y, WIPE_RADIUS + 12);
+    this.fog.flush();
+    this.hud?.setHint('雾散开一点了，顺着红晕继续擦');
   }
 
   protected update(deltaTime: number): void {
     if (this.finished) {
+      return;
+    }
+    this.fog?.flush();
+    // 最后一处命中后留 0.65s 定格：让绿色落章和提示看得见，再切治疗页。
+    if (this.settling) {
       return;
     }
     this.timeLeft = Math.max(0, this.timeLeft - deltaTime * 1000);
@@ -81,35 +76,30 @@ export class Xray extends Component {
     }
   }
 
-  private dropMarker(): void {
-    const marker = this.marker;
-    if (this.finished || !marker) {
+  private scrape(x: number, y: number): void {
+    const fog = this.fog;
+    if (this.finished || this.settling || !fog) {
       return;
     }
-    const position = marker.position;
-    const hit = this.lesions.find(
-      (lesion) => !lesion.done && Math.hypot(lesion.x - position.x, lesion.y - position.y) <= this.tolerance,
+    fog.wipe(x, y, WIPE_RADIUS);
+    const found = this.lesions.filter(
+      (lesion) => !lesion.done && fog.coverage(lesion.x, lesion.y, REVEAL_RADIUS) >= REVEAL_RATIO,
     );
-    if (!hit) {
-      this.mistakes += 1;
-      this.timeLeft = Math.max(0, this.timeLeft - PENALTY_MS);
-      this.hud?.paint(this.timeLeft);
-      this.hud?.setHint('放大镜没盖住病灶，再找找发红的区域');
-      marker.setPosition(0, XRAY_START_Y, 0);
-      this.trackAction('miss');
+    if (!found.length) {
       return;
     }
-    hit.done = true;
-    marker.setPosition(hit.x, hit.y, 0);
-    paintHit(this.board!, hit);
-    this.trackAction('hit');
-    if (this.lesions.every((lesion) => lesion.done)) {
-      this.finish(true);
+    for (const lesion of found) {
+      lesion.done = true;
+      paintHit(this.board!, lesion);
+      Track.track('diagnosis_action', { caseId: this.item?.caseId ?? '', type: 'xray', result: 'hit' });
     }
-  }
-
-  private trackAction(result: 'hit' | 'miss'): void {
-    Track.track('diagnosis_action', { caseId: this.item?.caseId ?? '', type: 'xray', result });
+    const left = this.lesions.filter((lesion) => !lesion.done).length;
+    if (left === 0) {
+      this.settling = true;
+      this.scheduleOnce(() => this.finish(true), 0.65);
+      return;
+    }
+    this.hud?.setHint(`显影一处病灶，还剩 ${left} 处`);
   }
 
   private finish(completed: boolean): void {
@@ -118,14 +108,15 @@ export class Xray extends Component {
     }
     this.finished = true;
     const timeUsedMs = Math.round(TOTAL_MS - this.timeLeft);
-    const stars = completed ? judgeStars(this.mistakes, timeUsedMs, TOTAL_MS) : 0;
+    // 刮擦玩法不看误点，星级只由用时决定（3 星仍需 70% 时间内完成）。
+    const stars = completed ? judgeStars(0, timeUsedMs, TOTAL_MS) : 0;
     this.hud?.setHint(completed ? '就是这里，片子对上了。' : '时间到了，可以重试或看广告获得提示。');
     this.onFinish?.({
       completed,
       stars,
       found: this.lesions.filter((lesion) => lesion.done).length,
       total: this.lesions.length,
-      mistakes: this.mistakes,
+      mistakes: 0,
       timeUsedMs,
       totalMs: TOTAL_MS,
     });

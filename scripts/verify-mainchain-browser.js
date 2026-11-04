@@ -1,6 +1,6 @@
 // STATUS: implemented, W19 模块三回归 + W20-4 模块三 主链路冒烟（CDP 驱动 web-mobile 构建）
 'use strict';
-// 覆盖：大厅入口 → 接诊（sick 静态姿态）→ 诊断（拍片拖拽 / 听诊轻点 / 化验连线，多段病例逐段驱动）→
+// 覆盖：大厅入口 → 接诊（sick 静态姿态）→ 诊断（拍片刮擦 / 听诊节奏 / 化验连线，多段病例逐段驱动）→
 // 治疗多选/住院/加速 → 康复（摇尾 + 里程碑 tick + happy 跳）→ 领养寄语 → 返回大厅 → 图鉴；
 // 全程收集 console 错误与未捕获异常。
 // 前置：本地起 web-mobile 构建静态服务 + headless Chrome 开 CDP 端口。
@@ -175,7 +175,6 @@ function connect(url) {
   const label = (nm) =>
     ev(`(() => { const n = (${FIND})('${nm}'); if (!n) return null; const c = n.getComponent('cc.Label'); return c ? c.string : null; })()`);
   let vh = 1280;
-  const worldOf = (nm) => ev(`(() => { const n = (${FIND})('${nm}'); if (!n) return null; const p = n.getWorldPosition(); return { x: p.x, y: p.y }; })()`);
   const css = (p) => ({ x: p.x, y: vh - p.y });
   const touch = async (type, p) =>
     cdp.call('Input.dispatchTouchEvent', {
@@ -211,14 +210,13 @@ function connect(url) {
     ev(
       `(() => { const n = (${FIND})('Content'); if (!n) return null; return { sx: +n.scale.x.toFixed(4), angle: +n.angle.toFixed(3), y: +n.position.y.toFixed(3) }; })()`,
     );
-  /** 读拍片页内部状态：命中数、容差、误点与放大镜当前 board-local 坐标，用于判断拖拽是否真的盖住病灶。 */
+  /** 读拍片页内部状态：命中数、雾气残余量与剩余时间，用于判断刮擦是否真的擦开并显影。 */
   const xrayState = () =>
     ev(
-      `(() => { const g = (${FINDCOMP})('Xray'); if (!g) return null; const m = g.board.children.find((c) => c.name === 'XrayMarker');
+      `(() => { const g = (${FINDCOMP})('Xray'); if (!g) return null;
       return { finished: g.finished, done: g.lesions.filter((l) => l.done).length, total: g.lesions.length,
         pending: g.lesions.filter((l) => !l.done).map((l) => l.id),
-        tolerance: g.tolerance, mistakes: g.mistakes, timeLeft: Math.round(g.timeLeft),
-        marker: m ? { x: +m.position.x.toFixed(1), y: +m.position.y.toFixed(1) } : null }; })()`,
+        fog: g.fog ? +g.fog.remaining().toFixed(2) : null, timeLeft: Math.round(g.timeLeft) }; })()`,
     );
   /** 听诊页内部计数：found 只由真实命中累加，误听与剩余时间一并输出。 */
   const auscultState = () =>
@@ -378,6 +376,13 @@ function connect(url) {
   };
   /** 本局的诊断序列：18 局里有 6 局配了两种类型，游戏按段推进（Diagnosis.ts:107）。 */
   const diagPlan = () => ev(`(() => { const d = (${FINDCOMP})('Diagnosis'); return d ? (d.kinds || []).slice() : null; })()`);
+  /** 刮擦：以病灶为中心左右往返拖三道（每道 190px），模拟玩家擦雾；雾层按 12px 步长结算。 */
+  const scrubAround = async (target) => {
+    for (const dy of [-26, 0, 26]) {
+      await drag({ x: target.x - 95, y: target.y + dy }, { x: target.x + 95, y: target.y + dy }, 9);
+      await sleep(140);
+    }
+  };
   const driveXray = async () => {
     let expect = 0;
     let hits = 0;
@@ -393,14 +398,13 @@ function connect(url) {
       if (before.finished || before.done >= before.total) break;
       const target = await lesionPoint(before.pending[0]);
       if (!target) break;
-      const from = await worldOf('XrayMarker');
-      await drag(from, target, 10);
-      await sleep(250);
+      await scrubAround(target);
       const after = await xrayState();
-      const progress = after ? `${before.done}/${before.total} → ${after.done}/${after.total} tol=${after.tolerance} miss=${after.mistakes} t=${after.timeLeft}` : '页面已推进';
+      const progress = after
+        ? `${before.done}/${before.total} → ${after.done}/${after.total} fog=${after.fog} t=${after.timeLeft}`
+        : '页面已推进';
       console.log(
-        `  xray#${guard} ${before.pending[0]} ${progress} 目标=(${Math.round(target.x)},${Math.round(target.y)})` +
-          ` 放大镜落点=(${after && after.marker && after.marker.x},${after && after.marker && after.marker.y})`,
+        `  xray#${guard} ${before.pending[0]} ${progress} 目标=(${Math.round(target.x)},${Math.round(target.y)})`,
       );
       if (!after || after.finished) break;
     }

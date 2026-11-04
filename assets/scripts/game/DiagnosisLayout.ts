@@ -12,7 +12,7 @@ export const DIAGNOSIS_NAME: Record<DiagnosisKind, string> = {
 
 export const DIAGNOSIS_HINT: Record<DiagnosisKind, string> = {
   auscultation: '心跳波纹收进金圈时点击，连击越多星级越高',
-  xray: '拖动放大镜，盖住片子上的红色病灶',
+  xray: '在片子上滑动擦除雾气，找出泛红的病灶',
   lab: '拖动左侧样本，连到右侧正确的试剂',
 };
 

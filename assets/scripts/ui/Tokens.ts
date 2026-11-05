@@ -86,6 +86,8 @@ export const DURATION = {
   float: 0.9,
   fadeOut: 0.18,
   fadeIn: 0.25,
+  /** 大厅 TAB 切换：内容坞换体时的淡入 + 轻浮（P2-E 要求 0.2s，不瞬间硬切）。 */
+  tabSwap: 0.2,
   /** 挤压到底（抚摸 / 道具落地）。 */
   squashIn: 0.09,
   /** 回弹过头再收住，Playful 的签名段。 */

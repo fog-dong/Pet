@@ -129,7 +129,7 @@ async function main() {
   stillMissing.keep(secondPass.verdicts);
   check('2002 不当成功', secondPass.sent === 0 && secondPass.deferred === 2, `sent=${secondPass.sent} deferred=${secondPass.deferred}`);
   check('失败保留两条 pending', stillMissing.rows().length === 2, `队列=${stillMissing.rows().length}`);
-  check('SyncBadge 显示 2 局待同步', pendingBadgeText(2).includes('2 局'), pendingBadgeText(2));
+  check('SyncBadge 显示 2 份病历待同步', pendingBadgeText(2).includes('2 份病历'), pendingBadgeText(2));
 
   if (failed > 0) {
     console.log(`\n结果：${failed} 项失败`);

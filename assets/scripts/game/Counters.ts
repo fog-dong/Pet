@@ -3,8 +3,8 @@ import { Save } from '../cache/Save';
 
 /**
  * key 对齐《深度化玩法系统串联方案》§6.1 的埋点→计数器表。
- * 已接线的 6 个由本文件 `bumpCounter` 生产；`casesDone` / `reputation` 复用已有存档字段；
- * 其余 8 个等后院 / 护理 / 送养批次（P2-C/D）落地后再接，成就表先按 0 统计。
+ * 14 个全部由本文件 `bumpCounter` 生产（P2-B2 6 个 + P2-C 后院 4 个 + P2-D 护理/送养 4 个）；
+ * `casesDone` / `reputation` 复用已有存档字段，不占计数器位。
  */
 export const COUNTER_KEYS = {
   casePerfect: 'casePerfect',

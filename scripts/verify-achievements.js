@@ -1,7 +1,7 @@
 // STATUS: implemented, W25 P2-B1 成就表口径回归（纯函数 + 静态扫描，不开浏览器）
-// 用法：node --experimental-strip-types --no-warnings scripts/verify-achievements.js
+// 用法：node --experimental-strip-types --no-warnings --import ./scripts/ts-resolve.mjs scripts/verify-achievements.js
 // 断言：achievements.json 与内置兜底逐项同值、整表校验会拒绝坏表、状态机 locked→claimable→claimed、
-//       券口径三处同值、称号阶梯按领满组数进档且末阶封顶，以及 14 个计数器的「已接线 6 / 待接线 8」清单不被悄悄改动。
+//       券口径三处同值、称号阶梯按领满组数进档且末阶封顶，以及 14 个计数器全部接线（P2-C/D 已补齐）。
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { ACHIEVEMENT_FALLBACK, TICKET_ITEM } from '../assets/scripts/config/AchievementDefaults.ts';
@@ -73,7 +73,7 @@ check('gacha.ticketTiers', gacha.ticketTiers, ['rare', 'legendary']);
 check('券档位都在抽卡档里', gacha.ticketTiers.every((tier) => gacha.tiers.some((item) => item.tier === tier)), true);
 check('悬壶第三档发 1 张券', medic.tiers[2].reward.ticket, 1);
 
-console.log('[4] 计数器覆盖：已接线 6 / 待接线 8');
+console.log('[4] 计数器覆盖：已接线 14 / 待接线 0');
 const counterSource = readFileSync('assets/scripts/game/Counters.ts', 'utf8');
 const declared = [...counterSource.matchAll(/^\s{2}(\w+): '\1',$/gm)].map((match) => match[1]);
 check('计数器共 14 个', declared.length, 14);
@@ -90,9 +90,9 @@ for (const dir of ['assets/scripts/game', 'assets/scripts/ui']) {
     }
   }
 }
-check('已接线清单', produced.sort(), ['casePerfect', 'caseTransfer', 'gachaDraws', 'gachaLegendary', 'themeBought', 'wrongMedicine']);
+check('已接线清单', produced.sort(), ['casePerfect', 'caseTransfer', 'craftCount', 'deworm', 'gachaDraws', 'gachaLegendary', 'gardenHarvested', 'gardenPlanted', 'herbCount', 'nailCare', 'rehomeCoins', 'rehomeCount', 'themeBought', 'wrongMedicine']);
 const pending = declared.filter((key) => !produced.includes(key)).sort();
-check('待接线清单（P2-C/D 接）', pending, ['craftCount', 'deworm', 'gardenHarvested', 'gardenPlanted', 'herbCount', 'nailCare', 'rehomeCoins', 'rehomeCount']);
+check('待接线清单（P2-C/D 已全部接线）', pending, []);
 check('成就指标都来自已有字段或计数器', groups.every((group) => ['casesDone', 'reputation', ...declared].includes(group.metric)), true);
 
 console.log('[5] 称号阶梯：领满组数进档，末阶封顶');

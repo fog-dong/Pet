@@ -1,19 +1,11 @@
-// STATUS: implemented, W25 P0-C 大厅外围：胶囊资源 HUD（扣安全区、数字右锚防溢出）、一行五枚玩法入口、底部合规文字链
-import { Button, Color, Graphics, Label, Node, UITransform } from 'cc';
+// STATUS: implemented, W26 P2-E 大厅外围：胶囊资源 HUD（扣安全区、数字右锚防溢出）+ 底部合规文字链
+// 玩法入口已全部收进底部四枚常驻 TAB（见 LobbyTabs / LobbyDock），本文件不再排玩法按钮。
+import { Color, Graphics, Label, Node, UITransform } from 'cc';
 import { makeLabel } from './FontKit';
-import {
-  lobbyEntryRowY,
-  lobbyHudLeft,
-  lobbyHudTop,
-  lobbyLinksY,
-  lobbyStartY,
-} from './LobbyLayout';
-import { playStaggerIn } from './MotionKit';
+import { lobbyHudLeft, lobbyHudTop, lobbyLinksY } from './LobbyLayout';
 import { addPill } from './PanelKit';
 import { pinTopLeftAt } from './SafeLayout';
-import { fitRow, fitWidth } from './ScreenMetrics';
 import { COLORS } from './Tokens';
-import { addUIButton, decorateButton } from './UIButton';
 
 const PILL_W = 176;
 const PILL_H = 56;
@@ -23,24 +15,9 @@ const PILL_DOT_R = 13;
 /** 数字右锚 + 96 上限 + SHRINK：五位数也只会缩字号，不会压到左边的色点（qa-7）。 */
 const PILL_NUM_W = 96;
 const PILL_NUM_RIGHT = 80;
-/** 五枚入口的半行宽：fitRow 在 ±325 里铺满，单枚 118；字号 22 保证「宠物小屋」不缩字。 */
-const MENU_SPAN = 325;
-const MENU_GAP = 14;
-const MENU_H = 78;
 const LINK_SIZE = 22;
 const LINK_GAP = 32;
 const LINK_TOUCH_H = 44;
-/** 小屋是长线回访入口，用雾蓝和其余次级入口分开，但不去抢主按钮的陶土色。 */
-const MENU_TINT: Record<string, Color> = { HabitatButton: COLORS.mist };
-
-/** 玩法入口一行五枚：合规类另走底部文字链，同层同权重的问题（audit-10）在这里关掉。 */
-export const LOBBY_MENU: ReadonlyArray<readonly [string, string]> = [
-  ['HospitalButton', '医院'],
-  ['GardenButton', '后院'],
-  ['HabitatButton', '宠物小屋'],
-  ['CodexButton', '图鉴'],
-  ['LeaderboardButton', '排行榜'],
-];
 
 /** 合规入口：小字号文字链常驻屏底，不和玩法抢按钮。 */
 export const LOBBY_LINKS: ReadonlyArray<readonly [string, string]> = [
@@ -82,29 +59,12 @@ function addResourcePill(parent: Node, name: string, color: Color, left: number)
   return label;
 }
 
-export function buildLobbyMenu(parent: Node, onMenuClick: (name: string) => void): void {
-  const row = fitRow(LOBBY_MENU.length, -MENU_SPAN, MENU_SPAN, MENU_GAP);
-  const nodes: Node[] = [];
-  LOBBY_MENU.forEach(([name, text], index) => {
-    const button = addUIButton(parent, name, text, () => onMenuClick(name), {
-      y: lobbyEntryRowY(),
-      x: row.x0 + index * row.step,
-      width: row.width,
-      height: MENU_H,
-      color: MENU_TINT[name] ?? COLORS.sage,
-      fontSize: 22,
-    });
-    nodes.push(button.node);
-  });
-  playStaggerIn(nodes);
-}
-
 /** 底部文字链：只给合规入口，字号 22、触控区补到 44，不抢玩法按钮的视觉权重。 */
-export function buildLobbyLinks(parent: Node, onMenuClick: (name: string) => void): void {
+export function buildLobbyLinks(parent: Node, onMenuClick: (name: string) => void): Node[] {
   const widths = LOBBY_LINKS.map(([, text]) => text.length * LINK_SIZE);
   const total = widths.reduce((sum, width) => sum + width, 0) + LINK_GAP * (widths.length - 1);
   let cursor = -total / 2;
-  LOBBY_LINKS.forEach(([name, text], index) => {
+  const nodes = LOBBY_LINKS.map(([name, text], index) => {
     const width = widths[index] ?? LINK_SIZE;
     const label = makeLabel(parent, name, text, lobbyLinksY(), {
       size: LINK_SIZE,
@@ -116,16 +76,21 @@ export function buildLobbyLinks(parent: Node, onMenuClick: (name: string) => voi
     transform?.setContentSize(width, LINK_TOUCH_H);
     label.node.on(Node.EventType.TOUCH_END, () => onMenuClick(name));
     cursor += width + LINK_GAP;
+    return label.node;
   });
+  raiseToTop(nodes);
+  return nodes;
 }
 
-/** 场景里的 Start 是白字空按钮：换九宫格底、放大到 520×112、改主行动文案。 */
-export function styleStartButton(button: Button, text: string): void {
-  decorateButton(button, text, {
-    y: lobbyStartY(),
-    width: fitWidth(520),
-    height: 112,
-    fontSize: 38,
-    color: COLORS.clay,
+/**
+ * 合规链是屏底唯一必须点得着的东西：内容坞与 TAB 栏都在它上方，但后挂的成就角标、
+ * 同步角标与常驻提示会把它压到下层，所以每次重排都把它整体提到根节点最上层（P2-E 模块二「幽灵层级」）。
+ */
+export function raiseToTop(nodes: readonly Node[]): void {
+  nodes.forEach((node) => {
+    const parent = node.parent;
+    if (parent) {
+      node.setSiblingIndex(parent.children.length - 1);
+    }
   });
 }

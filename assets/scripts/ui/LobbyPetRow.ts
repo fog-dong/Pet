@@ -1,22 +1,26 @@
-// STATUS: implemented, W25 P0-C 大厅地板散步带：已领养宠物趴在 ui_cushion 上，立绘 240（屏宽 1/3），点一只直接进小屋
+// STATUS: implemented, W26 P2-E 大厅地板散步带：已领养宠物趴在 ui_cushion 上，立绘尺寸由底部栈剩余高度派生，点一只直接进小屋
 // 谁上台：三项属性合计最差的两只。回大厅第一眼就看到「谁最需要照顾」，这是散步带的回访钩子，不是随机摆 pose。
 import { Color, Graphics, Node, Tween, Vec3, tween } from 'cc';
 import { HabitatPet } from '../cache/HabitatCodec';
 import type { PetState } from '../game/CharacterLook';
 import { PetVisual } from '../game/PetVisual';
 import { addDecor } from './Backdrop';
-import { lobbyPetBandY, PET_BAND_SIZE } from './LobbyLayout';
+import { lobbyPetBandSize, lobbyPetBandY } from './LobbyDockLayout';
 import { playStaggerIn, settleEntrance, squash } from './MotionKit';
 import { PALETTE, addLabel, createNode } from './SceneUI';
 import { DURATION } from './Tokens';
 
-/** 720 帧扣掉左右各 20 留白只剩 680，240 见方按 250 间距最多放两只整只。 */
+/** 720 帧扣掉左右各 20 留白只剩 680。 */
 const BAND_VIEW_W = 680;
-const PITCH = 250;
+/**
+ * 散步带的高度现在由底部栈剩余空间派生（120–180），垫子与间距只能跟着立绘尺寸走：
+ * 垫子比立绘宽 4%、两只的圆心距同样 4% 呼吸，才不会在矮档下互相粘连。
+ */
+const CUSHION_RATIO = 1.04;
+/** 立绘脚底在节点原点下方 0.3633 个 size（见 LobbyDockLayout 的 ART_FOOT_RATIO），垫子压在那条线上。 */
+const CUSHION_FOOT_RATIO = 0.3633;
+const CUSHION_DROP = 4;
 const MAX_VISIBLE = 2;
-/** 垫子比立绘宽一点、压在脚下：立绘的透明边 + 垫子的圆角，两只贴在一起也不粘连。 */
-const CUSHION_W = 250;
-const CUSHION_Y = -92;
 const WORST_STAT_SLEEP = 30;
 const HAPPY_MOOD = 70;
 const EMPTY_TEXT = '救回第一只小家伙后，它会在这里等你';
@@ -26,7 +30,8 @@ export interface PetBandHandle {
 }
 
 export function mountLobbyPetRow(parent: Node, onPick: (petId: string) => void): PetBandHandle {
-  const band = createNode(parent, 'LobbyPetBand', lobbyPetBandY(), BAND_VIEW_W, PET_BAND_SIZE);
+  const size = lobbyPetBandSize();
+  const band = createNode(parent, 'LobbyPetBand', lobbyPetBandY(), BAND_VIEW_W, size);
   let key = '';
   let built = false;
   return {
@@ -39,19 +44,24 @@ export function mountLobbyPetRow(parent: Node, onPick: (petId: string) => void):
       }
       built = true;
       key = next;
-      rebuild(band, picked, onPick);
+      rebuild(band, picked, size, onPick);
     },
   };
 }
 
-function rebuild(band: Node, picked: readonly HabitatPet[], onPick: (petId: string) => void): void {
+function rebuild(
+  band: Node,
+  picked: readonly HabitatPet[],
+  size: number,
+  onPick: (petId: string) => void,
+): void {
   band.destroyAllChildren();
   if (picked.length === 0) {
     addEmptyPlaque(band);
     return;
   }
   const nodes: Node[] = [];
-  picked.forEach((entry, index) => nodes.push(addPet(band, index, picked.length, entry, onPick)));
+  picked.forEach((entry, index) => nodes.push(addPet(band, index, picked.length, entry, size, onPick)));
   playStaggerIn(nodes);
 }
 
@@ -74,11 +84,13 @@ function addPet(
   index: number,
   count: number,
   entry: HabitatPet,
+  size: number,
   onPick: (petId: string) => void,
 ): Node {
-  const x = (index - (count - 1) / 2) * PITCH;
-  addDecor(band, 'ui_cushion', CUSHION_Y, CUSHION_W, x);
-  const visual = PetVisual.mount(band, PET_BAND_SIZE);
+  const cushionW = size * CUSHION_RATIO;
+  const x = (index - (count - 1) / 2) * cushionW;
+  addDecor(band, 'ui_cushion', -CUSHION_FOOT_RATIO * size - CUSHION_DROP, cushionW, x);
+  const visual = PetVisual.mount(band, size);
   visual.node.name = `LobbyPet_${entry.petId}`;
   visual.node.setPosition(x, 0, 0);
   visual.apply(entry.petId);

@@ -1,4 +1,4 @@
-// STATUS: implemented, W16 P1 大厅（场景层交给 LobbyScene 挂载，次级入口交给 LobbyMenu 分派）
+// STATUS: implemented, W26 P2-E 大厅装配（场景层交给 LobbyScene，底部 TAB 与内容坞交给 LobbyBottom，次级入口仍由 LobbyMenu 分派）
 import { _decorator, Button, Component, Label, Node } from 'cc';
 import { PrivacyState } from '../cache/PrivacyState';
 import { Save } from '../cache/Save';
@@ -11,15 +11,16 @@ import { CharacterView } from '../game/CharacterView';
 import { habitatList } from '../game/HabitatModel';
 import { Profile } from '../net/Profile';
 import { Track } from '../track/Track';
-import { buildLobbyLinks, buildLobbyMenu, HudHandle } from './LobbyChrome';
+import { HudHandle } from './LobbyChrome';
 import { LobbyAchievementsHandle, mountLobbyAchievements } from './LobbyAchievements';
+import { LobbyBottomHandle, mountLobbyBottom } from './LobbyBottom';
 import { LobbyMenuHost, openLobbyMenu } from './LobbyMenu';
 import { openGachaFromLobby } from './LobbyStart';
-import { lobbyDoctorSize, lobbyDoctorY, lobbyHintY } from './LobbyLayout';
+import { lobbyDoctorSize, lobbyDoctorY } from './LobbyDockLayout';
+import { LobbyHint } from './LobbyHint';
 import { mountLobbyScene } from './LobbyScene';
 import type { PetBandHandle } from './LobbyPetRow';
 import { LeaderboardPanel } from './LeaderboardPanel';
-import { addLabel, PALETTE } from './SceneUI';
 import { SyncBadge } from './SyncBadge';
 
 const { ccclass, property } = _decorator;
@@ -30,9 +31,10 @@ export class Lobby extends Component {
   @property(Label) heartsLabel: Label | null = null;
   @property(Button) startButton: Button | null = null;
 
-  private hint: Label | null = null;
+  private hint: LobbyHint | null = null;
   private hud: HudHandle | null = null;
   private band: PetBandHandle | null = null;
+  private dock: LobbyBottomHandle | null = null;
   private doctorSlot: Node | null = null;
   private achievements: LobbyAchievementsHandle | null = null;
   private readonly leaderboard = new LeaderboardPanel();
@@ -40,13 +42,20 @@ export class Lobby extends Component {
 
   protected start(): void {
     Save.load();
-    const scene = mountLobbyScene(this.node, this.startButton, (petId) => this.onMenuClick('HabitatButton', petId));
+    this.hint = new LobbyHint(this.node);
+    const scene = mountLobbyScene(this.node, (petId) => this.onMenuClick('HabitatButton', petId));
     this.doctorSlot = scene.doctorSlot;
     this.hud = scene.hud;
     this.band = scene.band;
-    buildLobbyMenu(this.node, (name) => this.onMenuClick(name));
-    buildLobbyLinks(this.node, (name) => this.onMenuClick(name));
+    this.dock = mountLobbyBottom(this.node, {
+      host: this.node,
+      startButton: this.startButton,
+      menu: (name, focusPetId) => this.onMenuClick(name, focusPetId),
+      changed: () => this.refreshStats(),
+    });
     this.achievements = mountLobbyAchievements(this.node, () => this.refreshStats());
+    // 成就角标是后挂的，会把合规链压到下层：装配完再把它提回最顶（P2-E 模块二）。
+    this.dock.raiseLinks();
     this.hideLegacyStats();
     this.refreshStats();
     this.achievements.check();
@@ -113,6 +122,7 @@ export class Lobby extends Component {
 
   refreshStats(): void {
     this.hud?.set(Save.coins, Save.hearts);
+    this.dock?.refresh();
     this.refreshBand();
     this.achievements?.refresh();
   }
@@ -130,15 +140,6 @@ export class Lobby extends Component {
 
   /** 常驻提示交给玩家看的，只放一层，避免多句叠字。 */
   showHint(text: string): void {
-    if (!this.hint) {
-      this.hint = addLabel(this.node, 'LobbyHint', text, lobbyHintY(), {
-        size: 24,
-        color: PALETTE.sub,
-        width: 620,
-      });
-      this.hint.node.setSiblingIndex(this.node.children.length - 1);
-      return;
-    }
-    this.hint.string = text;
+    this.hint?.show(text);
   }
 }

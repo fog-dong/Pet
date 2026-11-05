@@ -6,6 +6,7 @@
 // 前置：本地起 web-mobile 构建静态服务 + headless Chrome 开 CDP 端口。
 // 用法：node scripts/verify-mainchain-browser.js <CDP端口> <host:端口> [截图目录] [xray|auscultation|lab]
 //       CASE=大福 前缀可锁定病例，用于定点复跑某条诊断组合。
+//       ONETAKE=1 额外产出 flow-01…flow-16 一镜到底截图（四枚 TAB + 寻访→接诊→诊断→治疗→康复→领养→送养）。
 // 注意站点必须写 127.0.0.1：serve-web.js 只 bind 127.0.0.1，而 Windows 上 localhost 可能先解析到 ::1，
 // 表现为页面一直停在 Boot 场景、大厅起不来。
 
@@ -17,6 +18,11 @@ const SITE = process.argv[3] || '127.0.0.1:8095';
 const SHOT_DIR = process.argv[4] || 'build';
 fs.mkdirSync(SHOT_DIR, { recursive: true });
 const VARIANT = ['auscultation', 'lab'].includes(process.argv[5]) ? process.argv[5] : 'xray';
+/**
+ * ONETAKE=1：在同一页会话里把「大厅 → 四枚 TAB → 寻访 → 接诊 → 诊断 → 治疗 → 康复 → 领养 → 小屋 TAB → 送养」
+ * 逐段截图，作为提审前的一镜到底说明。默认关闭，不影响原回归用例的判定点与耗时。
+ */
+const ONETAKE = process.env.ONETAKE === '1';
 const TAG = String(Date.now());
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 /** 听诊判定线在一个拍周期里的位置：波纹缩放 1.46→0.52，缩到 1 的那一帧与金圈重合。 */
@@ -297,6 +303,7 @@ function connect(url) {
     const wanted = new Set(CANDIDATES.names);
     await click('StartButton');
     if (!(await waitForText('GachaHint', READY, 15000))) throw new Error('寻访出价区没就绪');
+    if (ONETAKE) await shot('flow-06-gacha-offer.png');
     for (let rolls = 1; rolls <= 150; rolls += 1) {
       await click('GachaPay');
       if (!(await waitForText('GachaHint', SEARCH, 8000))) throw new Error('没进入拍箱阶段');
@@ -305,6 +312,7 @@ function connect(url) {
       const name = await label('GachaName');
       const primary = await label('GachaPrimaryLabel');
       if (name && wanted.has(name) && primary === '立即接诊') {
+        if (ONETAKE) await shot('flow-07-gacha-result.png');
         await click('GachaPrimary');
         if (!(await waitFor('AcceptButton', 12000))) throw new Error('接诊卡没出来');
         judge('C01b', `寻访 ${rolls} 次后抽到候选病例 ${name} 并进入接诊`, true, `抽卡次数=${rolls} 主按钮=${primary}`);
@@ -354,6 +362,22 @@ function connect(url) {
   }
   judge('C01a', '寻访池预置完成（候选宠是唯一未见面）', seeded === 'written' || seeded === 'ready', `seed=${seeded} 池=${GACHA_POOL.length}`);
 
+  /** 一镜到底 01–05：四枚常驻 TAB 逐一点亮，每帧等 0.2s 交叉淡入走完再截；末帧回切诊疗，保证后面的 StartButton 在亮着的坞里。 */
+  if (ONETAKE) {
+    await shot('flow-01-lobby-clinic.png');
+    const TAB_SHOTS = [
+      ['Tab_garden', 'flow-02-lobby-garden.png'],
+      ['Tab_habitat', 'flow-03-lobby-habitat.png'],
+      ['Tab_achieve', 'flow-04-lobby-achieve.png'],
+      ['Tab_clinic', 'flow-05-lobby-clinic-back.png'],
+    ];
+    for (const [tab, file] of TAB_SHOTS) {
+      await click(tab);
+      await sleep(700);
+      await shot(file);
+    }
+  }
+
   // 接诊页 = sick 静态姿态（两帧采样不变）
   await openTargetCase();
   await sleep(1200);
@@ -367,6 +391,7 @@ function connect(url) {
     `${await label('PetName')} ${JSON.stringify(sickA)} ${JSON.stringify(sickB)}`,
   );
   await shot('w19-caseintro-sick.png');
+  if (ONETAKE) await shot('flow-08-case-intro.png');
 
   // 分包探测：确认缺失音频不会被 bundle.load（否则控制台会刷红）
   const bundleReady = await ev(`!!cc.assetManager.getBundle('art')`);
@@ -380,6 +405,14 @@ function connect(url) {
   // 段间不做大块盲等：听诊首拍的判定线只有 685ms（period 1400 × 0.4894），
   // 895ms 后游戏自己判漏拍，届时再进场最多拿 6/7，C03 的「全部命中」必然假失败。
   await sleep(150);
+  /**
+   * 诊断页要等转场淡入结束才有画面，但听诊首拍的判定线在 685ms，为截图多等会让 C03 掉拍，
+   * 所以这一帧只在拍片/化验变体下补拍（两者时间预算充裕），听诊变体跳过。
+   */
+  if (ONETAKE && VARIANT !== 'auscultation') {
+    await sleep(1300);
+    await shot('flow-09-diagnosis.png');
+  }
 
   // 诊断有三种变体，且 18 局里 6 局是多段组合（如 xray→听诊），按当前页逐段驱动到通关。
   // 通关瞬间当前组件会随页面销毁，页内计数读不到，所以在拖拽前把 onFinish 包一层，
@@ -727,6 +760,7 @@ function connect(url) {
       ` 期望=${want ? `${want.medicine}·${want.bed}·${want.time}` : '?'}　多选态：${multiPlan}　最终：${plan}`,
   );
   await shot('w19-treatment.png');
+  if (ONETAKE) await shot('flow-10-treatment.png');
   // 模块三边界（连点幂等）：一次 eval 里连发两次 click，库存必须只扣 1 次、康复只推进 1 次。
   const medName = want ? want.medicine : '';
   const stockBefore = await medicineStock(medName);
@@ -747,6 +781,7 @@ function connect(url) {
   const recB = await contentState();
   judge('C06', '康复：recover 摇尾姿态在动', !!recA && !!recB && recA.angle !== recB.angle, `${JSON.stringify(recA)} ${JSON.stringify(recB)}`);
   await shot('w19-recovery-recover.png');
+  if (ONETAKE) await shot('flow-11-recovery.png');
 
   // 把进度推到 30%，越过 25% 里程碑触发 recoverTick（分包无音频 → 云无清单 → 合成兜底，不应报错）
   await ev(`(() => { const rec = (${FINDCOMP})('Recovery'); if (rec) { rec.elapsed = rec.seconds * 0.3; } return 1; })()`);
@@ -783,6 +818,7 @@ function connect(url) {
     `adoptable=${canAdopt} range=${range}${canAdopt ? '' : ' ' + lockHint}`,
   );
   await shot('w19-adoption.png');
+  if (ONETAKE) await shot('flow-12-adoption.png');
 
   // 模块三边界（M18 好感门槛）：把 Adoption 组件的 petId 换成没养成过的键后重绘，
   // Hospital.affection 读到 0，渲染层必须收掉「领养它」并给出好感差值（AdoptionView.ts:79-88）。
@@ -806,11 +842,77 @@ function connect(url) {
     `0 好感：按钮=${gateHidden} 提示=${gateHint}　复原后按钮=${gateBack}`,
   );
 
-  await click('BackButton');
-  await waitFor('AbandonOverlay', 3000);
-  await click('AbandonLeave');
-  await waitFor('StartButton', 6000);
-  judge('C09', '全局返回 + 放弃确认后回到大厅', (await has('StartButton')) === true, `lobby=${await has('StartButton')}`);
+  /**
+   * 一镜到底 13–16：真点「领养它」→ 结算页回大厅 → 小屋 TAB（habitatList 从 petsAdopted 补出这位新住户）
+   * → 送养面板 → 扣 150 金币进审核 → 跳审核出结果 → 移出小屋。
+   * 非一镜到底时保持原样：走全局返回 + 放弃确认，验的是返回链而不是送养链。
+   */
+  if (ONETAKE && canAdopt) {
+    // 坞摘要 pill 的节点名在四块坞里是同一套（DockPillText_0_0…），FIND 只会命中先建出来的诊疗坞，
+    // 所以住户增减直接读存档里的 habitat 数组，和小屋面板用的是同一份数据。
+    const habitatIds = () =>
+      ev(
+        `(() => { const s = JSON.parse(localStorage.getItem('pet_save_v1') || '{}'); return (s.habitat || []).map((h) => h.petId).join(','); })()`,
+      );
+    await click('AdoptButton');
+    if (!(await waitFor('LobbyButton', 8000))) throw new Error('领养后没进结算页');
+    await sleep(900);
+    await shot('flow-13-result.png');
+    await click('LobbyButton');
+    await waitFor('StartButton', 12000);
+    judge('C09', '一镜到底：真领养走结算页「回大厅」，大厅重新就绪（不经放弃确认）', (await has('StartButton')) === true, '');
+
+    // 回大厅时正好撞上成就里程碑弹窗：真实玩家必须先点掉才能继续，脚本用 emit 会穿透遮罩，所以先关掉再拍后面几帧。
+    if (await has('MilestoneOverlay')) {
+      await click('MilestoneLater');
+      await sleep(600);
+    }
+    await click('Tab_habitat');
+    if (!(await waitFor('RehomeButton', 6000))) throw new Error('小屋 TAB 没渲染出送养入口');
+    await sleep(700);
+    const housedAfterAdopt = await habitatIds();
+    await shot('flow-14-habitat-tab.png');
+
+    // 结果的随机数与 verify-care-browser.js 的 R06/R07 同款钉成 0：刚领养的住户照护度低，不钉就常走失败分支。
+    await ev('window.Math.random = () => 0');
+    await click('RehomeButton');
+    if (!(await waitFor('RehomePanel', 6000))) throw new Error('送养面板没打开');
+    await shot('flow-15-rehome-panel.png');
+    await click('RehomePayCoins');
+    await sleep(800);
+    const reviewText = await label('RehomeWait');
+    await click('RehomeSkip');
+    if (!(await waitFor('RehomeResultTitle', 8000))) throw new Error('跳过审核后没出送养结果页');
+    await sleep(600);
+    await shot('flow-16-rehome-result.png');
+    const resultTitle = await label('RehomeResultTitle');
+    const thanksText = await label('RehomeCoins');
+    await click('RehomeResultOk');
+    await sleep(900);
+    const housedAfterRehome = await habitatIds();
+    const rehomedIds = await ev(
+      `(() => { const s = JSON.parse(localStorage.getItem('pet_save_v1') || '{}'); return ((s.rehome || {}).rehomed || []).join(','); })()`,
+    );
+    const rehomedPet = String(rehomedIds).split(',')[0] || '';
+    judge(
+      'C12',
+      '一镜到底尾链：小屋补出新住户 → 送养进审核 → 跳审核成功 → 移出 habitat 且 rehomed 落档（M1 不回屋）',
+      !!rehomedPet &&
+        String(housedAfterAdopt).indexOf(rehomedPet) >= 0 &&
+        String(reviewText).indexOf('审核中 · 还需 30 分钟') === 0 &&
+        resultTitle === '找到新家啦' &&
+        /\+\d+ 金币/.test(String(thanksText)) &&
+        String(housedAfterRehome).indexOf(rehomedPet) < 0,
+      `领养后 habitat=${housedAfterAdopt}　审核=${reviewText}　结果=${resultTitle}/${thanksText}　送走后 habitat=${housedAfterRehome}　rehomed=${rehomedIds}`,
+    );
+  } else {
+    if (ONETAKE) judge('C12', '一镜到底尾链：本局好感未达标，走不到真领养，送养链无住户', false, `adoptable=${canAdopt}`);
+    await click('BackButton');
+    await waitFor('AbandonOverlay', 3000);
+    await click('AbandonLeave');
+    await waitFor('StartButton', 6000);
+    judge('C09', '全局返回 + 放弃确认后回到大厅', (await has('StartButton')) === true, `lobby=${await has('StartButton')}`);
+  }
 
   await click('CodexButton');
   await waitFor('CodexPanel', 6000);

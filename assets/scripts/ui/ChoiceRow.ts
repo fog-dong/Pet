@@ -1,10 +1,10 @@
-// STATUS: implemented, W18 治疗选项行（等宽网格卡片 + 多选高亮 + 左侧行头图标与文字同轴对齐）
-import { Color, Graphics, Label, Node, Tween, tween, UITransform, Vec3 } from 'cc';
+// STATUS: implemented, W27 P3-UI 图标胶囊行（左图标圆片 + 右文字、按压反馈、选中 Q 弹；行头改主色竖条 + 名称）
+import { Graphics, Label, Node, Tween, tween, UITransform, Vec3 } from 'cc';
 import { makeLabel } from './FontKit';
-import { COLORS } from './Tokens';
+import { GlyphKind, addGlyphBadge, paintGlyphBadge } from './GlyphKit';
+import { COLORS, DURATION, tint } from './Tokens';
+import { bindPressEffect } from './UIButton';
 import { paintChip, styleLabel } from './ChoiceChip';
-
-export type ChoiceIcon = 'medicine' | 'bed' | 'time';
 
 export interface Choice {
   value: string;
@@ -17,12 +17,21 @@ export interface ChoiceRowOptions {
   y: number;
   x0: number;
   gap: number;
+  /** 胶囊左侧图标；不传即纯文字胶囊。 */
+  icon?: GlyphKind;
   width?: number;
   height?: number;
   onClick: (value: string) => void;
 }
 
 const DEFAULT_H = 84;
+const BADGE = 38;
+/** 图标圆片左边距 12，文字区从圆片右侧 10px 起，末尾留 12px 呼吸。 */
+const BADGE_INSET = 12;
+const BADGE_IDLE = tint('#F6E3DA');
+const BADGE_ACTIVE = tint('#B0654C');
+/** 文字区中心：左边界 -w/2+62、右边界 w/2-12，中点固定在 +24，与胶囊宽度无关。 */
+const TEXT_SHIFT = (10 + BADGE) / 2;
 
 export function addChoiceRow(
   parent: Node,
@@ -39,21 +48,28 @@ export function addChoiceRow(
     node.setPosition(opts.x0 + opts.gap * index, opts.y, 0);
     node.addComponent(UITransform).setContentSize(width, height);
     paintChip(node, width, height, false);
-    const label = addChipLabel(node, name, value, width, height);
+    if (opts.icon) {
+      const badge = addGlyphBadge(node, `${name}Badge`, opts.icon, BADGE, BADGE_IDLE, COLORS.clay);
+      badge.setPosition(-width / 2 + BADGE_INSET + BADGE / 2, 0, 0);
+    }
+    const label = addChipLabel(node, name, value, width, height, !!opts.icon);
+    bindPressEffect(node);
     node.on(Node.EventType.TOUCH_END, () => opts.onClick(value));
     return { value, node, label, selected: false };
   });
 }
 
-function addChipLabel(node: Node, name: string, value: string, width: number, height: number): Label {
+/** 带图标的胶囊把文字区整体右移，避免压到圆片上。 */
+function addChipLabel(node: Node, name: string, value: string, width: number, height: number, hasIcon: boolean): Label {
   const row = new Node(`${name}Label`);
   row.parent = node;
-  row.setPosition(0, 0, 0);
+  const textW = hasIcon ? Math.max(60, width - BADGE_INSET * 2 - BADGE - 10) : width - 16;
+  row.setPosition(hasIcon ? TEXT_SHIFT : 0, 0, 0);
   const transform = row.addComponent(UITransform);
-  transform.setContentSize(width - 16, height);
+  transform.setContentSize(textW, height);
   const label = row.addComponent(Label);
   label.string = value;
-  label.fontSize = width >= 150 ? 26 : 21;
+  label.fontSize = width >= 150 ? 21 : 19;
   label.lineHeight = Math.round(label.fontSize * 1.3);
   styleLabel(label, false);
   return label;
@@ -68,6 +84,7 @@ export function paintChoices(
   for (const choice of choices) {
     const size = choice.node.getComponent(UITransform)?.contentSize;
     const active = selected.includes(choice.value);
+    repaintBadge(choice.node, active);
     if (active && !choice.selected) {
       bounce(choice.node);
     }
@@ -80,60 +97,37 @@ export function paintChoices(
   }
 }
 
+/** 选中后图标反白：圆片转成深一档主色底，图标本体走白色才压得住主色。 */
+function repaintBadge(node: Node, active: boolean): void {
+  const badge = node.children.find((child) => child.name.endsWith('Badge'));
+  if (badge) {
+    paintGlyphBadge(badge, active ? BADGE_ACTIVE : BADGE_IDLE, active ? COLORS.white : COLORS.clay);
+  }
+}
+
 function bounce(node: Node): void {
   Tween.stopAllByTarget(node);
   node.setScale(1, 1, 1);
   tween(node)
-    .to(0.07, { scale: new Vec3(1.05, 1.05, 1) })
-    .to(0.12, { scale: Vec3.ONE })
+    .to(DURATION.press, { scale: new Vec3(1.05, 1.05, 1) }, { easing: 'quadOut' })
+    .to(DURATION.release, { scale: new Vec3(1, 1, 1) }, { easing: 'backOut' })
     .start();
 }
 
-/** 行头：图标与文字同一水平轴，三行共用同一个 x，形成左侧对齐列。 */
-export function addRowHeader(parent: Node, name: string, kind: ChoiceIcon, y: number, x: number): void {
+/** 行头：一条主色竖条 + 名称，图标已经进了胶囊，这里不再画第二枚圆图。 */
+export function addRowHeader(parent: Node, name: string, y: number, x: number): void {
   const node = new Node(`Header_${name}`);
   node.parent = parent;
   node.setPosition(x, y, 0);
-  node.addComponent(UITransform).setContentSize(168, DEFAULT_H);
+  node.addComponent(UITransform).setContentSize(96, DEFAULT_H);
   const graphics = node.addComponent(Graphics);
-  const cx = -42;
-  graphics.fillColor = new Color(255, 255, 255, 190);
-  graphics.circle(cx, 0, 24);
+  graphics.fillColor = COLORS.clay;
+  graphics.roundRect(-48, -22, 6, 44, 3);
   graphics.fill();
-  graphics.strokeColor = COLORS.ink;
-  graphics.lineWidth = 3;
-  drawIcon(graphics, kind, cx);
   makeLabel(node, `${name}Label`, name, 0, {
-    size: 27,
-    width: 96,
-    x: 20,
+    size: 26,
+    width: 82,
+    x: 6,
     color: COLORS.ink,
   });
-}
-
-function drawIcon(graphics: Graphics, kind: ChoiceIcon, cx: number): void {
-  if (kind === 'medicine') {
-    graphics.roundRect(cx - 16, -9, 32, 18, 9);
-    graphics.stroke();
-    graphics.moveTo(cx, -9);
-    graphics.lineTo(cx, 9);
-  } else if (kind === 'bed') {
-    graphics.moveTo(cx - 17, -8);
-    graphics.lineTo(cx - 17, 9);
-    graphics.lineTo(cx + 17, 9);
-    graphics.lineTo(cx + 17, -4);
-    graphics.moveTo(cx - 17, 1);
-    graphics.lineTo(cx + 17, 1);
-    graphics.moveTo(cx - 10, 1);
-    graphics.lineTo(cx - 10, 7);
-    graphics.lineTo(cx + 2, 7);
-    graphics.lineTo(cx + 2, 1);
-  } else {
-    graphics.circle(cx, 0, 14);
-    graphics.moveTo(cx, 0);
-    graphics.lineTo(cx, 8);
-    graphics.moveTo(cx, 0);
-    graphics.lineTo(cx + 7, -4);
-  }
-  graphics.stroke();
 }

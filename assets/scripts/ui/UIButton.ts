@@ -58,7 +58,7 @@ export function decorateButton(button: Button, text: string, options: UIButtonOp
     addShadow(node.parent, node, width, height, options.radius ?? RADIUS.button, 4, 52);
   }
   paint(button, options);
-  bindPress(node);
+  bindPressEffect(node);
   return button;
 }
 
@@ -77,7 +77,7 @@ function createButton(parent: Node, name: string, text: string, options: UIButto
     color: COLORS.white,
   });
   centerLabel(label, width - 24, height - 16);
-  bindPress(node);
+  bindPressEffect(node);
   paint(button, options);
   return button;
 }
@@ -94,13 +94,17 @@ function paint(button: Button, options: UIButtonOptions): void {
   sliceNode(node, 'ui_btn_neutral', color);
 }
 
-function bindPress(node: Node): void {
+/**
+ * 按压反馈：自建 Graphics 件（选项胶囊、称号条、对话框按钮）也走这套，
+ * 只有真挂了 Button 且 interactable=false 时才不响应——没有 Button 组件不代表不可点。
+ */
+export function bindPressEffect(node: Node): void {
   if (pressed.has(node)) {
     return;
   }
   pressed.add(node);
   node.on(Node.EventType.TOUCH_START, () => {
-    if (!node.getComponent(Button)?.interactable) {
+    if (node.getComponent(Button)?.interactable === false) {
       return;
     }
     Tween.stopAllByTarget(node);

@@ -3,6 +3,7 @@ import type { Label, Node } from 'cc';
 import type { CaseConfigItem } from '../config/CaseConfig';
 import { addButton, addLabel, PALETTE } from '../ui/SceneUI';
 import { Choice, addChoiceRow, addRowHeader, paintChoices } from '../ui/ChoiceRow';
+import { PlanStrip, addPlanStrip } from '../ui/PlanStrip';
 import { screenWidth } from '../ui/ScreenMetrics';
 import { Hospital } from './Hospital';
 
@@ -17,6 +18,7 @@ export interface TreatmentLayout {
   medicines: Choice[];
   beds: Choice[];
   times: Choice[];
+  plan: PlanStrip;
   status: Label;
 }
 
@@ -28,9 +30,12 @@ export interface TreatmentSelection {
 
 const ROW_Y = [246, 140, 34];
 const CELL_H = 84;
-/** 左侧行头列贴边，右侧网格从 -140 铺到屏幕右缘 -28。 */
-const GRID_LEFT = -140;
+/** 左侧只剩行名竖条，网格从 -224 铺到屏幕右缘 -28，把宽度让给胶囊里的图标。 */
+const GRID_LEFT = -224;
 const GRID_GAP = 14;
+const PLAN_Y = -80;
+const NOTICE_Y = -166;
+const CONFIRM_Y = -240;
 
 interface Grid {
   width: number;
@@ -75,10 +80,10 @@ export function buildTreatmentLayout(
   const grid = buildGrid(
     Math.max(item.treatment.medicine.length, item.treatment.bed.length, item.treatment.time.length),
   );
-  const headerX = -screenWidth() / 2 + 84;
-  addRowHeader(root, '药品', 'medicine', ROW_Y[0], headerX);
-  addRowHeader(root, '床位', 'bed', ROW_Y[1], headerX);
-  addRowHeader(root, '时间', 'time', ROW_Y[2], headerX);
+  const headerX = -screenWidth() / 2 + 72;
+  addRowHeader(root, '药品', ROW_Y[0], headerX);
+  addRowHeader(root, '床位', ROW_Y[1], headerX);
+  addRowHeader(root, '时间', ROW_Y[2], headerX);
 
   const medicines = addChoiceRow(root, 'Medicine', item.treatment.medicine, {
     y: ROW_Y[0],
@@ -86,6 +91,7 @@ export function buildTreatmentLayout(
     gap: grid.width + GRID_GAP,
     width: grid.width,
     height: grid.height,
+    icon: 'medicine',
     onClick: handlers.onMedicine,
   });
   const beds = addChoiceRow(root, 'Bed', item.treatment.bed, {
@@ -94,6 +100,7 @@ export function buildTreatmentLayout(
     gap: grid.width + GRID_GAP,
     width: grid.width,
     height: grid.height,
+    icon: 'bed',
     onClick: handlers.onBed,
   });
   const times = addChoiceRow(root, 'Time', item.treatment.time, {
@@ -102,26 +109,24 @@ export function buildTreatmentLayout(
     gap: grid.width + GRID_GAP,
     width: grid.width,
     height: grid.height,
+    icon: 'time',
     onClick: handlers.onTime,
   });
-  const status = addLabel(root, 'Status', '', -46, {
-    size: 23,
+  // 方案不再挤成一行小字：带阴影纸卡条把「药品 - 床位 - 时间」三格摆出来，失误提示另起一行。
+  const plan = addPlanStrip(root, PLAN_Y, 660);
+  const status = addLabel(root, 'Status', '', NOTICE_Y, {
+    size: 22,
     color: PALETTE.sub,
     width: 660,
   });
-  addButton(root, 'ConfirmButton', '开始治疗', -164, handlers.onConfirm, PALETTE.primary, 460, 88);
-  return { medicines, beds, times, status };
+  addButton(root, 'ConfirmButton', '开始治疗', CONFIRM_Y, handlers.onConfirm, PALETTE.primary, 460, 88);
+  return { medicines, beds, times, plan, status };
 }
 
-/** 按当前选择重绘三组按钮与状态行（药品支持多选，床位/时间单选）。 */
+/** 按当前选择重绘三组按钮与方案纸卡（药品支持多选，床位/时间单选）。 */
 export function renderTreatment(layout: TreatmentLayout, selected: TreatmentSelection): void {
   paintChoices(layout.medicines, selected.medicines, (value) => `${value} ×${Hospital.medicineCount(value)}`);
   paintChoices(layout.beds, selected.bed ? [selected.bed] : []);
   paintChoices(layout.times, selected.time ? [selected.time] : []);
-  const plan = [
-    selected.medicines.length > 0 ? selected.medicines.join(' + ') : '未选药',
-    selected.bed || '未选床位',
-    selected.time || '未选时间',
-  ];
-  layout.status.string = `当前方案：${plan.join(' · ')}　床位 ${Hospital.bedsOccupied}/${Hospital.bedsOwned}`;
+  layout.plan.setPlan(selected.medicines, selected.bed, selected.time, `床位 ${Hospital.bedsOccupied}/${Hospital.bedsOwned}`);
 }

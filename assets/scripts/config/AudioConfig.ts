@@ -1,6 +1,6 @@
 // STATUS: implemented, W17-3 音效触发点与资源位置（唯一口径：业务只传 cue，不写路径）
-// 分包归属沿用 W17-2 策略；W24-2 复核后 9 条音效全部只走云存储清单（assets 下暂无 AudioClip 文件，
-// 一旦某条素材落进分包，把它的 bundlePath 填上即可自动优先读分包，业务层不用改）。
+// 分包归属沿用 W17-2 策略；W25 音效素材落地后 9 条全部带 bundlePath，解析顺序为
+// art 分包 AudioClip → 云存储清单 → 合成兜底音（分包命中时后两级自动不再触发）。
 import type { PetSpecies } from './CharacterConfig';
 
 export type AudioCue =
@@ -36,18 +36,16 @@ export interface FallbackTone {
 }
 
 export const AUDIO_TABLE: Record<AudioCue, AudioDef> = {
-  catCry: { cloudKey: 'sfx_cat_cry', bundlePath: '', essential: true, volume: 0.6 },
-  dogCry: { cloudKey: 'sfx_dog_cry', bundlePath: '', essential: true, volume: 0.6 },
-  rabbitCry: { cloudKey: 'sfx_rabbit_cry', bundlePath: '', essential: true, volume: 0.5 },
-  birdCry: { cloudKey: 'sfx_bird_cry', bundlePath: '', essential: true, volume: 0.5 },
-  treatOk: { cloudKey: 'sfx_treat_success', bundlePath: '', essential: true, volume: 0.7 },
-  // W24-2：原先写 `audio/ui/recoverTick`，但 art 分包下只有 `pets/` 立绘、assets 里也没有任何
-  // AudioClip 文件，这条路径永远命中不了；按本表约定改为空串，明确它只走云存储清单。
-  recoverTick: { cloudKey: 'sfx_recover_tick', bundlePath: '', essential: false, volume: 0.35 },
+  catCry: { cloudKey: 'sfx_cat_cry', bundlePath: 'audio/cat_cry', essential: true, volume: 0.6 },
+  dogCry: { cloudKey: 'sfx_dog_cry', bundlePath: 'audio/dog_cry', essential: true, volume: 0.6 },
+  rabbitCry: { cloudKey: 'sfx_rabbit_cry', bundlePath: 'audio/rabbit_cry', essential: true, volume: 0.5 },
+  birdCry: { cloudKey: 'sfx_bird_cry', bundlePath: 'audio/bird_cry', essential: true, volume: 0.5 },
+  treatOk: { cloudKey: 'sfx_treat_success', bundlePath: 'audio/treat_ok', essential: true, volume: 0.7 },
+  recoverTick: { cloudKey: 'sfx_recover_tick', bundlePath: 'audio/recover_tick', essential: false, volume: 0.35 },
   // W20-2 小屋三条互动音：素材未上传时先播合成「哔」，三条各给一个音高，闭眼也能分辨做了什么。
-  feed: { cloudKey: 'sfx_feed', bundlePath: '', essential: false, volume: 0.5, fallback: { freq: 660, ms: 110 } },
-  bath: { cloudKey: 'sfx_bath', bundlePath: '', essential: false, volume: 0.5, fallback: { freq: 520, ms: 140 } },
-  pet: { cloudKey: 'sfx_pet', bundlePath: '', essential: false, volume: 0.45, fallback: { freq: 780, ms: 90 } },
+  feed: { cloudKey: 'sfx_feed', bundlePath: 'audio/feed', essential: false, volume: 0.5, fallback: { freq: 660, ms: 110 } },
+  bath: { cloudKey: 'sfx_bath', bundlePath: 'audio/bath', essential: false, volume: 0.5, fallback: { freq: 520, ms: 140 } },
+  pet: { cloudKey: 'sfx_pet', bundlePath: 'audio/pet', essential: false, volume: 0.45, fallback: { freq: 780, ms: 90 } },
 };
 
 const SPECIES_CUE: Record<PetSpecies, AudioCue> = {

@@ -6,6 +6,7 @@ import { DOCTORS } from '../game/HospitalLevels';
 import { Track } from '../track/Track';
 import { addLabel, addRect, PALETTE } from './SceneUI';
 import { addCard, addDivider } from './PanelKit';
+import { addEarnGuide } from './EarnGuide';
 import { screenHeight, screenWidth } from './ScreenMetrics';
 import { addUIButton, setUIButtonState } from './UIButton';
 import { COLORS } from './Tokens';
@@ -72,6 +73,10 @@ function buildUpgrade(panel: Node, host: Node, onChanged: () => void): void {
     affordable ? `升级 · ${next.cost} 金币` : `金币不足（需 ${next.cost}）`,
     PALETTE.secondary,
   );
+  // 置灰以后按钮根本点不动，玩家只能干看着：补一条能点的指引，直接把 TA 送到当场就能拿到金币的地方。
+  if (!affordable) {
+    addEarnGuide(panel, -9, 'coins', close, 'HospitalEarnGuide');
+  }
 }
 
 /** 医生按等级入驻；本轮只展示，不接问诊加成。 */

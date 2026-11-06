@@ -12,6 +12,9 @@ import { habitatList } from '../game/HabitatModel';
 import { Profile } from '../net/Profile';
 import { Track } from '../track/Track';
 import { HudHandle } from './LobbyChrome';
+import { openAchievementPanel } from './AchievementPanel';
+import { setEarnJumpHandler } from './EarnGuide';
+import type { LobbyTab } from './LobbyTabs';
 import { LobbyAchievementsHandle, mountLobbyAchievements } from './LobbyAchievements';
 import { LobbyBottomHandle, mountLobbyBottom } from './LobbyBottom';
 import { LobbyMenuHost, openLobbyMenu } from './LobbyMenu';
@@ -45,6 +48,8 @@ export class Lobby extends Component {
 
   protected start(): void {
     Save.load();
+    // 资源不足指引条的落点：金币/爱心面板只管说「送到哪一格」，真跳转由大厅负责（成就直接开面板，少一次点击）。
+    setEarnJumpHandler((tab) => this.goEarnTab(tab));
     this.hint = new LobbyHint(this.node);
     const scene = mountLobbyScene(this.node, (petId) => this.onMenuClick('HabitatButton', petId));
     this.doctorSlot = scene.doctorSlot;
@@ -92,6 +97,7 @@ export class Lobby extends Component {
   }
 
   protected onDestroy(): void {
+    setEarnJumpHandler(null);
     Res.release(CONFIG_BUNDLE);
   }
 
@@ -135,6 +141,15 @@ export class Lobby extends Component {
   /** 定时只做「重画读数 + 重算红点」，散步带不重建：玩家站着不动也能看见后院熟了、送养到点了。 */
   private tickDock(): void {
     this.dock?.refresh();
+  }
+
+  /** 指引条的落点：成就谱是可领即时到账，直接开面板；其余三格切到对应 TAB 就够玩家看见下一步。 */
+  private goEarnTab(tab: LobbyTab): void {
+    if (tab === 'achieve') {
+      openAchievementPanel(this.node, () => this.refreshStats());
+      return;
+    }
+    this.dock?.show(tab);
   }
 
   /** 散步带的重建判定在 LobbyPetRow 内部（人没变就跳过），这里只负责拿最新列表。 */

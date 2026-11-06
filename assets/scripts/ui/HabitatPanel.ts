@@ -97,7 +97,8 @@ function openDecor(): void {
   if (!overlay || !toastHost) {
     return;
   }
-  openThemePicker(overlay, toastHost, reskin, resourcesChanged);
+  // 指引条要把玩家送到大厅 TAB，所以连小屋遮罩一起摘掉，只关弹窗会跳了看不见。
+  openThemePicker(overlay, toastHost, reskin, resourcesChanged, closeHabitatPanel);
 }
 
 /** 装修切换后整块面板重建：底色、卡片底色与窗景都由主题重新算，比原地改色少一堆状态。 */

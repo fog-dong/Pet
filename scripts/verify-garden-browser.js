@@ -174,6 +174,11 @@ async function findTarget() {
     })()`);
   const btn = async (nm) => JSON.parse((await btnState(nm)) || 'null');
   const save = (expr) => ev(`(() => { const s = JSON.parse(localStorage.getItem('pet_save_v1')); return ${expr}; })()`);
+  // 「已长 N%」由 UI 现算，脚本用同一份 readyAt 反推，避免把百分比抄成第二份口径。
+  const growPct = (index, growMinutes) =>
+    save(
+      `Math.max(0, Math.min(100, Math.round((1 - (s.garden[${index}].readyAt - Date.now()) / (${growMinutes} * 60000)) * 100)))`,
+    );
   const patchSave = (code) =>
     ev(`(() => { const s = JSON.parse(localStorage.getItem('pet_save_v1')); ${code}; localStorage.setItem('pet_save_v1', JSON.stringify(s)); return 1; })()`);
   const shot = async (file) => {
@@ -256,12 +261,13 @@ async function findTarget() {
     const coinsAfterSeed = await save('s.coins');
     judge(
       'G05',
-      '播种扣种子费、地块进入生长态并显示剩余时间',
+      '播种扣种子费、地块进入生长态并显示剩余时间与生长比例',
       coinsAfterSeed === 1000 - mint.seedCoins &&
         (await label('GardenPlotTitle_0')) === `${mint.name} · ${mint.growMinutes / 60}小时` &&
-        (await label('GardenPlotSub_0')) === `浇水 0/${GARDEN.water.dailyLimitPerPlot} · 产 ${mint.yield} 株` &&
+        (await label('GardenPlotSub_0')) ===
+          `浇水 0/${GARDEN.water.dailyLimitPerPlot} · 已长 ${await growPct(0, mint.growMinutes)}%` &&
         (await btn('GardenPlotBtn_0')).text === '浇水',
-      `coins=${coinsAfterSeed} title=${await label('GardenPlotTitle_0')}`,
+      `coins=${coinsAfterSeed} sub=${await label('GardenPlotSub_0')}`,
     );
     await click('GardenPlotBtn_0');
     await sleep(700);
@@ -270,11 +276,12 @@ async function findTarget() {
     const expectText = `${Math.floor(expectMin / 60)}小时${expectMin % 60}分`;
     judge(
       'G06',
-      `浇水把成熟时间提前 ${water} 分钟，当日次数 1/${GARDEN.water.dailyLimitPerPlot}`,
+      `浇水把成熟时间提前 ${water} 分钟、生长比例同步抬高，当日次数 1/${GARDEN.water.dailyLimitPerPlot}`,
       (await label('GardenPlotTitle_0')) === `${mint.name} · ${expectText}` &&
-        (await label('GardenPlotSub_0')) === `浇水 1/${GARDEN.water.dailyLimitPerPlot} · 产 ${mint.yield} 株` &&
+        (await label('GardenPlotSub_0')) ===
+          `浇水 1/${GARDEN.water.dailyLimitPerPlot} · 已长 ${await growPct(0, mint.growMinutes)}%` &&
         String(await label('ToastLabel')).indexOf(`提前 ${water} 分钟`) >= 0,
-      `${await label('GardenPlotTitle_0')} / ${await label('ToastLabel')}`,
+      `${await label('GardenPlotTitle_0')} / ${await label('GardenPlotSub_0')}`,
     );
     await shot('2-garden-growing');
 
@@ -307,19 +314,22 @@ async function findTarget() {
     const food = recipe('premium_food');
     const deworm = recipe('deworm_drops');
     const mintStock = 2 + mint.yield;
+    const mat = (recipeId, item) => label(`MatLabel_${recipeId}_${item}`);
     judge(
       'G08',
-      '缺洋甘菊时高级粮置灰，材料行写明缺口',
+      '缺洋甘菊时高级粮置灰，材料行按「名称 已有/需要」写明缺口',
       (await btn(`GardenCraftBtn_${food.id}`)).on === false &&
-        (await label(`GardenRecipeNeed_${food.id}`)) === `薄荷 ${mintStock}/2 · 洋甘菊 0/1`,
-      await label(`GardenRecipeNeed_${food.id}`),
+        (await mat(food.id, 'herb_mint')) === `薄荷 ${mintStock}/2` &&
+        (await mat(food.id, 'herb_chamomile')) === '洋甘菊 0/1',
+      `${await mat(food.id, 'herb_mint')} | ${await mat(food.id, 'herb_chamomile')}`,
     );
     judge(
       'G09',
-      '材料齐时驱虫药剂可合成',
+      '材料齐时驱虫药剂可合成，两条材料各自成行',
       (await btn(`GardenCraftBtn_${deworm.id}`)).on === true &&
-        (await label(`GardenRecipeNeed_${deworm.id}`)) === `猫薄荷 2/2 · 薄荷 ${mintStock}/1`,
-      await label(`GardenRecipeNeed_${deworm.id}`),
+        (await mat(deworm.id, 'herb_catnip')) === '猫薄荷 2/2' &&
+        (await mat(deworm.id, 'herb_mint')) === `薄荷 ${mintStock}/1`,
+      `${await mat(deworm.id, 'herb_catnip')} | ${await mat(deworm.id, 'herb_mint')}`,
     );
     await shot('3-garden-craft');
     const coinsBeforeCraft = await save('s.coins');

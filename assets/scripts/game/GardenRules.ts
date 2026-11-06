@@ -30,6 +30,17 @@ export function isReady(plot: GardenPlot, now: number): boolean {
   return plot.cropId !== '' && plot.readyAt > 0 && now >= plot.readyAt;
 }
 
+/**
+ * 生长比例 0..1，只用来决定幼苗画到第几层，不参与任何结算。
+ * 浇水把 readyAt 提前会让剩余时间变短、比例自然抬高，符合「浇一次水肉眼看得见」。
+ */
+export function growProgress(readyAt: number, now: number, totalMs: number): number {
+  if (totalMs <= 0) {
+    return 1;
+  }
+  return Math.min(1, Math.max(0, 1 - remainingMs(readyAt, now) / totalMs));
+}
+
 /** 当日已用次数；日期键不一致（跨天）直接归零，不需要额外的重置动作。 */
 export function quotaUsed(quota: GardenQuota, day: string): { harvest: number; craft: number } {
   if (quota.day !== day) {

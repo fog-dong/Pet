@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { GARDEN_FALLBACK, RECIPE_FALLBACK } from '../assets/scripts/config/GardenDefaults.ts';
 import { decodeGarden, decodeGardenQuota, emptyPlot } from '../assets/scripts/cache/GardenCodec.ts';
 import {
-  MINUTE_MS, formatRemaining, forwardNow, growMs, isReady, limitLeft, matureAt,
+  MINUTE_MS, formatRemaining, forwardNow, growMs, growProgress, isReady, limitLeft, matureAt,
   nextPlotCost, quotaUsed, remainingMs, waterUsed, wateredReadyAt,
 } from '../assets/scripts/game/GardenRules.ts';
 
@@ -36,6 +36,19 @@ check('浇过头落到过去，视为可立即收获',
   [true, true]);
 check('负数分钟不推进', wateredReadyAt(T0 + 120 * MINUTE_MS, -20), T0 + 120 * MINUTE_MS);
 check('剩余时间不为负', [remainingMs(T0 + MINUTE_MS, T0 + 5 * MINUTE_MS), remainingMs(T0 + MINUTE_MS, T0)], [0, MINUTE_MS]);
+
+console.log('[1b] 生长比例只用于绘图（幼苗分档），不参与结算');
+{
+  const total = growMs(MINT);
+  check('刚播种 = 0', growProgress(T0 + total, T0, total), 0);
+  check('半程 = 0.5', growProgress(T0 + total, T0 + total / 2, total), 0.5);
+  check('到点 = 1', growProgress(T0 + total, T0 + total, total), 1);
+  check('未来时刻夹到 0（客户端时钟超前不出现负比例）', growProgress(T0 + total, T0 - 60 * MINUTE_MS, total), 0);
+  check('生长时长异常按成熟处理', [growProgress(T0, T0, 0), growProgress(T0 + total, T0, -1)], [1, 1]);
+  const watered = wateredReadyAt(T0 + total, GARDEN_FALLBACK.water.minutesSaved);
+  check('同刻比较：浇过水的幼苗比例更高（浇水肉眼可见）',
+    growProgress(watered, T0 + total / 2, total) > growProgress(T0 + total, T0 + total / 2, total), true);
+}
 
 console.log('[2] 成熟判定与状态提示');
 check('空地不算成熟', isReady(emptyPlot(0), T0), false);

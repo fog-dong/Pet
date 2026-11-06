@@ -5,6 +5,7 @@ import { GardenConfig } from '../config/GardenConfig';
 import { unlockPlot } from '../game/GardenCraft';
 import { gardenNow, gardenView } from '../game/GardenModel';
 import { buildPlotCard, GardenPlotCard, PLOT_CARD_H, PLOT_CARD_W, PlotHost } from './GardenPlotCard';
+import { attachButtonIcon } from './ButtonIcon';
 import { playStaggerIn } from './MotionKit';
 import { addUIButton, setUIButtonState } from './UIButton';
 import { COLORS } from './Tokens';
@@ -50,7 +51,7 @@ export function buildGardenPlots(
         handle.refresh();
       }
     },
-    { y: UNLOCK_Y, width: 440, height: 40, color: COLORS.sage, fontSize: 19 },
+    { y: UNLOCK_Y, width: 440, height: 40, radius: 20, color: COLORS.sage, fontSize: 19 },
   );
 
   const handle: GardenPlotsHandle = { refresh };
@@ -63,6 +64,7 @@ export function buildGardenPlots(
     const cost = view.nextCost;
     const text = cost === null ? '后院已开满' : `开垦新地块 · ${cost} 金币（还差 ${view.locked} 块）`;
     setUIButtonState(unlock, cost !== null, text, COLORS.sage);
+    attachButtonIcon(unlock, 'coin', cost !== null);
   }
 
   refresh();

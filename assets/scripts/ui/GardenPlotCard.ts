@@ -1,16 +1,25 @@
-// STATUS: implemented, W25 P2-C 单块地卡片（锁定/空地/生长/成熟四态；按钮只转发，数值全在数据层）
+// STATUS: implemented, W27 P3-UI 单块地卡片（木框种植槽 + 分层幼苗 + 动作图标键；按钮只转发，数值全在数据层）
 import { Label, Node } from 'cc';
 import { todayKey } from '../cache/DayKey';
 import { Save } from '../cache/Save';
 import { GardenConfig } from '../config/GardenConfig';
 import { gardenNow, GardenView, gardenView } from '../game/GardenModel';
 import { harvestPlot, seedPlot, waterPlot } from '../game/GardenPlanting';
-import { formatRemaining, isReady, limitLeft, quotaUsed, waterUsed } from '../game/GardenRules';
-import { paintSoil, PlotVisual, SOIL_H, SOIL_W } from './GardenArt';
+import {
+  formatRemaining,
+  growMs,
+  growProgress,
+  isReady,
+  limitLeft,
+  quotaUsed,
+  waterUsed,
+} from '../game/GardenRules';
+import { paintSoil, SOIL_H, SOIL_W } from './GardenArt';
 import { openSeedPicker } from './GardenSeedPicker';
 import { addCard, createBox } from './PanelKit';
 import { addLabel } from './SceneUI';
 import { addUIButton, setUIButtonState } from './UIButton';
+import { attachButtonIcon } from './ButtonIcon';
 import { COLORS } from './Tokens';
 
 export const PLOT_CARD_W = 190;
@@ -44,6 +53,7 @@ export function buildPlotCard(parent: Node, index: number, x: number, y: number,
     y: BTN_Y,
     width: 150,
     height: 38,
+    radius: 19,
     color: COLORS.sage,
     fontSize: 17,
   });
@@ -59,6 +69,7 @@ export function buildPlotCard(parent: Node, index: number, x: number, y: number,
       sub.string = index === view.plots.length && view.nextCost !== null ? `下一块 ${view.nextCost} 金币` : '先开前一块';
       // 不能隐藏按钮：软投影是同级节点，藏了按钮会留一块灰影。
       setUIButtonState(button, false, '待开垦', COLORS.sub);
+      attachButtonIcon(button, 'lock', false);
       return;
     }
     button.node.active = true;
@@ -68,23 +79,26 @@ export function buildPlotCard(parent: Node, index: number, x: number, y: number,
       title.string = '空地';
       sub.string = '选一包种子';
       setUIButtonState(button, true, '播种', COLORS.sage);
+      attachButtonIcon(button, 'sprout');
       return;
     }
     const ready = isReady(plot, now);
-    const visual: PlotVisual = ready ? 'ready' : 'growing';
-    paintSoil(soil, visual, crop.tint);
+    const ratio = growProgress(plot.readyAt, now, growMs(crop));
+    paintSoil(soil, ready ? 'ready' : 'growing', crop.tint, ratio);
     if (!ready) {
       const used = waterUsed(plot, day);
       const left = limitLeft(used, GardenConfig.water.dailyLimitPerPlot);
       title.string = `${crop.name} · ${formatRemaining(plot.readyAt - now)}`;
-      sub.string = `浇水 ${used}/${GardenConfig.water.dailyLimitPerPlot} · 产 ${crop.yield} 株`;
+      sub.string = `浇水 ${used}/${GardenConfig.water.dailyLimitPerPlot} · 已长 ${Math.round(ratio * 100)}%`;
       setUIButtonState(button, left > 0, '浇水', COLORS.mist);
+      attachButtonIcon(button, 'water', left > 0);
       return;
     }
     const left = limitLeft(quotaUsed(Save.snapshot().gardenQuota, day).harvest, GardenConfig.dailyHarvestLimit);
     title.string = `${crop.name} · 可收获`;
     sub.string = left > 0 ? `可收 ${crop.yield} 株` : '今日收获已满';
     setUIButtonState(button, left > 0, '收获', COLORS.clay);
+    attachButtonIcon(button, 'sparkle', left > 0);
   }
 
   card = { index, node, sync };

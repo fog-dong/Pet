@@ -7,10 +7,12 @@ import { RecipeConfig } from '../config/RecipeConfig';
 import { herbStock } from '../game/GardenModel';
 import { quotaUsed } from '../game/GardenRules';
 import { addDivider, addPill } from './PanelKit';
+import { addGlyphBadge } from './GlyphKit';
 import { addLabel } from './SceneUI';
 import { fitRow } from './ScreenMetrics';
 import { addUIButton, setUIButtonState } from './UIButton';
-import { COLORS } from './Tokens';
+import { attachButtonIcon } from './ButtonIcon';
+import { COLORS, tint } from './Tokens';
 
 export type GardenTab = 'plots' | 'craft';
 
@@ -43,9 +45,16 @@ export function buildGardenHeader(
       COLORS.white,
       row.x0 + index * row.step,
     );
+    // 苗色圆片当库存图标：三种作物一眼分得清，不用读文字。
+    addGlyphBadge(pill, `GardenHerbIcon_${crop.id}`, 'sprout', 30, tint(crop.tint), COLORS.white).setPosition(
+      -row.width / 2 + 29,
+      0,
+      0,
+    );
     return addLabel(pill, `GardenHerbLabel_${crop.id}`, `${crop.name} ×0`, 0, {
       size: 20,
-      width: row.width - 20,
+      width: row.width - 66,
+      x: 21,
     });
   });
   const tabs: Button[] = [
@@ -67,6 +76,8 @@ export function buildGardenHeader(
     }),
   ];
   addDivider(parent, 168, width - 90);
+  attachButtonIcon(tabs[0], 'sprout');
+  attachButtonIcon(tabs[1], 'medicine');
   let tab = initialTab;
 
   function setTab(next: GardenTab): void {

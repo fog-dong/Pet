@@ -47,6 +47,11 @@ export function herbLabel(itemId: string): string {
   return crop ? crop.name : itemId;
 }
 
+/** UI 侧要按苗色给材料 chip 上色；非草药条目返回 null 由调用方兜底色。 */
+export function cropOfHerbId(itemId: string): CropConfig | null {
+  return GardenConfig.crops.find((crop) => herbIdOf(crop) === itemId) ?? null;
+}
+
 export function herbStock(): HerbStock[] {
   Save.load();
   return GardenConfig.crops.map((crop) => ({ crop, count: Save.itemCount(herbIdOf(crop)) }));

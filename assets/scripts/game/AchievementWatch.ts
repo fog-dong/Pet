@@ -4,6 +4,7 @@ import type { TierView } from './AchievementRules';
 
 export interface ClaimNotice {
   id: string;
+  groupId: string;
   group: string;
   tier: TierView;
 }
@@ -31,7 +32,7 @@ export function takeNewlyClaimable(): ClaimNotice[] {
   views.forEach((group) => {
     group.tiers.forEach((tier) => {
       if (tier.status === 'claimable' && !previous.has(tier.id)) {
-        fresh.push({ id: tier.id, group: group.name, tier });
+        fresh.push({ id: tier.id, groupId: group.id, group: group.name, tier });
       }
     });
   });

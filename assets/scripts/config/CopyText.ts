@@ -58,6 +58,7 @@ export const COPY = {
   /** P2-B2 称号阶梯：按「三档全领满的成就组数」进一阶，索引 0 = 一组都没领满。 */
   achievementTitles: ['实习医生', '住院医师', '主治医师', '主任医师', '院长', '妙手名医', '华佗再世'],
   achievementTitle: '成 就 谱',
+  /** 里程碑专名缺失时的回落档位名，见 MILESTONE_NAMES。 */
   achievementTierNames: ['一档', '二档', '三档'],
   achievementEntry: '称号 · {title}',
   achievementEntryBadge: '称号·{title} 可领{n}',
@@ -101,6 +102,20 @@ export const COPY = {
     '这里就是我的家呀',
   ],
 } as const;
+
+/**
+ * P3-UI 里程碑专名：替掉「一档 / 二档 / 三档」，每组三名按进度递进，读起来是身份而不是计数。
+ * COPY 是 `as const`，按 groupId 索引需要显式类型标注，因此与 COPY 分开声明。
+ * 组内只有三名：新增第四档的组会让 milestoneName 回落「N 档」，不会崩但会掉质感。
+ */
+export const MILESTONE_NAMES: Record<string, readonly string[]> = {
+  medic: ['实习兽医', '初掌药柜', '妙手仁心'],
+  grower: ['初翻泥土', '满畦新绿', '一方药田'],
+  guardian: ['新手上手', '细致打理', '护理名家'],
+  homework: ['临时铲屎官', '金牌领航员', '温暖中转站'],
+  seeker: ['街角探路', '熟门熟路', '百事通'],
+  repute: ['小有名气', '有口皆碑', '名医风范'],
+};
 
 /** 仅替换 `{name}` 占位，不做模板引擎。 */
 export function fillCopy(template: string, values: Record<string, string | number>): string {

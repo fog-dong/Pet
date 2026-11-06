@@ -1,5 +1,6 @@
-// STATUS: implemented, W25 P2-B2 成就 UI 核验（CDP 驱动 web-mobile 构建；纯本地存档，不碰线上）
-// 覆盖：大厅称号条入口与可领数、面板六组三档、领取入账与幂等（第二次点击不重复发）、
+// STATUS: implemented, W27 P3-UI 成就 UI 核验（CDP 驱动 web-mobile 构建；纯本地存档，不碰线上）
+// 覆盖：大厅称号条入口与可领数、面板六组三档、打开即复位到顶 + 滚动范围是真列表高、
+// 领取入账与幂等（第二次点击不重复发）、里程碑专名（不再读成「一档二档三档」）、
 // 回厅里程碑弹窗（计数器跨进厅对比）、盲盒券只出稀有以上。
 // 前置：本地起 web-mobile 构建静态服务 + headless Chrome 开 CDP 端口。
 // 用法：node scripts/verify-achievements-browser.js <CDP端口> <站点端口> <截图前缀>
@@ -96,7 +97,7 @@ const SCENE = `(() => { const s = window.cc && cc.director.getScene(); return s 
 
 /**
  * 种子：casesDone 25 / reputation 320 → 悬壶、口碑各两档；gardenPlanted 4、rehomeCount 1 各一档；
- * gachaDraws 4 留一次寻访到 5，回厅时「寻访 · 一档」成为新可领。合计可领 6 档。
+ * gachaDraws 4 留一次寻访到 5，回厅时「寻访 · 街角探路」成为新可领。合计可领 6 档。
  * petsSeen 留空：第一只必是新宠，可直接「立即接诊」再放弃回厅。
  * 稀有券 2 张：两次都走券抽卡，钉住「只出稀有以上」与用尽后入口消失。
  */
@@ -149,8 +150,15 @@ function seedSave() {
     errors.push(String(d.description || '?').slice(0, 200));
   });
 
+  // 表达式报错必须抛出来：吞成 undefined 会让 JSON.parse 报「不是合法 JSON」，看不出真因。
   const ev = (expr) =>
-    cdp.call('Runtime.evaluate', { expression: expr, returnByValue: true }).then((r) => (r.result ? r.result.value : undefined));
+    cdp.call('Runtime.evaluate', { expression: expr, returnByValue: true }).then((r) => {
+      if (r.exceptionDetails) {
+        const d = r.exceptionDetails.exception || {};
+        throw new Error(`页内表达式报错：${String(d.description || r.exceptionDetails.text).split('\n')[0]}`);
+      }
+      return r.result ? r.result.value : undefined;
+    });
   const has = (nm) => ev(`!!(${FIND})('${nm}')`);
   const waitFor = async (nm, ms = 25000) => {
     const end = Date.now() + ms;
@@ -197,6 +205,31 @@ function seedSave() {
     }
     return null;
   };
+  /**
+   * ScrollView 现场：滚动范围 + 当前偏移 + 两张卡片是否落在视口里。
+   * range 必须 > 0——等于 0 就是「content 高只给到视口高」，列表被当成弹性位移整段弹回，
+   * 玩家看到的正是「一打开就往上滚」。
+   */
+  const scrollState = () =>
+    ev(`(() => {
+      const s = (${FIND})('AchievementScroll');
+      if (!s) return null;
+      const sc = s.getComponent('cc.ScrollView');
+      const off = sc.getScrollOffset();
+      const range = sc.getMaxScrollOffset();
+      const mid = s.worldPosition.y;
+      const half = s.getComponent('cc.UITransform').contentSize.height / 2;
+      const shown = (nm) => {
+        const n = (${FIND})(nm);
+        return !!n && Math.abs(n.worldPosition.y - mid) <= half + 92;
+      };
+      return JSON.stringify({
+        range: Math.round(range.y),
+        offset: Math.round(Math.abs(off.y)),
+        top: shown('AchievementCard-medic'),
+        bottom: shown('AchievementCard-repute'),
+      });
+    })()`);
 
   async function boot() {
     await ev(`localStorage.setItem('pet_cloud_env_v1','mock-env-id');
@@ -234,6 +267,13 @@ function seedSave() {
     chipsBefore.length === 6,
     `可领=${chipsBefore.join(',')}`,
   );
+  const opened = JSON.parse(await scrollState());
+  judge(
+    'A04b',
+    '打开面板即停在顶部：偏移 0、滚动范围 > 0、首卡可见末卡隐藏',
+    opened.offset === 0 && opened.range > 0 && opened.top === true && opened.bottom === false,
+    `偏移=${opened.offset} 范围=${opened.range} 首=${opened.top} 末=${opened.bottom}`,
+  );
   await shot(`${OUT}-2-panel`);
 
   console.log('\n=== 2. 领取入账与幂等 ===');
@@ -246,8 +286,8 @@ function seedSave() {
   const popupTitle = await label('MilestoneTitle');
   judge(
     'A05',
-    '领取弹窗带档位名与到账奖励',
-    popupTitle === '领 取 成 功' && claimLine === '悬壶 · 一档' && claimReward === '+200 金币',
+    '领取弹窗带里程碑专名与到账奖励',
+    popupTitle === '领 取 成 功' && claimLine === '悬壶 · 实习兽医' && claimReward === '+200 金币',
     `标题=${popupTitle} 行=${claimLine}/${claimReward}`,
   );
   const coinsAfter = await save('s.coins');
@@ -265,7 +305,7 @@ function seedSave() {
   await sleep(400);
   const chipText = await label('AchievementChip-medic-0Label');
   const hint = await label('AchievementHint');
-  judge('A07', '已领档位就地变成「已 领」胶囊并给文字回执', chipText === '一档 · 已 领' && String(hint).includes('领取成功'), `胶囊=${chipText} 回执=${hint}`);
+  judge('A07', '已领档位就地变成「已 领」胶囊并给文字回执', chipText === '实习兽医 · 已 领' && String(hint).includes('领取成功'), `胶囊=${chipText} 回执=${hint}`);
   const coinsIdem = await save('s.coins');
   await tap('AchievementChip-medic-0');
   await sleep(500);
@@ -309,8 +349,8 @@ function seedSave() {
   const mHint = milestone ? await label('MilestoneHint') : null;
   judge(
     'A15',
-    '回厅弹里程碑并点名新达成的档位',
-    milestone === true && line0 === '寻访 · 一档' && String(mHint).includes('新达成 1 个成就'),
+    '回厅弹里程碑并点名新达成的里程碑',
+    milestone === true && line0 === '寻访 · 街角探路' && String(mHint).includes('新达成 1 个成就'),
     `弹窗=${milestone} 行=${line0} 提示=${mHint}`,
   );
   await shot(`${OUT}-5-milestone`);
@@ -321,15 +361,30 @@ function seedSave() {
   const seekerClaim = await ev(
     `(() => { const n = (${FIND})('AchievementChip-seeker-0'); return !!(n && n.getComponent('cc.Button')); })()`,
   );
-  judge('A16', '「去领取」打开面板且寻访一档已可领', seekerClaim === true, `可点=${seekerClaim}`);
+  judge('A16', '「去领取」打开面板且「街角探路」已可领', seekerClaim === true, `可点=${seekerClaim}`);
+  const seekerText = await label('AchievementChip-seeker-0Label');
+  judge('A16b', '可领胶囊同样读作里程碑专名而不是档位序号', seekerText === '街角探路 · 领 取', `胶囊=${seekerText}`);
   const entryMid = await label('AchievementTitleText');
   judge('A17', '新可领计入称号条（5 → 6）', /可领6/.test(String(entryMid)), `文案=${entryMid}`);
-  const scroll = await ev(
+  const reopened = JSON.parse(await scrollState());
+  judge(
+    'A18',
+    '再次打开面板偏移仍归零（不把上次停留位置带进来）',
+    reopened.offset === 0 && reopened.range > 0,
+    `偏移=${reopened.offset} 范围=${reopened.range}`,
+  );
+  const moved = await ev(
     `(() => { const n = (${FIND})('AchievementScroll'); const s = n && n.getComponent('cc.ScrollView'); if (!s) return 0; s.scrollToBottom(0); return 1; })()`,
   );
   await sleep(700);
+  const bottom = JSON.parse(await scrollState());
   await shot(`${OUT}-6-panel-bottom`);
-  judge('A18', '成就面板可滚动（ScrollView 是真实组件）', scroll === 1, `scroll=${scroll}`);
+  judge(
+    'A18b',
+    '滚到底后末卡进视口、偏移等于滚动范围（滚动范围是真列表高不是视口高）',
+    moved === 1 && bottom.bottom === true && Math.abs(bottom.offset - bottom.range) <= 2,
+    `偏移=${bottom.offset} 范围=${bottom.range} 末卡=${bottom.bottom}`,
+  );
 
   console.log('\n=== 4. 券用尽后入口消失 ===');
   await click('AchievementClose');

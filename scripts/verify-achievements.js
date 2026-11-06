@@ -1,11 +1,12 @@
 // STATUS: implemented, W25 P2-B1 成就表口径回归（纯函数 + 静态扫描，不开浏览器）
 // 用法：node --experimental-strip-types --no-warnings --import ./scripts/ts-resolve.mjs scripts/verify-achievements.js
 // 断言：achievements.json 与内置兜底逐项同值、整表校验会拒绝坏表、状态机 locked→claimable→claimed、
-//       券口径三处同值、称号阶梯按领满组数进档且末阶封顶，以及 14 个计数器全部接线（P2-C/D 已补齐）。
+//       券口径三处同值、称号阶梯按领满组数进档且末阶封顶、里程碑专名覆盖全部成就组，以及 14 个计数器全部接线（P2-C/D 已补齐）。
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { ACHIEVEMENT_FALLBACK, TICKET_ITEM } from '../assets/scripts/config/AchievementDefaults.ts';
-import { COPY } from '../assets/scripts/config/CopyText.ts';
+import { COPY, MILESTONE_NAMES } from '../assets/scripts/config/CopyText.ts';
+import { milestoneName, tierLabel } from '../assets/scripts/game/AchievementText.ts';
 import { normalizeGroups } from '../assets/scripts/game/AchievementSchema.ts';
 import {
   canClaim,
@@ -110,6 +111,16 @@ const seven = Array.from({ length: 7 }, (_, index) => {
   return groupView({ ...medic, id }, 60, ['#1', '#2', '#3'].map((suffix) => id + suffix));
 });
 check('领满 7 组封顶末阶', titleIndex(seven, titles.length), 6);
+
+console.log('[6] 里程碑专名：每档有身份，不再读成「一档二档三档」');
+check('六个成就组各配三名', groups.map((group) => MILESTONE_NAMES[group.id]?.length), [3, 3, 3, 3, 3, 3]);
+check('悬壶三名递进', MILESTONE_NAMES.medic, ['实习兽医', '初掌药柜', '妙手仁心']);
+check('送养三名递进', MILESTONE_NAMES.homework, ['临时铲屎官', '金牌领航员', '温暖中转站']);
+check('专名不重复所在组名（弹窗串「悬壶 · 悬壶初成」这种不写）', groups.every((group) => MILESTONE_NAMES[group.id].every((name) => !name.includes(group.name))), true);
+check('档位串是「组名 · 专名」', [tierLabel('medic', '悬壶', 2), tierLabel('seeker', '寻访', 0)], ['悬壶 · 妙手仁心', '寻访 · 街角探路']);
+check('表外组回落档位序号（先加配置后补文案也不崩）', [milestoneName('unknown', 0), milestoneName('unknown', 3)], ['一档', '4']);
+check('专名最长 5 字（成就胶囊字号少缩一档）', Math.max(...Object.values(MILESTONE_NAMES).flat().map((name) => name.length)), 5);
+check('专名不与称号阶梯重名', Object.values(MILESTONE_NAMES).flat().filter((name) => titles.includes(name)), []);
 
 console.log('');
 console.log(failures === 0 ? '结果：全部通过' : `结果：${failures} 个用例失败`);

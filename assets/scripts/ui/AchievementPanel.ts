@@ -26,6 +26,8 @@ export function openAchievementPanel(parent: Node, changed?: () => void): void {
   chrome = buildAchievementChrome(parent, closeAchievementPanel);
   Track.track('achievement_open');
   refresh();
+  /** 打开即复位：列表高写回 content 之后偏移才有效，上次停在中段不能带进这次。 */
+  chrome.scroll.scrollToTop();
 }
 
 export function closeAchievementPanel(): void {
@@ -46,7 +48,7 @@ function refresh(): void {
   const done = fillCopy(COPY.achievementGroupsDone, { done: completedGroups(views), total: views.length });
   chrome.titleText.string = `${title}　${done}`;
   chrome.hint.string = '';
-  rows = renderAchievementRows(chrome.rowHost, rows, views, claim);
+  rows = renderAchievementRows(chrome.rowHost, chrome.viewportH, rows, views, claim);
 }
 
 /** 档位名要在领取前抓：领取后视图就变成 claimed，拿不到这一档的门槛与分组名。 */
@@ -68,7 +70,7 @@ function claim(id: string): void {
   onChanged?.();
   showMilestone(chrome.overlay, {
     title: COPY.achievementClaimTitle,
-    lines: [tierLabel(group.name, tier.index), reward],
+    lines: [tierLabel(group.id, group.name, tier.index), reward],
     closeText: COPY.milestoneOk,
   });
 }

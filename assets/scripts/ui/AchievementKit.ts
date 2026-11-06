@@ -1,10 +1,11 @@
-// STATUS: implemented, W25 P2-B2 成就面板骨架（遮罩 + 称号条 + 行区 ScrollView + 底部关闭，尺寸随安全区伸缩）
+// STATUS: implemented, W27 P3-UI 成就面板骨架（遮罩 + 称号条 + 行区 ScrollView + 底部关闭；滚动句柄外抛供复位）
 import { BlockInputEvents, Color, Label, Mask, Node, ScrollView, UITransform } from 'cc';
 import { COPY } from '../config/CopyText';
 import { addLabel, addRect, createNode } from './SceneUI';
 import { addPill } from './PanelKit';
 import { makeLabel } from './FontKit';
 import { addUIButton } from './UIButton';
+import { addGlyphBadge } from './GlyphKit';
 import { fitWidth, safeAreaBottom, safeAreaTop, screenHeight, screenWidth } from './ScreenMetrics';
 import { COLORS } from './Tokens';
 
@@ -15,12 +16,22 @@ const MIN_H = 720;
 const HEAD_BLOCK = 178;
 const FOOT_BLOCK = 150;
 const ROW_INSET = 22;
+const BAR_BADGE = 36;
+
+interface RowsScroll {
+  content: Node;
+  scroll: ScrollView;
+  viewportH: number;
+}
 
 export interface AchievementChrome {
   overlay: Node;
   panel: Node;
   titleText: Label;
   rowHost: Node;
+  /** 视口高：行区渲染时要拿它和真实列表高取大，写回 content。 */
+  viewportH: number;
+  scroll: ScrollView;
   hint: Label;
 }
 
@@ -37,9 +48,17 @@ export function buildAchievementChrome(parent: Node, onClose: () => void): Achie
 
   addLabel(panel, 'AchievementHeading', COPY.achievementTitle, top - 52, { size: 36, color: COLORS.ink });
   const bar = addPill(panel, 'AchievementTitleBar', top - 118, width - 70, 62, COLORS.skirt);
-  const titleText = makeLabel(bar, 'AchievementTitleBarText', '', 0, { size: 22, width: width - 110, color: COLORS.ink });
+  const barWidth = width - 70;
+  addGlyphBadge(bar, 'AchievementTitleIcon', 'trophy', BAR_BADGE, COLORS.clay, COLORS.white)
+    .setPosition(-barWidth / 2 + 30, 0, 0);
+  const titleText = makeLabel(bar, 'AchievementTitleBarText', '', 0, {
+    size: 22,
+    width: barWidth - 96,
+    x: 26,
+    color: COLORS.ink,
+  });
 
-  const rowHost = buildRowsScroll(panel, width, height);
+  const rows = buildRowsScroll(panel, width, height);
   const hint = addLabel(panel, 'AchievementHint', '', -height / 2 + FOOT_BLOCK - 38, {
     size: 20,
     color: COLORS.sub,
@@ -52,23 +71,23 @@ export function buildAchievementChrome(parent: Node, onClose: () => void): Achie
     color: COLORS.clay,
     fontSize: 26,
   });
-  return { overlay, panel, titleText, rowHost, hint };
+  return { overlay, panel, titleText, rowHost: rows.content, viewportH: rows.viewportH, scroll: rows.scroll, hint };
 }
 
-function buildRowsScroll(panel: Node, width: number, height: number): Node {
-  const scrollH = Math.max(240, height - HEAD_BLOCK - FOOT_BLOCK);
-  const scrollNode = createNode(panel, 'AchievementScroll', height / 2 - HEAD_BLOCK - scrollH / 2, width - ROW_INSET * 2, scrollH);
+function buildRowsScroll(panel: Node, width: number, height: number): RowsScroll {
+  const viewportH = Math.max(240, height - HEAD_BLOCK - FOOT_BLOCK);
+  const scrollNode = createNode(panel, 'AchievementScroll', height / 2 - HEAD_BLOCK - viewportH / 2, width - ROW_INSET * 2, viewportH);
   const scroll = scrollNode.addComponent(ScrollView);
-  const view = createNode(scrollNode, 'view', 0, width - ROW_INSET * 2, scrollH);
+  const view = createNode(scrollNode, 'view', 0, width - ROW_INSET * 2, viewportH);
   view.addComponent(Mask).type = Mask.Type.GRAPHICS_RECT;
   const content = new Node('content');
   content.parent = view;
   const transform = content.addComponent(UITransform);
-  transform.setContentSize(width - ROW_INSET * 2 - 20, scrollH);
+  transform.setContentSize(width - ROW_INSET * 2 - 20, viewportH);
   transform.setAnchorPoint(0.5, 1);
-  content.setPosition(0, scrollH / 2, 0);
+  content.setPosition(0, viewportH / 2, 0);
   scroll.content = content;
   scroll.vertical = true;
   scroll.horizontal = false;
-  return content;
+  return { content, scroll, viewportH };
 }

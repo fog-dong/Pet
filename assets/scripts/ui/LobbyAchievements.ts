@@ -32,7 +32,7 @@ export function mountLobbyAchievements(parent: Node, changed: () => void): Lobby
       title.refresh();
       showMilestone(parent, {
         title: COPY.milestoneTitle,
-        lines: fresh.slice(0, 4).map((notice) => tierLabel(notice.group, notice.tier.index)),
+        lines: fresh.slice(0, 4).map((notice) => tierLabel(notice.groupId, notice.group, notice.tier.index)),
         hint: fillCopy(COPY.milestoneHint, { n: fresh.length }),
         go: { text: COPY.milestoneGo, onClick: () => openAchievementPanel(parent, changed) },
         closeText: COPY.milestoneLater,

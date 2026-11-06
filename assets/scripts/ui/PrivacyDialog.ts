@@ -9,6 +9,7 @@ import { Track } from '../track/Track';
 import { addLabel, addRect, createNode, PALETTE, setButtonState } from './SceneUI';
 import { addDialogButton, buildDocScroll, buttonX, paintCheckBox, panelCenterY, panelH, panelW } from './PrivacyDialogKit';
 import { screenHeight, screenWidth } from './ScreenMetrics';
+import { bindPressEffect } from './UIButton';
 
 export interface PrivacyDialogOptions {
   readonly mode: 'gate' | 'read';
@@ -34,6 +35,7 @@ function renderGate(panel: Node): void {
   });
   const row = addRect(body, 'PrivacyCheck', -168, panelW() - 100, 60, new Color(247, 241, 232, 255));
   paintCheckBox(row, checked);
+  bindPressEffect(row);
   addLabel(row, 'CheckText', PRIVACY_CHECK_TEXT, 0, { size: 24, width: panelW() - 240, x: 60 });
   agreeButton = addDialogButton(body, 'PrivacyAgree', '请先勾选协议', -buttonX(), PALETTE.primary, () => {
     if (!checked) {

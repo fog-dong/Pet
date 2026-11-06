@@ -10,7 +10,7 @@ import { PetVisual } from '../game/PetVisual';
 import { addLabel, addRect } from './SceneUI';
 import { addLifeBar, addLifeCompact, addStageTag } from './LifeBadge';
 import { StatRow, STAT_ORDER, addStatBlock } from './HabitatBars';
-import { addPremiumChip } from './HabitatChip';
+import { addPremiumChip, bindChipPress } from './HabitatChip';
 import { addActionChips } from './HabitatActionChips';
 import { STAT_ACTION, bindTapOrHold, bindTapZone, shortfallText } from './HabitatTapActions';
 import type { Point } from './ParticleKit';
@@ -117,6 +117,8 @@ export function buildHabitatRow(
   STAT_ORDER.forEach((key) => {
     const action = STAT_ACTION[key];
     bindTapZone(block.zones[key], (touchX) => onAction(row, action, origins[action], touchX));
+    // 热区是自建 Graphics 圆钮，没有 cc.Button，按压动画只能自己补上——否则点下去没有任何"碰到了"的回话。
+    bindChipPress(block.zones[key]);
   });
   bindTapOrHold(
     visual.node,

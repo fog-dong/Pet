@@ -2,6 +2,7 @@
 import { Button, Graphics, Node, UIOpacity, UITransform } from 'cc';
 import { screenHeight, screenWidth } from './ScreenMetrics';
 import { makeLabel } from './FontKit';
+import { bindPressEffect } from './UIButton';
 import { COLORS, tint } from './Tokens';
 
 export interface GachaBoxHandle {
@@ -82,6 +83,8 @@ export function buildGachaBox(parent: Node, onTap: () => void): GachaBoxHandle {
   const button = root.addComponent(Button);
   button.transition = Button.Transition.NONE;
   root.on(Button.EventType.CLICK, onTap);
+  // 抖动是 root 的 angle、按压是 root 的 scale，两者都归 Tween.stopAllByTarget 管：开箱动画起手会一并收干净。
+  bindPressEffect(root);
   const body = new Node('BoxBody');
   body.parent = root;
   body.setPosition(0, -24, 0);

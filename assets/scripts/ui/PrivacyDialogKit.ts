@@ -3,6 +3,7 @@ import { Button, Color, Graphics, Mask, Node, ScrollView, UITransform } from 'cc
 import { LEGAL_DOCS } from '../config/LegalConfig';
 import { addLabel, addRect, createNode, PALETTE } from './SceneUI';
 import { fitWidth, safeAreaBottom, screenHeight } from './ScreenMetrics';
+import { bindPressEffect } from './UIButton';
 
 /** 面板宽度贴合可视宽度；高度受可视高度约束，短屏设备不会超出屏幕。 */
 export function panelW(): number {
@@ -63,6 +64,7 @@ export function addDialogButton(
     255,
   );
   node.on(Button.EventType.CLICK, onClick);
+  bindPressEffect(node);
   return button;
 }
 

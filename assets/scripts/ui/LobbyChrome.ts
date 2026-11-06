@@ -6,6 +6,7 @@ import { lobbyHudLeft, lobbyHudTop, lobbyLinksY } from './LobbyLayout';
 import { addPill } from './PanelKit';
 import { pinTopLeftAt } from './SafeLayout';
 import { COLORS } from './Tokens';
+import { bindPressEffect } from './UIButton';
 
 const PILL_W = 176;
 const PILL_H = 56;
@@ -75,6 +76,7 @@ export function buildLobbyLinks(parent: Node, onMenuClick: (name: string) => voi
     const transform = label.node.getComponent(UITransform);
     transform?.setContentSize(width, LINK_TOUCH_H);
     label.node.on(Node.EventType.TOUCH_END, () => onMenuClick(name));
+    bindPressEffect(label.node);
     cursor += width + LINK_GAP;
     return label.node;
   });

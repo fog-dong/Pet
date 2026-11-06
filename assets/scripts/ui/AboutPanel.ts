@@ -17,6 +17,7 @@ import { addLabel, addRect, PALETTE } from './SceneUI';
 import { addDialogButton, buttonX, panelCenterY, panelH, panelW } from './PrivacyDialogKit';
 import { openPrivacyEntry } from './PrivacyDialog';
 import { screenHeight, screenWidth } from './ScreenMetrics';
+import { bindPressEffect } from './UIButton';
 
 let overlay: Node | null = null;
 
@@ -49,6 +50,7 @@ export function openAboutPanel(parent: Node): void {
   const privacyText = addLabel(privacyRow, 'AboutPrivacyLabel', '', 0, { size: 22, width: panelW() - 150 });
   privacyText.string = PrivacyState.accepted() ? PRIVACY_ENTRY_DONE : PRIVACY_ENTRY_TODO;
   privacyRow.addComponent(Button).transition = Button.Transition.NONE;
+  bindPressEffect(privacyRow);
   privacyRow.on(Button.EventType.CLICK, (): void => {
     Track.track('about_privacy_click');
     openPrivacyEntry(parent, (cloud) => {

@@ -5,6 +5,7 @@ import { buildGardenHeader, GardenHeaderHandle, GardenTab } from './GardenHeader
 import { buildGardenPlots, GardenPlotsHandle } from './GardenPlots';
 import { buildGardenRecipes, GardenRecipesHandle } from './GardenRecipes';
 import { addCard } from './PanelKit';
+import { enterPanel, leavePanel } from './PanelMotion';
 import { addLabel, addRect, createNode } from './SceneUI';
 import { fitWidth, screenHeight, screenWidth } from './ScreenMetrics';
 import { showToast } from './Toast';
@@ -30,9 +31,7 @@ let closedCb: (() => void) | undefined;
 
 export function closeGardenPanel(): void {
   stopTimer();
-  if (overlay) {
-    overlay.destroy();
-  }
+  leavePanel(overlay);
   overlay = null;
   panel = null;
   content = null;
@@ -59,6 +58,9 @@ export function openGardenPanel(parent: Node, onChanged?: () => void, onClosed?:
   overlay.addComponent(BlockInputEvents);
   overlay.setSiblingIndex(parent.children.length - 1);
   buildPanel();
+  if (panel) {
+    enterPanel(overlay, panel);
+  }
   timer = setInterval(() => {
     plots?.refresh();
   }, 1000);

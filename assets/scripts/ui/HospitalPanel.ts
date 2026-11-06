@@ -6,6 +6,7 @@ import { DOCTORS } from '../game/HospitalLevels';
 import { Track } from '../track/Track';
 import { addLabel, addRect, PALETTE } from './SceneUI';
 import { addCard, addDivider } from './PanelKit';
+import { enterPanel, leavePanel } from './PanelMotion';
 import { addEarnGuide } from './EarnGuide';
 import { screenHeight, screenWidth } from './ScreenMetrics';
 import { addUIButton, setUIButtonState } from './UIButton';
@@ -14,9 +15,7 @@ import { COLORS } from './Tokens';
 let overlay: Node | null = null;
 
 function close(): void {
-  if (overlay) {
-    overlay.destroy();
-  }
+  leavePanel(overlay);
   overlay = null;
 }
 
@@ -48,6 +47,7 @@ export function openHospitalPanel(parent: Node, onChanged: () => void): void {
     color: COLORS.sage,
     fontSize: 28,
   });
+  enterPanel(overlay, panel);
 }
 
 function buildUpgrade(panel: Node, host: Node, onChanged: () => void): void {

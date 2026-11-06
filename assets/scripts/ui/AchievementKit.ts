@@ -3,6 +3,7 @@ import { BlockInputEvents, Color, Label, Mask, Node, ScrollView, UITransform } f
 import { COPY } from '../config/CopyText';
 import { addLabel, addRect, createNode } from './SceneUI';
 import { addPill } from './PanelKit';
+import { enterPanel } from './PanelMotion';
 import { makeLabel } from './FontKit';
 import { addUIButton } from './UIButton';
 import { addGlyphBadge } from './GlyphKit';
@@ -71,6 +72,7 @@ export function buildAchievementChrome(parent: Node, onClose: () => void): Achie
     color: COLORS.clay,
     fontSize: 26,
   });
+  enterPanel(overlay, panel);
   return { overlay, panel, titleText, rowHost: rows.content, viewportH: rows.viewportH, scroll: rows.scroll, hint };
 }
 

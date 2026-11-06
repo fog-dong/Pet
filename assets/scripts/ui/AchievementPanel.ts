@@ -6,6 +6,7 @@ import { completedGroups } from '../game/AchievementRules';
 import { rewardText, tierLabel, titleFor } from '../game/AchievementText';
 import { Track } from '../track/Track';
 import { AchievementChrome, buildAchievementChrome } from './AchievementKit';
+import { leavePanel } from './PanelMotion';
 import { renderAchievementRows } from './AchievementRows';
 import { showMilestone } from './MilestonePopup';
 
@@ -32,7 +33,7 @@ export function openAchievementPanel(parent: Node, changed?: () => void): void {
 
 export function closeAchievementPanel(): void {
   if (chrome && chrome.overlay.isValid) {
-    chrome.overlay.destroy();
+    leavePanel(chrome.overlay);
   }
   chrome = null;
   rows = null;

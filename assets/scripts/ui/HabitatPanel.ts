@@ -8,6 +8,7 @@ import { HabitatAction } from '../game/HabitatRules';
 import { currentHabitatTheme } from '../game/HabitatThemes';
 import { addLabel, addRect, PALETTE } from './SceneUI';
 import { addCard, addDivider } from './PanelKit';
+import { enterPanel, leavePanel } from './PanelMotion';
 import { fitWidth, screenHeight, screenWidth } from './ScreenMetrics';
 import { Point } from './ParticleKit';
 import { HabitatRow } from './HabitatRows';
@@ -41,7 +42,7 @@ export function closeHabitatPanel(): void {
   if (!overlay) {
     return;
   }
-  overlay.destroy();
+  leavePanel(overlay);
   overlay = null;
   rows = [];
   hint = null;
@@ -91,6 +92,7 @@ export function openHabitatPanel(parent: Node, onResourcesChanged?: () => void, 
   }
   // 底部两枚按钮（领取回执 + 关闭）在 HabitatFooter 里，本文件只管列表与遮罩。
   buildHabitatFooter(panel, width, parent, closeHabitatPanel, onResourcesChanged);
+  enterPanel(overlay, panel);
 }
 
 function openDecor(): void {

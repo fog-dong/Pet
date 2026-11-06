@@ -3,6 +3,7 @@ import { BlockInputEvents, Color, Node } from 'cc';
 import { Save } from '../cache/Save';
 import { RehomeClaim, rehomeQuote } from '../game/RehomeModel';
 import { addCard } from './PanelKit';
+import { enterPanel, leavePanel } from './PanelMotion';
 import { buildRehomeActions, RehomeActionsHandle } from './RehomeActions';
 import { buildRehomeInfo } from './RehomeInfo';
 import { showRehomeResult } from './RehomeResult';
@@ -22,9 +23,7 @@ let onSettledCb: (() => void) | undefined;
 
 export function closeRehomePanel(): void {
   stopTimer();
-  if (overlay) {
-    overlay.destroy();
-  }
+  leavePanel(overlay);
   overlay = null;
   actions = null;
   toastHost = null;
@@ -62,6 +61,7 @@ export function openRehomePanel(
     onClose: closeRehomePanel,
   });
   timer = setInterval(() => actions?.tick(), 1000);
+  enterPanel(overlay, panel);
 }
 
 function handleClaim(claim: RehomeClaim): void {

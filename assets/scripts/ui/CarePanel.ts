@@ -10,6 +10,7 @@ import { nailStatus } from '../game/NailCare';
 import { addCareCard, CareCardHandle } from './CareCard';
 import { CareProfileHandle, buildCareProfile } from './CareProfile';
 import { addCard } from './PanelKit';
+import { enterPanel, leavePanel } from './PanelMotion';
 import { addLabel, addRect } from './SceneUI';
 import { fitWidth, screenHeight, screenWidth } from './ScreenMetrics';
 import { showToast } from './Toast';
@@ -29,9 +30,7 @@ let dewormCard: CareCardHandle | null = null;
 
 export function closeCarePanel(): void {
   closeNailGame();
-  if (overlay) {
-    overlay.destroy();
-  }
+  leavePanel(overlay);
   overlay = null;
   toastHost = null;
   changed = undefined;
@@ -84,6 +83,7 @@ export function openCarePanel(parent: Node, id: string, onChanged?: (entry: Habi
     fontSize: 28,
   });
   refresh();
+  enterPanel(overlay, panel);
 }
 
 /** 每次结算后重读：属性、两项置灰原因、药剂余量都可能同时变。 */

@@ -1,11 +1,16 @@
 // STATUS: implemented, W26 P2-E 大厅底部栈装配：TAB 栏 + 内容坞 + 合规链一次挂齐，切换与刷新都走同一个手柄
 import type { Button, Node } from 'cc';
+import { achievementViews } from '../game/Achievements';
+import { claimableCount } from '../game/AchievementRules';
+import { gardenNow, gardenView } from '../game/GardenModel';
+import { countGardenReady, countRehomeReady, lobbyAlerts } from '../game/LobbyAlerts';
+import { pendingReview } from '../game/RehomeModel';
 import { buildLobbyLinks, raiseToTop } from './LobbyChrome';
 import { mountLobbyDock } from './LobbyDock';
 import type { DockHost } from './DockKit';
 import { lobbyToastY } from './LobbyDockLayout';
 import { buildLobbyTabs } from './LobbyTabs';
-import type { LobbyTab, TabBarHandle } from './LobbyTabs';
+import type { LobbyBadgeCounts, LobbyTab, TabBarHandle } from './LobbyTabs';
 import { showToast } from './Toast';
 
 /** 装配底部栈只需要这四样：宿主节点、场景里的 Start 按钮、菜单分派与「数据变了」回调。 */
@@ -42,7 +47,20 @@ export function mountLobbyBottom(parent: Node, src: LobbyBottomSources): LobbyBo
   const links = buildLobbyLinks(parent, (name) => src.menu(name));
   return {
     show: applyTab,
-    refresh: () => dock.refresh(),
+    refresh: () => {
+      dock.refresh();
+      tabs?.setBadges(pendingAlerts());
+    },
     raiseLinks: () => raiseToTop(links),
   };
+}
+
+/** 取数只在 UI 侧发生：判定交给 game/LobbyAlerts，这样纯函数能在 Node 下直接回归。 */
+function pendingAlerts(): LobbyBadgeCounts {
+  const now = Date.now();
+  return lobbyAlerts({
+    claimable: claimableCount(achievementViews()),
+    gardenReady: countGardenReady(gardenView().plots, gardenNow()),
+    rehomeReady: countRehomeReady(pendingReview(), now),
+  });
 }

@@ -1,12 +1,16 @@
-// STATUS: implemented, W26 P2-E 大厅四枚常驻 TAB（诊疗 / 后院 / 小屋 / 成就），替代原来的一行五枚玩法入口
+// STATUS: implemented, W26 P2-E 大厅四枚常驻 TAB（诊疗 / 后院 / 小屋 / 成就），替代原来的一行五枚玩法入口；W27 P3-UI 加红点徽标位
 import { Node, UIOpacity } from 'cc';
 import { lobbyTabBarY, TAB_H } from './LobbyDockLayout';
 import { addCard } from './PanelKit';
 import { fitRow, fitWidth } from './ScreenMetrics';
+import { attachRedDot, RedDotHandle } from './RedDot';
 import { COLORS } from './Tokens';
 import { addUIButton, setUIButtonState } from './UIButton';
 
 export type LobbyTab = 'clinic' | 'garden' | 'habitat' | 'achieve';
+
+/** 按屏上顺序给四枚 TAB 各一个红点数；不亮的档位传 0，判定一律在 game/LobbyAlerts。 */
+export type LobbyBadgeCounts = Record<LobbyTab, number>;
 
 /** 顺序即屏上从左到右；诊疗排在最前，因为寻访是每日第一动作。 */
 export const LOBBY_TABS: readonly (readonly [LobbyTab, string])[] = [
@@ -26,6 +30,7 @@ const IDLE_ALPHA = 205;
 
 export interface TabBarHandle {
   setActive(tab: LobbyTab): void;
+  setBadges(counts: LobbyBadgeCounts): void;
   node: Node;
 }
 
@@ -49,6 +54,10 @@ export function buildLobbyTabs(parent: Node, onTab: (tab: LobbyTab) => void): Ta
       fontSize: 26,
     }),
   }));
+  // 红点挂在键里面：切换选中态会重画笔 Graphics，同级兄弟会被擦掉。
+  const dots = new Map<LobbyTab, RedDotHandle>(
+    items.map((item) => [item.tab, attachRedDot(item.button.node, `TabDot_${item.tab}`)]),
+  );
   const setActive = (next: LobbyTab): void => {
     items.forEach((item) => {
       setUIButtonState(item.button, true, item.text, item.tab === next ? COLORS.clay : COLORS.sage);
@@ -57,5 +66,11 @@ export function buildLobbyTabs(parent: Node, onTab: (tab: LobbyTab) => void): Ta
     });
   };
   setActive('clinic');
-  return { setActive, node: board };
+  return {
+    setActive,
+    setBadges: (counts) => {
+      dots.forEach((dot, tab) => dot.set(counts[tab]));
+    },
+    node: board,
+  };
 }

@@ -30,6 +30,11 @@ export const HEX = {
   danger: '#C97B6E',
   gold: '#E3B23C',
   shadow: '#3E322A',
+  /**
+   * 红点专用告警红。danger 是 terracotta，压在 clay 选中态上根本跳不出来，
+   * 而红点的职责就是被看见，因此单开一档；只给红点/告警角标用，正文色仍走 danger。
+   */
+  alert: '#E4573D',
 } as const;
 
 /** 共用实例：只读使用，需要改 alpha 时自行 new Color 复制。 */

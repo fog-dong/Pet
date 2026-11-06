@@ -25,6 +25,9 @@ import { SyncBadge } from './SyncBadge';
 
 const { ccclass, property } = _decorator;
 
+/** 红点定时：后院成熟与送养到点最短也是分钟级，30 秒一档足够亮得及时，又不值得为它开一条事件总线。 */
+const ALERT_TICK_SEC = 30;
+
 @ccclass('Lobby')
 export class Lobby extends Component {
   @property(Label) coinsLabel: Label | null = null;
@@ -56,6 +59,8 @@ export class Lobby extends Component {
     this.achievements = mountLobbyAchievements(this.node, () => this.refreshStats());
     // 成就角标是后挂的，会把合规链压到下层：装配完再把它提回最顶（P2-E 模块二）。
     this.dock.raiseLinks();
+    // 后院成熟与送养到点是墙钟事件：人停在大厅不动也得亮，所以定时只重画坞与红点，不重建散步带。
+    this.schedule(this.tickDock, ALERT_TICK_SEC);
     this.hideLegacyStats();
     this.refreshStats();
     this.achievements.check();
@@ -125,6 +130,11 @@ export class Lobby extends Component {
     this.dock?.refresh();
     this.refreshBand();
     this.achievements?.refresh();
+  }
+
+  /** 定时只做「重画读数 + 重算红点」，散步带不重建：玩家站着不动也能看见后院熟了、送养到点了。 */
+  private tickDock(): void {
+    this.dock?.refresh();
   }
 
   /** 散步带的重建判定在 LobbyPetRow 内部（人没变就跳过），这里只负责拿最新列表。 */

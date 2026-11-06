@@ -2,6 +2,7 @@
 // 列表本身仍是全屏面板（内部是绝对坐标，塞不进 180–300 高的坞），坞只给读数与三个入口。
 import { Label, Node } from 'cc';
 import { habitatList } from '../game/HabitatModel';
+import { NEED_CARE } from '../game/LobbyAlerts';
 import { rehomeQuote } from '../game/RehomeModel';
 import { addDockEntry, addDockPills, addDockSubs, DockBody, DockContext } from './DockKit';
 import { COLORS } from './Tokens';
@@ -9,8 +10,6 @@ import { openThemePicker } from './HabitatThemePanel';
 import { openRehomePanel } from './RehomePanel';
 
 const ENTRY_TEXT = '宠物小屋';
-/** 与 HabitatDecay 的低值档、散步带的睡眠档同一个数，三处口径不能各写一套。 */
-const NEED_CARE = 30;
 
 export function buildHabitatBody(parent: Node, ctx: DockContext): DockBody {
   const pills = addDockPills(parent, ['', '', ''], 0, ctx.width);

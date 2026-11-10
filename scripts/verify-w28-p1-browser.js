@@ -15,8 +15,8 @@ const PORT = Number(process.argv[3] || 8103);
 const OUT = process.argv[4] || 'w28p1';
 const SHOT_DIR = process.env.SHOT_DIR || 'build';
 fs.mkdirSync(SHOT_DIR, { recursive: true });
-const W = 720;
-const H = 1280;
+const W = Number(process.env.CDP_W || 720);
+const H = Number(process.env.CDP_H || 1280);
 const SITE = `http://127.0.0.1:${PORT}`;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -164,6 +164,18 @@ function seedSave(overrides) {
   cdp.on('Runtime.exceptionThrown', (p) => {
     const d = (p.exceptionDetails || {}).exception || {};
     errors.push(String(d.description || '?').slice(0, 200));
+  });
+  // P0-6：全链路的非 2xx / 加载失败都要留痕，不再只靠肉眼数控制台。
+  const netBad = [];
+  cdp.on('Network.responseReceived', (p) => {
+    if (p.response && p.response.status >= 400) netBad.push(`${p.response.status} ${p.response.url}`);
+  });
+  cdp.on('Network.loadingFailed', (p) => netBad.push(`${p.errorText}${p.blockedReason ? ' ' + p.blockedReason : ''}`));
+  const consoleErrors = [];
+  cdp.on('Runtime.consoleAPICalled', (p) => {
+    if (p.type !== 'error') return;
+    const text = (p.args || []).map((a) => a.value || a.description || a.unserializableValue || '').join(' ');
+    consoleErrors.push(String(text).slice(0, 200));
   });
 
   const ev = (expr) =>
@@ -446,6 +458,8 @@ function seedSave(overrides) {
   console.log('=== console errors (' + errors.length + ') ===');
   noisy.slice(0, 25).forEach((e) => console.log(e));
   judge('W33', '全流程无红色报错（忽略 Cocos meta 弃用警告）', noisy.length === 0, `collected=${errors.length}`);
+  judge('N1', '全链路无 4xx/5xx 资源请求', netBad.length === 0, netBad.slice(0, 6).join(' | '));
+  judge('N2', '全链路无 console.error 输出', consoleErrors.length === 0, consoleErrors.slice(0, 6).join(' | '));
 
   report();
   cdp.close();

@@ -158,12 +158,12 @@ function connect(url) {
   });
 
   await cdp.call('Emulation.setDeviceMetricsOverride', {
-    width: 720,
-    height: 1280,
+    width: Number(process.env.CDP_W || 720),
+    height: Number(process.env.CDP_H || 1280),
     deviceScaleFactor: 2,
     mobile: true,
-    screenWidth: 720,
-    screenHeight: 1280,
+    screenWidth: Number(process.env.CDP_W || 720),
+    screenHeight: Number(process.env.CDP_H || 1280),
   });
   await cdp.call('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 1 });
   await cdp.call('Page.bringToFront');
@@ -209,7 +209,16 @@ function connect(url) {
     return false;
   };
   let vh = 1280;
-  const css = (p) => ({ x: p.x, y: vh - p.y });
+  // 世界坐标（左下原点）→ CSS 像素。390×844 下可见高度约 1558 设计单位，直接当 CSS 用会把触点甩到屏幕外。
+  let vp = { w: 720, h: 1280, cw: 720, ch: 1280 };
+  const css = (p) => ({ x: (p.x * vp.cw) / vp.w, y: vp.ch - (p.y * vp.ch) / vp.h });
+  const syncViewport = async () => {
+    vp = await ev(
+      `(() => { const v = cc.view.getVisibleSize(); return { w: v.width, h: v.height, cw: window.innerWidth, ch: window.innerHeight }; })()`,
+    );
+    vh = vp.h;
+    return vp;
+  };
   const touch = async (type, p) =>
     cdp.call('Input.dispatchTouchEvent', {
       type,
@@ -338,8 +347,8 @@ function connect(url) {
     await sleep(2500);
   }
   if (!(await waitFor('StartButton', 12000))) throw new Error('lobby not ready');
-  vh = await ev('cc.view.getVisibleSize().height');
-  console.log('visible height', vh);
+  const viewport = await syncViewport();
+  console.log('visible height', vh, `css ${viewport.cw}x${viewport.ch}`);
   judge('C01', '隐私门后大厅入口就绪', (await has('StartButton')) === true, `visibleHeight=${vh}`);
 
   // 寻访是概率抽取，主链用例必须锁定候选病例，所以把候选之外的宠物预置成「已见」：
@@ -631,6 +640,20 @@ function connect(url) {
       const landed = (after.state && after.state.taps || []).filter((t) => t.beat === cur.beat).pop();
       if (landed) {
         grades.push(landed.grade === null ? '点击作废' : GRADE_TEXT[landed.grade] || String(landed.grade));
+        // W33 P0-7：抓一帧「连击 + 判定」同时出现的画面，并留几何证据（两行中心距 ≥60）。
+        if (ONETAKE && grades.length === 1) {
+          await shot('flow-09b-auscultation.png');
+          const gap = await ev(
+            `(() => {
+              const find = (n, nm) => { if (n.name === nm) return n; for (const c of n.children) { const r = find(c, nm); if (r) return r; } return null; };
+              const s = cc.director.getScene();
+              const a = find(s, 'RhythmCombo'); const b = find(s, 'RhythmJudge');
+              if (!a || !b) return null;
+              return { combo: Math.round(a.getWorldPosition().y), judge: Math.round(b.getWorldPosition().y) };
+            })()`,
+          );
+          console.log(`  auscult#layout ${JSON.stringify(gap)}`);
+        }
         const err = Math.round(landed.elapsed - cur.period * CROSS_RATIO);
         lead = Math.round(Math.min(600, Math.max(40, lead + err)));
         console.log(

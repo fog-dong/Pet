@@ -3,6 +3,7 @@
 // P1-3 装修买不起的行直接禁用并写「差 N 金币」，以及三处「资源够了就不该出现指引」的反例。
 // W31 追加：装修小店 4 套大卡 / 差额卡角 / 双联预览（大厅 + 小屋）/ 差额态置灰不弹确认 / 有钱档恢复原价。
 // W31 再追加：真买下樱花 → 存档 habitatTheme=sakura 且金币扣到 3680 → 退出小屋截大厅换色图。
+// W32 追加：大厅房间层（窗 / 走时挂钟 / 光柱）与封面宠（最新领养站在柜台后、带呼吸习性、散步带不重复）。
 // 前置：本地起 web-mobile 构建静态服务 + headless Chrome 开 CDP 端口。
 // 用法：node scripts/verify-w28-p1-browser.js <CDP端口> <站点端口> <截图前缀>
 'use strict';
@@ -114,7 +115,8 @@ function seedSave(overrides) {
       hunger: 50,
       cleanliness: 50,
       mood: 55,
-      birthTimestamp: now - 86400000,
+      // birth 可逐只覆盖：封面宠判定靠「最晚到家」，同批种子必须能造出新旧差。
+      birthTimestamp: (opts.birth && opts.birth[petId]) || now - 86400000,
       lastDecayAt: now,
       soothedDay: '',
     })),
@@ -209,6 +211,17 @@ function seedSave(overrides) {
       let total = 0;
       const walk = (n) => {
         if (n.name.startsWith('ThemePick_')) total++;
+        n.children.forEach(walk);
+      };
+      const s = cc.director.getScene();
+      if (s) walk(s);
+      return total;
+    })()`);
+  const countCoverPets = () =>
+    ev(`(() => {
+      let total = 0;
+      const walk = (n) => {
+        if (n.name.startsWith('LobbyCoverPet_')) total++;
         n.children.forEach(walk);
       };
       const s = cc.director.getScene();
@@ -396,6 +409,38 @@ function seedSave(overrides) {
   await sleep(1000);
   judge('W36', '退出小屋回到大厅（面板已收起）', (await live('HabitatPanel')) !== true && (await ev(SCENE)) === 'Lobby', `面板=${await live('HabitatPanel')} 场景=${await ev(SCENE)}`);
   await shot(`${OUT}-7-theme-applied-lobby`);
+
+  console.log('\n=== 8. W32：大厅不再是一面空墙，最新领养的那只站上封面位 ===');
+  const now = Date.now();
+  await boot({ birth: { pet_husky: now - 86400000 * 9, pet_british: now - 3600000 } });
+  judge('X1', '房间层三件都在：窗 / 挂钟 / 窗光', (await has('LobbyWindow')) && (await has('LobbyClock')) && (await has('LobbyWindowLight')), `窗=${await has('LobbyWindow')} 钟=${await has('LobbyClock')} 光=${await has('LobbyWindowLight')}`);
+  const secAngle = () =>
+    ev(`(() => { const n = (${FIND})('LobbyClockSecond'); return n ? n.angle : null; })()`);
+  const a1 = await secAngle();
+  await sleep(1300);
+  const a2 = await secAngle();
+  judge('X2', '秒针在走（真实时间起转，不是画上去的刻度）', a1 !== null && a2 !== null && Math.abs(a2 - a1) >= 4, `${a1} → ${a2}`);
+  judge('X3', '封面是最近领养的布偶（旧的金毛不占封面）', (await has('LobbyCoverPet_pet_british')) === true && (await has('LobbyCoverPet_pet_husky')) === false, `布偶=${await has('LobbyCoverPet_pet_british')} 金毛=${await has('LobbyCoverPet_pet_husky')}`);
+  const breathScale = () =>
+    ev(`(() => { const n = (${FIND})('LobbyCoverPet_pet_british'); if (!n) return null; const c = n.getChildByName('Content'); return c ? Math.round(c.scale.x * 10000) / 10000 : null; })()`);
+  const s1 = await breathScale();
+  await sleep(1200);
+  const s2 = await breathScale();
+  judge('X4', '封面宠在呼吸/习性循环（不是一张贴图定在那儿）', s1 !== null && s2 !== null && s1 !== s2, `scale ${s1} → ${s2}`);
+  judge('X5', '同一只不会同屏出现两次：散步带只剩金毛', (await has('LobbyPet_pet_husky')) === true && (await has('LobbyPet_pet_british')) === false, `金毛=${await has('LobbyPet_pet_husky')} 布偶=${await has('LobbyPet_pet_british')}`);
+  judge('X6', '两只有宠时不再挂空带立牌', (await has('LobbyPetBandEmpty')) === false, `空牌=${await has('LobbyPetBandEmpty')}`);
+  await shot(`${OUT}-8-lobby-cover-pet`);
+  await tap('LobbyCoverPet_pet_british');
+  if (!(await waitFor('HabitatPanel', 12000))) throw new Error('点封面宠没开小屋');
+  await sleep(700);
+  judge('X7', '点封面宠直接进小屋（门面也是入口）', (await has('HabitatPanel')) === true, `小屋=${await has('HabitatPanel')}`);
+
+  console.log('\n=== 9. 反例：一只都没领养时，封面位空着、空带立牌回来 ===');
+  await boot({ pets: [] });
+  judge('X8', '没宠物时封面位真的空着（不留占位立绘）', (await countCoverPets()) === 0, `封面宠=${await countCoverPets()}`);
+  judge('X9', '没宠物时散步带回到「去救一只」立牌', (await has('LobbyPetBandEmpty')) === true, `空牌=${await has('LobbyPetBandEmpty')}`);
+  judge('X10', '房间层照常（空档也不该是一块死墙）', (await has('LobbyWindow')) && (await has('LobbyClock')), `窗=${await has('LobbyWindow')}`);
+  await shot(`${OUT}-9-lobby-empty-room`);
 
   const noisy = errors.filter((e) => !e.includes('apple-mobile-web-app-capable'));
   console.log('=== console errors (' + errors.length + ') ===');

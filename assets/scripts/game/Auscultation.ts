@@ -5,6 +5,7 @@ import { AuscultationFinish, buildRhythmResult } from './AuscultationScore';
 import { AuscultationRhythm, rhythmRule, RhythmGrade } from './AuscultationRhythm';
 import { AuscultationRhythmView } from './AuscultationRhythmView';
 import { DiagnosisHud } from './DiagnosisHud';
+import { Sfx } from './Sfx';
 import { Track } from '../track/Track';
 
 const { ccclass } = _decorator;
@@ -83,6 +84,8 @@ export class Auscultation extends Component {
     this.view?.judge(grade);
     if (grade !== 'miss') {
       this.playHeartbeat();
+    } else {
+      Sfx.play('uiFail');
     }
     Track.track('diagnosis_action', {
       caseId: this.item?.caseId ?? '', type: 'auscultation', result: grade,

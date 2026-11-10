@@ -14,6 +14,7 @@ import {
   UITransform,
 } from 'cc';
 import { Quality } from '../config/Quality';
+import { Sfx } from '../game/Sfx';
 import { DURATION } from '../ui/Tokens';
 
 let root: Node | null = null;
@@ -32,6 +33,8 @@ export function fadeToScene(sceneName: string): Promise<boolean> {
   if (!sceneName) {
     return Promise.resolve(false);
   }
+  // 转场音在淡出前起，跟画面同时走；低画质档由 Sfx 按非必要音效静音。
+  Sfx.play('uiTransition');
   if (broken || busy || !ensureRoot()) {
     return loadDirect(sceneName);
   }

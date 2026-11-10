@@ -186,6 +186,7 @@ export class Treatment extends Component {
       threshold,
       CaseCrisis.addTreatmentRetry(item.caseId),
     );
+    Sfx.play('uiFail');
     // 面板打开后再弹 Toast，才不会被遮罩压暗（ChoicePanel 打开时把自己提到最上层）。
     showNotice(this.node, penaltyText);
   }

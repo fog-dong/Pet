@@ -16,6 +16,7 @@ import { CaseSession } from './CaseSession';
 import type { CaseReward } from './CaseSettle';
 import { buildSaveSnapshot } from './CloudPayload';
 import { DoubleReward } from './ResultAd';
+import { Sfx } from './Sfx';
 import { totalText, transferText } from './ResultText';
 import { addBreakdown, addReward, floatReward, refreshReward } from './ResultView';
 import type { RewardHandle } from './ResultView';
@@ -44,6 +45,7 @@ export class Result extends Component {
     const transferred = CaseCrisis.transferred;
     const pet = item ? item.petName : '宝贝';
     const root = this.node;
+    Sfx.play(success ? 'uiSuccess' : 'uiFail');
     mountBackdrop(root, 'result');
     addLabel(root, 'PageTitle', COPY.resultTitle, TITLE_Y, { size: 52 });
     addLabel(

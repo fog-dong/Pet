@@ -46,7 +46,7 @@ function bundleHasClip(bundle: AssetManager.Bundle, path: string): boolean {
   }
 }
 
-function loadClip(path: string): Promise<AudioClip | null> {
+export function loadArtClip(path: string): Promise<AudioClip | null> {
   return warmArtBundle()
     .then((ready) => {
       const bundle = ready ? assetManager.getBundle(ART_BUNDLE) : null;
@@ -65,7 +65,7 @@ function loadClip(path: string): Promise<AudioClip | null> {
 async function resolveSource(cue: AudioCue): Promise<Source> {
   const def = AUDIO_TABLE[cue];
   if (def.bundlePath) {
-    const clip = await loadClip(def.bundlePath);
+    const clip = await loadArtClip(def.bundlePath);
     if (clip) {
       return { kind: 'clip', clip };
     }
@@ -107,6 +107,10 @@ export const Sfx = {
     if (!def || muted(def.essential)) {
       return;
     }
+    if (!audioAllowed()) {
+      Sfx.warm([cue]);
+      return;
+    }
     const known = sources.get(cue);
     if (known) {
       emit(known, def.volume);
@@ -124,9 +128,34 @@ export const Sfx = {
       }
     });
   },
+
+  /** 预取来源但不发声：点击音若等到第一次按下才开始加载，第一下会慢半拍。 */
+  warm(cues: AudioCue[]): void {
+    for (const cue of cues) {
+      if (sources.has(cue) || resolving.has(cue)) {
+        continue;
+      }
+      resolving.add(cue);
+      void resolveSource(cue).then((source) => {
+        resolving.delete(cue);
+        sources.set(cue, source);
+      });
+    }
+  },
 };
 
 /** 低画质档位只保留必要音效；档位本身由 getConfig 的 quality 远程控制。 */
 function muted(essential: boolean): boolean {
   return Quality.low && !essential;
+}
+
+/**
+ * 浏览器在首次用户手势前会拦音频并刷控制台警告；小游戏容器没有 navigator.userActivation，按可播处理。
+ * 返回 false 时调用方只解析来源、不真正发声，第一次触摸后自然恢复。
+ */
+export function audioAllowed(): boolean {
+  const activation = (globalThis as unknown as {
+    navigator?: { userActivation?: { hasBeenActive?: boolean } };
+  }).navigator?.userActivation;
+  return !activation || activation.hasBeenActive === true;
 }

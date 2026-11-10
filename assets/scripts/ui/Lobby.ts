@@ -7,8 +7,10 @@ import { CONFIG_BUNDLE } from '../config/ConfigLoader';
 import { PRIVACY_GUEST_TEXT } from '../config/LegalConfig';
 import { refreshQuality } from '../core/BootCloud';
 import { Res } from '../core/Res';
+import { Bgm } from '../game/Bgm';
 import { CharacterView } from '../game/CharacterView';
 import { habitatList } from '../game/HabitatModel';
+import { Sfx } from '../game/Sfx';
 import { Profile } from '../net/Profile';
 import { Track } from '../track/Track';
 import { HudHandle } from './LobbyChrome';
@@ -50,6 +52,9 @@ export class Lobby extends Component {
 
   protected start(): void {
     Save.load();
+    Bgm.start();
+    // 四类通用反馈音先取一次：第一次点击就不必等分包加载完才响。
+    Sfx.warm(['uiClick', 'uiSuccess', 'uiFail', 'uiTransition']);
     // 资源不足指引条的落点：金币/爱心面板只管说「送到哪一格」，真跳转由大厅负责（成就直接开面板，少一次点击）。
     setEarnJumpHandler((tab) => this.goEarnTab(tab));
     this.hint = new LobbyHint(this.node);

@@ -1,5 +1,6 @@
 // STATUS: implemented, W16 P0 统一按钮（九宫格底 + 软投影 + 按下回弹 + 禁用态，无贴图自动降级）；W20-1 按压对齐 M1 0.96 + 错峰入场打断守卫
 import { Button, Color, Label, Node, Tween, tween, UITransform, Vec3 } from 'cc';
+import { Sfx } from '../game/Sfx';
 import { makeLabel, centerLabel } from './FontKit';
 import { settleEntrance } from './MotionKit';
 import { addShadow, createBox, paintRound, sliceNode } from './PanelKit';
@@ -107,6 +108,7 @@ export function bindPressEffect(node: Node): void {
     if (node.getComponent(Button)?.interactable === false) {
       return;
     }
+    Sfx.play('uiClick');
     Tween.stopAllByTarget(node);
     settleEntrance(node);
     tween(node).to(DURATION.press, { scale: new Vec3(PRESS_SCALE, PRESS_SCALE, 1) }).start();

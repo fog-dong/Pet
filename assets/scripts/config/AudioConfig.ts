@@ -12,7 +12,11 @@ export type AudioCue =
   | 'recoverTick'
   | 'feed'
   | 'bath'
-  | 'pet';
+  | 'pet'
+  | 'uiClick'
+  | 'uiSuccess'
+  | 'uiFail'
+  | 'uiTransition';
 
 export interface AudioDef {
   /** 云存储清单里的 key（resource_manifest.files[].key）。 */
@@ -46,7 +50,20 @@ export const AUDIO_TABLE: Record<AudioCue, AudioDef> = {
   feed: { cloudKey: 'sfx_feed', bundlePath: 'audio/feed', essential: false, volume: 0.5, fallback: { freq: 660, ms: 110 } },
   bath: { cloudKey: 'sfx_bath', bundlePath: 'audio/bath', essential: false, volume: 0.5, fallback: { freq: 520, ms: 140 } },
   pet: { cloudKey: 'sfx_pet', bundlePath: 'audio/pet', essential: false, volume: 0.45, fallback: { freq: 780, ms: 90 } },
+  // W33 四类通用反馈音：点击 / 成功 / 失败 / 转场，覆盖「每个交互都有声或动」的反馈预算。
+  uiClick: { cloudKey: 'sfx_ui_click', bundlePath: 'audio/ui_click', essential: true, volume: 0.28 },
+  uiSuccess: { cloudKey: 'sfx_ui_success', bundlePath: 'audio/ui_success', essential: true, volume: 0.5 },
+  uiFail: { cloudKey: 'sfx_ui_fail', bundlePath: 'audio/ui_fail', essential: true, volume: 0.42 },
+  uiTransition: { cloudKey: 'sfx_ui_transition', bundlePath: 'audio/ui_transition', essential: false, volume: 0.3 },
 };
+
+/** 大厅 BGM：常驻循环，低画质档不播（见 game/Bgm.ts）。 */
+export interface BgmDef {
+  bundlePath: string;
+  volume: number;
+}
+
+export const BGM_LOBBY: BgmDef = { bundlePath: 'audio/bgm_lobby', volume: 0.16 };
 
 const SPECIES_CUE: Record<PetSpecies, AudioCue> = {
   cat: 'catCry',

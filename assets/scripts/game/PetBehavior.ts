@@ -1,8 +1,9 @@
-// STATUS: implemented, W17-3 宠物行为状态机（五档循环位移 + 帧序列，缺资源或低画质退回静态姿态）
+// STATUS: implemented, W17-3 宠物行为状态机（五档循环位移 + 帧序列，缺资源或低画质退回静态姿态）；W30-1 idle 档接入走动/伸懒腰/舔爪
 // 位移幅度受控：缩放 ≤1.06、旋转 ≤4°、位移 ≤12px，不让角色抢过页面主操作。
 import { Node, SpriteFrame, Tween, tween, Vec3 } from 'cc';
 import { Quality } from '../config/Quality';
 import type { PetState } from './CharacterLook';
+import { startIdleLife, stopIdleLife } from './PetHabits';
 import { loadStateFrames } from './PetFrames';
 
 /** 帧序列节奏：约 6 帧/秒，摇尾与跳跃不会显得卡顿。 */
@@ -22,13 +23,16 @@ export class PetBehavior {
   private index = 0;
   private token = 0;
   private timer: ReturnType<typeof setTimeout> | null = null;
+  private habits = false;
 
   constructor(host: PetVisualHost) {
     this.host = host;
   }
 
-  get current(): PetState {
-    return this.state;
+  /** 只给大厅散步带与在小屋卡片开：同屏主动作过多会抢页面主操作。 */
+  setHabits(on: boolean): void {
+    this.habits = on;
+    this.animate();
   }
 
   /** 每次调用都重播：帧序列按缓存返回，位移从静态姿态重新开始。 */
@@ -56,6 +60,7 @@ export class PetBehavior {
     this.stopTimer();
     const content = this.host.contentNode;
     if (content) {
+      stopIdleLife(content);
       Tween.stopAllByTarget(content);
     }
   }
@@ -66,6 +71,7 @@ export class PetBehavior {
     if (!content) {
       return;
     }
+    stopIdleLife(content);
     Tween.stopAllByTarget(content);
     content.setScale(Vec3.ONE);
     if (this.state === 'sick') {
@@ -78,18 +84,17 @@ export class PetBehavior {
     if (Quality.low) {
       return;
     }
+    if (this.state === 'idle' && this.habits) {
+      startIdleLife(content);
+      return;
+    }
     this.loop(content);
   }
 
   private loop(content: Node): void {
     if (this.state === 'recover') {
-      tween(content)
-        .to(0.5, { angle: -4 })
-        .to(0.5, { angle: 4 })
-        .to(0.5, { angle: 0 })
-        .union()
-        .repeatForever()
-        .start();
+      tween(content).to(0.5, { angle: -4 }).to(0.5, { angle: 4 }).to(0.5, { angle: 0 })
+        .union().repeatForever().start();
       return;
     }
     if (this.state === 'happy') {

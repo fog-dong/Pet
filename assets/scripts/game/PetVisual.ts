@@ -1,4 +1,4 @@
-// STATUS: implemented, W16 宠物立绘（贴图 + 阴影 + 缺图占位）；W17-3 挂五档行为状态机与帧序列
+// STATUS: implemented, W16 宠物立绘（贴图 + 阴影 + 缺图占位）；W17-3 挂五档行为状态机与帧序列；W30-1 可选习性动作
 import { _decorator, Color, Component, Label, Node, Sprite, SpriteFrame, Tween, UITransform } from 'cc';
 import { artName, loadPetFrame } from './PetAssetManager';
 import { PetBehavior } from './PetBehavior';
@@ -13,8 +13,6 @@ import {
 
 const { ccclass } = _decorator;
 
-const CLEAN_TINT = new Color(255, 255, 255, 255);
-
 /** 贴图区占 size 的 86%，剩下留给地面阴影和呼吸位移。 */
 const ART_RATIO = 0.86;
 
@@ -27,7 +25,7 @@ export class PetVisual extends Component {
   private placeholderLabel: Label | null = null;
   private repaintPlaceholder: ((look: PlaceholderLook) => void) | null = null;
   private behavior: PetBehavior | null = null;
-  private tint: Color = CLEAN_TINT;
+  private tint: Color = new Color(255, 255, 255, 255);
   private token = 0;
   private petId = '';
 
@@ -70,14 +68,12 @@ export class PetVisual extends Component {
     });
   }
 
-  /**
-   * 播放行为状态：位移始终有，帧序列只在云存储清单里存在时才播。
-   * 低画质档由 PetBehavior 内部收尾为静态姿态，不跑循环。
-   */
-  playState(state: PetState): void {
+  /** 位移始终有，帧序列只在云存储清单里存在时才播；withHabits 只给散步带与在小屋卡片开，低画质不跑。 */
+  playState(state: PetState, withHabits = false): void {
     if (!this.behavior) {
       this.behavior = new PetBehavior(this);
     }
+    this.behavior.setHabits(withHabits);
     this.behavior.play(state, artName(this.petId));
   }
 

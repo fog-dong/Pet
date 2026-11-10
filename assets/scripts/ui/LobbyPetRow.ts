@@ -2,7 +2,7 @@
 // 谁上台：三项属性合计最差的两只。回大厅第一眼就看到「谁最需要照顾」，这是散步带的回访钩子，不是随机摆 pose。
 import { Color, Graphics, Node, Tween, Vec3, tween } from 'cc';
 import { HabitatPet } from '../cache/HabitatCodec';
-import type { PetState } from '../game/CharacterLook';
+import { petMoodState } from '../game/PetMood';
 import { PetVisual } from '../game/PetVisual';
 import { addDecor } from './Backdrop';
 import { lobbyPetBandSize, lobbyPetBandY } from './LobbyDockLayout';
@@ -21,8 +21,6 @@ const CUSHION_RATIO = 1.04;
 const CUSHION_FOOT_RATIO = 0.3633;
 const CUSHION_DROP = 4;
 const MAX_VISIBLE = 2;
-const WORST_STAT_SLEEP = 30;
-const HAPPY_MOOD = 70;
 const EMPTY_TEXT = '救回第一只小家伙后，它会在这里等你';
 
 export interface PetBandHandle {
@@ -38,7 +36,7 @@ export function mountLobbyPetRow(parent: Node, onPick: (petId: string) => void):
     refresh(entries: readonly HabitatPet[]): void {
       const picked = bandPets(entries);
       // 小屋每做一次互动都会回调刷资源；台上人和状态没变就别重建，否则每点一下都在重播入场。
-      const next = picked.map((entry) => `${entry.petId}:${bandState(entry)}`).join('|');
+      const next = picked.map((entry) => `${entry.petId}:${petMoodState(entry)}`).join('|');
       if (built && next === key) {
         return;
       }
@@ -95,7 +93,8 @@ function addPet(
   visual.node.name = `LobbyPet_${entry.petId}`;
   visual.node.setPosition(x, 0, 0);
   visual.apply(entry.petId);
-  visual.playState(bandState(entry));
+  // 散步带是「回来一眼看到它」的门面，只在这两只身上插入习性动作，图鉴等批量立绘保持安静。
+  visual.playState(petMoodState(entry), true);
   bindPick(visual.node, () => onPick(entry.petId));
   return visual.node;
 }
@@ -104,15 +103,6 @@ function bandPets(entries: readonly HabitatPet[]): HabitatPet[] {
   return [...entries]
     .sort((a, b) => a.hunger + a.cleanliness + a.mood - (b.hunger + b.cleanliness + b.mood))
     .slice(0, MAX_VISIBLE);
-}
-
-/** 档位沿用行为状态机现有的三档，不为大厅新造一档。 */
-function bandState(entry: HabitatPet): PetState {
-  const worst = Math.min(entry.hunger, entry.cleanliness, entry.mood);
-  if (worst < WORST_STAT_SLEEP) {
-    return 'sleep';
-  }
-  return entry.mood >= HAPPY_MOOD ? 'happy' : 'idle';
 }
 
 /** 按下压一档、松手先回弹再演 Q 弹，然后才开面板：手感在前，面板在后。 */

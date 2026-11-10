@@ -6,6 +6,8 @@ import { HabitatPet } from '../cache/HabitatCodec';
 import { CharacterConfig } from '../config/CharacterConfig';
 import { getLifeStage } from '../game/AgeSystem';
 import { HabitatAction, HabitatStatKey } from '../game/HabitatRules';
+import type { PetState } from '../game/CharacterLook';
+import { petMoodState } from '../game/PetMood';
 import { PetVisual } from '../game/PetVisual';
 import { addLabel, addRect } from './SceneUI';
 import { addLifeBar, addLifeCompact, addStageTag } from './LifeBadge';
@@ -78,6 +80,7 @@ export function buildHabitatRow(
   visual.node.name = `HabitatPortrait_${entry.petId}`;
   visual.node.setPosition(PORTRAIT_X, PORTRAIT_Y, 0);
   visual.apply(entry.petId);
+  visual.playState(cardState(entry), true);
 
   addLabel(card, 'HabitatName', look ? look.name : entry.petId, NAME_Y, {
     size: 26,
@@ -132,4 +135,10 @@ export function buildHabitatRow(
 
 export function applyStats(stats: HabitatStats, entry: HabitatPet): void {
   STAT_ORDER.forEach((key) => stats[key].update(entry[key]));
+}
+
+/** 卡片是可停留的看护界面：饿了趴着睡、平时踱两步；happy 的跳跃留给大厅散步带，多张卡片同时跳会抢按钮。 */
+function cardState(entry: HabitatPet): PetState {
+  const mood = petMoodState(entry);
+  return mood === 'happy' ? 'idle' : mood;
 }

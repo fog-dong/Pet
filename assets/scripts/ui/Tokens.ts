@@ -105,6 +105,12 @@ export const DURATION = {
   bathNudge: 0.18,
   /** 咀嚼单次脉冲，播两次。 */
   chew: 0.12,
+  /** 习性动作（W30-1）：呼吸一拍 / 走动单步 / 伸懒腰单段 / 舔爪单下 / 两个主动作之间的间隔。 */
+  habitBreath: 1.1,
+  habitStep: 0.22,
+  habitStretch: 0.3,
+  habitLick: 0.16,
+  habitGap: 2.6,
   /** 单颗粒子从出生到淡出。 */
   particle: 0.75,
   /** 大厅散步带入场（入场比退场长一档）。 */

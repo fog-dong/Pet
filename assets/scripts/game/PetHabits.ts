@@ -38,6 +38,8 @@ export function startIdleLife(content: Node, options: IdleOptions = {}): void {
   let stopped = false;
 
   const settle = (): void => {
+    // 面板关闭时子树先于组件销毁，此刻写已销毁节点会抛空指针
+    if (!content.isValid) return;
     content.setScale(ONE);
     content.angle = 0;
     content.setPosition(home.x, home.y, home.z);

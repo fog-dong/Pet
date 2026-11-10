@@ -45,8 +45,14 @@ check('收口 负数当零', earnRoute('coins', { claimable: -2, rehomeReady: -1
 check('收口 小数向下取整', earnRoute('coins', { claimable: 4.7, rehomeReady: 0 }).tab, 'achieve');
 includes('收口 文案无小数', earnRoute('coins', { claimable: 4.7, rehomeReady: 0 }).text, '4 档');
 
-// 六、红线：任何一条路线都不许把玩家支到广告或付费入口。
-const all = [coinsFirst, coinsRehome, heartsRehome, fallback].map((route) => route.text).join('|');
+// 六、W28 P1-1 药剂：只有后院合成一条路，成就发的是金币和爱心，指过去领完还是没药。
+const medicine = earnRoute('medicine', { claimable: 4, rehomeReady: 2 });
+check('药剂 不看可领成就', medicine.tab, 'garden');
+includes('药剂 文案指后院', medicine.text, '后院');
+check('药剂 文案装得进 330 卡片', medicine.text.length <= 13, true);
+
+// 七、红线：任何一条路线都不许把玩家支到广告或付费入口。
+const all = [coinsFirst, coinsRehome, heartsRehome, fallback, medicine].map((route) => route.text).join('|');
 for (const word of ['看广告', '充值', '购买', '支付']) {
   const ok = !all.includes(word);
   if (!ok) {
@@ -55,5 +61,5 @@ for (const word of ['看广告', '充值', '购买', '支付']) {
   console.log(`${ok ? 'OK  ' : 'FAIL'} 红线 指引文案不含「${word}」`);
 }
 
-console.log(failures === 0 ? '\nALL PASS 获取指引 15 项' : `\n${failures} 项不符合预期`);
+console.log(failures === 0 ? '\nALL PASS 获取指引 18 项' : `\n${failures} 项不符合预期`);
 process.exit(failures === 0 ? 0 : 1);

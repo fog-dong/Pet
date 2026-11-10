@@ -1,13 +1,15 @@
-// STATUS: implemented, W25 P1-C 小屋列表装配（从 HabitatPanel 拆出守住 150 行；支持主题卡片底色）
+// STATUS: implemented, W25 P1-C 小屋列表装配（从 HabitatPanel 拆出守住 150 行；支持主题卡片底色）；W28 P1-2 顺带收编滚动提示
 import { Color, Mask, Node, ScrollView, UITransform, Vec2 } from 'cc';
 import { HabitatPet } from '../cache/HabitatCodec';
-import { createNode } from './SceneUI';
+import { addLabel, createNode, PALETTE } from './SceneUI';
 import { buildHabitatRow, HABITAT_CARD_H, HabitatRow, RowAction, RowCommand } from './HabitatRows';
 
 /** 视口高度刻意留到 500：底部要空出 35px 给滚动提示，别让最后一张卡压着文字。 */
 const VIEW_H = 500;
 /** 卡片比旧版宽 20：立绘放大到 190 后左右两栏需要这点余量，560 是面板 660 减两侧 50。 */
 const CARD_SIDE = 50;
+/** 列表装不下才提示拖动；这一格在 W28 让给了缺爱心的指引条，所以由列表自己决定亮不亮。 */
+const SCROLL_HINT_Y = -285;
 
 export function buildHabitatList(
   panel: Node,
@@ -39,6 +41,9 @@ export function buildHabitatList(
   scroll.vertical = true;
   scroll.horizontal = false;
   scroll.brake = 0.72;
+  if (entries.length > 2) {
+    addLabel(panel, 'HabitatScrollHint', '上下拖动可以翻看全部宠物', SCROLL_HINT_Y, { size: 20, color: PALETTE.sub });
+  }
   focusRow(scroll, entries, focusPetId);
   return rows;
 }

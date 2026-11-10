@@ -14,6 +14,7 @@ import { Point } from './ParticleKit';
 import { HabitatRow } from './HabitatRows';
 import { buildHabitatList } from './HabitatList';
 import { habitatHintText, localToHost } from './HabitatTapActions';
+import { attachHeartsGuide } from './HabitatShortfallGuide';
 import { playFeedback } from './HabitatFeedback';
 import { buildHabitatFooter } from './HabitatFooter';
 import { showHealBubble } from './HabitatBubble';
@@ -73,7 +74,9 @@ export function openHabitatPanel(parent: Node, onResourcesChanged?: () => void, 
     addLabel(panel, 'HabitatEmpty', EMPTY_TEXT, 40, { size: 28, color: PALETTE.sub, width: width - 120 });
   } else {
     hint = addLabel(panel, 'HabitatQuotaLabel', habitatHintText(), 272, { size: 18, color: PALETTE.sub, width: width - 60 });
-    const refresh = makeRowRefresh(() => rows, () => hint, () => resourcesChanged);
+    // W28 P1-2：缺爱心时在引导行那一格挂可点出路；节点挂在遮罩下，随面板一起销毁，不留模块状态。
+    const guide = attachHeartsGuide(panel, () => hint, closeHabitatPanel);
+    const refresh = makeRowRefresh(() => rows, () => hint, () => resourcesChanged, () => guide);
     refreshRow = refresh;
     const onCare = (row: HabitatRow): void => {
       if (overlay) {
@@ -86,9 +89,6 @@ export function openHabitatPanel(parent: Node, onResourcesChanged?: () => void, 
       }
     };
     rows = buildHabitatList(panel, entries, width, focusPetId, tint(theme.card), fire, onCare, onRehome);
-    if (entries.length > 2) {
-      addLabel(panel, 'HabitatScrollHint', '上下拖动可以翻看全部宠物', -285, { size: 20, color: PALETTE.sub });
-    }
   }
   // 底部两枚按钮（领取回执 + 关闭）在 HabitatFooter 里，本文件只管列表与遮罩。
   buildHabitatFooter(panel, width, parent, closeHabitatPanel, onResourcesChanged);

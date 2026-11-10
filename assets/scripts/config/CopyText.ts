@@ -50,6 +50,8 @@ export const COPY = {
   habitatThemeUsing: '使用中',
   habitatThemeUse: '使 用',
   habitatThemeBuy: '{cost} 金币',
+  /** W28 P1-3：买不起的档位在按钮上直接写差额，不用点了确认弹窗才知道钱不够。 */
+  habitatThemeShort: '差 {cost} 金币',
   habitatThemeApplied: '小屋已换成「{name}」',
   habitatThemeConfirm: '买下「{name}」？',
   habitatThemeConfirmYes: '花 {cost} 金币买下',

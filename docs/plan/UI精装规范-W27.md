@@ -149,14 +149,14 @@ grep -rn "bindTapZone(" assets/scripts | grep -v "export function"      # 同函
 | P0-3 | 金币不足时按钮只是死色块，没有"去哪获取"的快捷指引 | `game/EarnRoutes`（按到账速度排序）+ `ui/EarnGuide`（可点胶囊）接入医院扩建与小屋装修；红线禁止指向广告/付费 | `4c636ff` |
 | P0-4 | 面板开关是 `destroy()` 硬切，大厅→后院→小屋读起来一顿一顿 | `ui/PanelMotion.enterPanel` / `leavePanel`，遮罩淡入 + 卡片上浮落位，关闭淡出后再销毁 | 本次提交 |
 
-### 登记未修（P1，附证据，不阻断发版）
+### P1 台账（W27 登记 → W28 拍板收口）
 
-| # | 问题 | 证据 | 建议 |
-|---|---|---|---|
-| P1-1 | 日常护理面板置灰只给原因，不给出路：驱虫缺药剂时写着"消耗 1 支驱虫药剂（后院合成）"，但那句话不可点 | [CarePanel.ts:71](file:///C:/Users/15181/Desktop/项目/pet/assets/scripts/ui/CarePanel.ts#L71) + [CareCard.ts:38](file:///C:/Users/15181/Desktop/项目/pet/assets/scripts/ui/CareCard.ts#L38) | 复用 `addEarnGuide`，新增 `hearts` 之外的第三种 `kind`（指向后院）；纯 UI 接线，不改数据层 |
-| P1-2 | 高级粮缺爱心时只降饱和 + toast，玩家要退出小屋才知道去哪拿爱心 | [HabitatChip.ts:48](file:///C:/Users/15181/Desktop/项目/pet/assets/scripts/ui/HabitatChip.ts#L48)、[HabitatTapActions.ts:115](file:///C:/Users/15181/Desktop/项目/pet/assets/scripts/ui/HabitatTapActions.ts#L115) | 同 P1-1，`shortfallText` 已给出原因，缺的只是可点出路 |
-| P1-3 | 装修档位按钮在"买不起"时仍是金色可点，要连点两次（购买 → 确认弹窗）才知道钱不够；指引条只在整面板全买不起时出现 | [HabitatThemeRow.ts:60](file:///C:/Users/15181/Desktop/项目/pet/assets/scripts/ui/HabitatThemeRow.ts#L60)（只有 `current` 会 `setUIButtonState(false)`，见 :64）、[HabitatThemePanel.ts:69](file:///C:/Users/15181/Desktop/项目/pet/assets/scripts/ui/HabitatThemePanel.ts#L69) | 买不起的行按 `disabled` 渲染 + 文案改成"差 N 金币"，避免二次确认后落空 |
-| P1-4 | 后院地块点击失败（未到成熟 / 缺水）只有 toast，无红点以外的前置提示 | [GardenPlotCard.ts:108](file:///C:/Users/15181/Desktop/项目/pet/assets/scripts/ui/GardenPlotCard.ts#L108) | 缺口是草药/金币可同屏收获，优先级判低；只在成熟时靠 P0-2 红点引导即可 |
+| # | 问题 | 证据 | 建议 | W28 状态 |
+|---|---|---|---|---|
+| P1-1 | 日常护理面板置灰只给原因，不给出路：驱虫缺药剂时写着"消耗 1 支驱虫药剂（后院合成）"，但那句话不可点 | [CarePanel.ts:71](file:///C:/Users/15181/Desktop/项目/pet/assets/scripts/ui/CarePanel.ts#L71) + [CareCard.ts:38](file:///C:/Users/15181/Desktop/项目/pet/assets/scripts/ui/CareCard.ts#L38) | 复用 `addEarnGuide`，新增 `hearts` 之外的第三种 `kind`（指向后院）；纯 UI 接线，不改数据层 | ✅ 已修：`EarnRoutes` 加 `medicine` 档（恒指后院，不看可领成就，因为成就只发金币/爱心），[CarePanel.ts:81](file:///C:/Users/15181/Desktop/项目/pet/assets/scripts/ui/CarePanel.ts#L81) 在驱虫卡正下方 y=-215 挂 `CareDewormGuide`（宽 330 与卡同宽），`stock<=0` 才亮 |
+| P1-2 | 高级粮缺爱心时只降饱和 + toast，玩家要退出小屋才知道去哪拿爱心 | [HabitatChip.ts:48](file:///C:/Users/15181/Desktop/项目/pet/assets/scripts/ui/HabitatChip.ts#L48)、[HabitatTapActions.ts:115](file:///C:/Users/15181/Desktop/项目/pet/assets/scripts/ui/HabitatTapActions.ts#L115) | 同 P1-1，`shortfallText` 已给出原因，缺的只是可点出路 | ✅ 已修：新文件 [HabitatShortfallGuide.ts](file:///C:/Users/15181/Desktop/项目/pet/assets/scripts/ui/HabitatShortfallGuide.ts) 占用引导行那一格（y=272），缺爱心时亮 `HabitatHeartsGuide` 并把 `HabitatQuotaLabel` 隐藏，行刷新时 `sync()` 装载/卸载；滚动提示迁入 [HabitatList.ts:44](file:///C:/Users/15181/Desktop/项目/pet/assets/scripts/ui/HabitatList.ts#L44) |
+| P1-3 | 装修档位按钮在"买不起"时仍是金色可点，要连点两次（购买 → 确认弹窗）才知道钱不够；指引条只在整面板全买不起时出现 | [HabitatThemeRow.ts:60](file:///C:/Users/15181/Desktop/项目/pet/assets/scripts/ui/HabitatThemeRow.ts#L60)（只有 `current` 会 `setUIButtonState(false)`，见 :64）、[HabitatThemePanel.ts:69](file:///C:/Users/15181/Desktop/项目/pet/assets/scripts/ui/HabitatThemePanel.ts#L69) | 买不起的行按 `disabled` 渲染 + 文案改成"差 N 金币"，避免二次确认后落空 | ✅ 已修：数据层 `themeShortfall()`（[HabitatThemes.ts:60](file:///C:/Users/15181/Desktop/项目/pet/assets/scripts/game/HabitatThemes.ts#L60)），UI 只做两件事——文案 `差 N 金币` + `setUIButtonState(false)`；点击回调再拦一道 `themeShortfall>0` 直接 return，任何派发路径都到不了确认弹窗 |
+| P1-4 | 后院地块点击失败（未到成熟 / 缺水）只有 toast，无红点以外的前置提示 | [GardenPlotCard.ts:108](file:///C:/Users/15181/Desktop/项目/pet/assets/scripts/ui/GardenPlotCard.ts#L108) | 缺口是草药/金币可同屏收获，优先级判低；只在成熟时靠 P0-2 红点引导即可 | ⬜ 维持不修（拍板：P1-4 优先级判低，红点已覆盖成熟提示） |
 
 ---
 

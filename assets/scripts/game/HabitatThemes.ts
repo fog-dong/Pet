@@ -53,6 +53,17 @@ export function isThemeOwned(theme: HabitatTheme | string): boolean {
   return Save.snapshot().habitatThemes.includes(item.id);
 }
 
+/**
+ * 买不起还差多少金币：0 表示钱够（或已拥有）。
+ * W28 P1-3：UI 据此把按钮直接画成禁用态，玩家不必点两轮确认才知道钱不够。
+ */
+export function themeShortfall(theme: HabitatTheme): number {
+  if (isThemeOwned(theme)) {
+    return 0;
+  }
+  return Math.max(0, theme.cost - Save.coins);
+}
+
 /** 当前生效主题：存档指向未购买的主题时回落默认，不让改档拿到付费外观。 */
 export function currentHabitatTheme(): HabitatTheme {
   Save.load();

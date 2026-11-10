@@ -17,6 +17,7 @@ import { showToast } from './Toast';
 import { addUIButton } from './UIButton';
 import { COLORS, HEX, tint } from './Tokens';
 import { closeNailGame, openNailGame } from './NailGame';
+import { addEarnGuide } from './EarnGuide';
 
 const PANEL_H = 760;
 
@@ -27,6 +28,7 @@ let changed: ((entry: HabitatPet) => void) | undefined;
 let profile: CareProfileHandle | null = null;
 let nailCard: CareCardHandle | null = null;
 let dewormCard: CareCardHandle | null = null;
+let dewormGuide: Node | null = null;
 
 export function closeCarePanel(): void {
   closeNailGame();
@@ -37,6 +39,7 @@ export function closeCarePanel(): void {
   profile = null;
   nailCard = null;
   dewormCard = null;
+  dewormGuide = null;
 }
 
 export function openCarePanel(parent: Node, id: string, onChanged?: (entry: HabitatPet) => void): void {
@@ -74,6 +77,9 @@ export function openCarePanel(parent: Node, id: string, onChanged?: (entry: Habi
     color: COLORS.sage,
     onFire: runDeworm,
   });
+  // W28 P1-1：置灰那行只说"没药"，不说去哪拿；卡片下方补一条可点出路，窄到 330 跟卡同宽。
+  dewormGuide = addEarnGuide(panel, -215, 'medicine', closeCarePanel, 'CareDewormGuide', 330);
+  dewormGuide.setPosition(155, -215, 0);
 
   addUIButton(panel, 'CareClose', '关 闭', closeCarePanel, {
     y: -320,
@@ -99,7 +105,14 @@ function refresh(): void {
   nailCard?.update(!nailWhy, nailWhy ?? (remain === null ? '不限次数' : `今日剩 ${remain} 次`));
   const dewormWhy = dewormStatus(petId);
   const stock = Save.itemCount(GroomingConfig.deworm.itemId);
-  dewormCard?.update(!dewormWhy, dewormWhy ?? `药剂 ${stock} 支 · 每日 ${GroomingConfig.deworm.dailyLimit} 次`);
+  // 出路由下方可点指引承担，卡内原因只说缺什么，避免同一句话出现两遍
+  const dewormReason = dewormWhy === null
+    ? `药剂 ${stock} 支 · 每日 ${GroomingConfig.deworm.dailyLimit} 次`
+    : stock <= 0 ? '没有驱虫药剂' : dewormWhy;
+  dewormCard?.update(!dewormWhy, dewormReason);
+  if (dewormGuide && dewormGuide.isValid) {
+    dewormGuide.active = stock <= 0;
+  }
 }
 
 function startNail(): void {

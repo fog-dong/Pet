@@ -16,7 +16,7 @@ const GUIDE_W = 520;
 const GUIDE_H = 48;
 const INSET = 16;
 const ICON = 26;
-const GLYPH = { coins: 'coin', hearts: 'heart' } as const;
+const GLYPH = { coins: 'coin', hearts: 'heart', medicine: 'sprout' } as const;
 
 /**
  * 跳转手柄由大厅注册（它才知道 TAB 坞在哪）：面板只说"送到哪一格"，不认识坞的实现。
@@ -43,8 +43,9 @@ export function addEarnGuide(
   kind: EarnKind,
   dismiss: () => void,
   name = 'EarnGuide',
+  width = GUIDE_W,
 ): Node {
-  return renderEarnGuide(parent, y, quickEarnRoute(kind), kind, dismiss, name);
+  return renderEarnGuide(parent, y, quickEarnRoute(kind), kind, dismiss, name, width);
 }
 
 export function renderEarnGuide(
@@ -54,17 +55,18 @@ export function renderEarnGuide(
   kind: EarnKind,
   dismiss: () => void,
   name = 'EarnGuide',
+  width = GUIDE_W,
 ): Node {
-  const width = fitWidth(GUIDE_W, 90);
-  const row = createNode(parent, name, y, width, GUIDE_H);
+  const fitted = fitWidth(width, 90);
+  const row = createNode(parent, name, y, fitted, GUIDE_H);
   const graphics = row.addComponent(Graphics);
-  paint(graphics, width);
+  paint(graphics, fitted);
   // 底与图标共用一张 Graphics：同节点挂两个 Graphics 组件在 3.8 里排序不稳定。
-  drawGlyph(graphics, GLYPH[kind], -width / 2 + INSET + ICON / 2, 0, ICON, tint(HEX.gold));
+  drawGlyph(graphics, GLYPH[kind], -fitted / 2 + INSET + ICON / 2, 0, ICON, tint(HEX.gold));
   addLabel(row, `${name}Text`, route.text, 0, {
     size: 20,
     color: tint('#8A6416'),
-    width: width - INSET * 2 - ICON - 16,
+    width: fitted - INSET * 2 - ICON - 16,
     x: (ICON + 16) / 2,
   });
   row.addComponent(Button).transition = Button.Transition.NONE;

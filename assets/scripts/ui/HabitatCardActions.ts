@@ -1,8 +1,9 @@
-// STATUS: implemented, W25 P2-D 卡片动作转接（护理/送养面板都挂在遮罩下，行刷新回调由小屋面板提供）
+// STATUS: implemented, W25 P2-D 卡片动作转接（护理/送养面板都挂在遮罩下，行刷新回调由小屋面板提供）；W28 P1-2 刷新顺带同步缺爱心指引条
 import { Label, Node } from 'cc';
 import { HabitatPet } from '../cache/HabitatCodec';
 import { openCarePanel } from './CarePanel';
 import { applyStats, HabitatRow } from './HabitatRows';
+import type { HeartsGuideHandle } from './HabitatShortfallGuide';
 import { habitatHintText } from './HabitatTapActions';
 import { openRehomePanel } from './RehomePanel';
 
@@ -14,6 +15,7 @@ export function makeRowRefresh(
   list: () => HabitatRow[],
   hint: () => Label | null,
   changed: () => (() => void) | undefined,
+  guide: () => HeartsGuideHandle | null = () => null,
 ): RowRefresh {
   return (row, entry) => {
     if (entry) {
@@ -24,6 +26,7 @@ export function makeRowRefresh(
     if (label && label.isValid) {
       label.string = habitatHintText();
     }
+    guide()?.sync();
     const notify = changed();
     if (notify) {
       notify();

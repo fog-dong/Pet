@@ -1,0 +1,111 @@
+{
+  "skill": "pitch",
+  "generated_at": "2026-11-10T16:45:00+08:00",
+  "project_name": "萌宠救助日记",
+  "audience": "mixed",
+  "format": "doc",
+  "pitch_file": "spark-output/pitch/w30-habits-habitat.md",
+  "sections": {
+    "the_bet": {
+      "one_liner": "不推翻内嵌小屋，先用低幅度习性动作 + 按钮主次 + 主题扩散把领养后的归宿感做出来，对齐设计稿 11 屏中可落地的部分",
+      "success_metric": "领养后首日进小屋占比 ≥ 60%"
+    },
+    "why_now": "v1.0 已到提审基线（v1.0.1-review @ 97dc5cb），结构性改动都要重走构建与提审，成本窗口在收窄；玩家三条吐槽（装修看不出 / 领养没去向 / 按钮不像按钮）都不是数值问题而是场景与反馈缺失；习性动作零美术资源、不改存档、不碰云函数，是唯一当天可验证且不增加提审风险的增量，再往后叠全屏小屋动效要重做一遍。",
+    "user_jtbd": {
+      "persona_name": "已领养 1–6 只的长线玩家",
+      "persona_description": "每天上线 5–10 分钟，把宠物当「家人」而不是数值",
+      "jtbd": "当我结束一天的治疗回到大厅，我想看到救回来的小家伙真的「活着」（会走动、会伸懒腰、会舔爪），从而觉得这里是个家，而不是一张住院首页。"
+    },
+    "direction": {
+      "chosen": "内嵌小屋上的「活着感」增量：习性动作只在散步带与在小屋卡片开启，配合按钮主次与主题扩散",
+      "chosen_id": "A",
+      "alternatives_considered": [
+        "B: 按设计稿 A2 改成全屏独立小屋场景 —— 推翻 G3-A 已拍板的「内嵌面板」，要新建场景、返回链，包体与提审回归全部重来，且本期没有对应美术资源",
+        "C: 只重做按钮与装修商店视觉 —— 能改善按钮不像按钮，但解决不了领养没去向，打不到首日进小屋核心指标"
+      ],
+      "why_this_one": "唯一在不触碰场景与存档结构的前提下验证「归宿感 → 回访」假设的方案，且当天可在真机/预览上验收",
+      "key_risk": "整体位移 + 形变的走动 / 伸懒腰 / 舔爪可能被玩家读成抽搐或卡顿",
+      "critical_assumption": "低幅度 Tween 形变足以让玩家读出三种习性动作的语义"
+    },
+    "design_decisions": [
+      {
+        "decision": "习性动作只在「大厅散步带」与「在小屋卡片」开启",
+        "rationale": "这两处是玩家会停留、会注视宠物的界面；图鉴 / 治疗 / 领养是批量立绘，同屏主动作会抢页面主操作",
+        "evidence": "LobbyPetRow 与 HabitatRows 只有这两处传 withHabits=true；浏览器验收 H01/H06 在散步带与卡片都测到姿态变化，图鉴未开",
+        "related_screen": "设计稿 A1 大厅·散步带 / A2 在小屋卡片"
+      },
+      {
+        "decision": "动作抽签独立成纯函数 PetHabitPlan，且不连续重复",
+        "rationale": "均匀抽签会出现连续两次伸懒腰，读起来像卡住；抽签独立后可单测、可回归",
+        "evidence": "scripts/verify-pet-habits.js 11 条断言通过，其中 800 次抽样零连续同动作",
+        "related_screen": "A1 / A2（同一套动作在两地复用）"
+      },
+      {
+        "decision": "睡着的宠物只呼吸、不换姿态",
+        "rationale": "饿到临界值还起来走两步会破坏「需要照顾」的信号；睡眠档保持安静，玩家一眼能分出该喂了",
+        "evidence": "H03/H07 中 sleep 立绘角度与横向跨度为 0，缩放跨度 >0（呼吸仍在）",
+        "related_screen": "A1 散步带 / A2 卡片"
+      },
+      {
+        "decision": "幅度守 W17-3 口径：位移 ±9px、旋转 ≤4°、缩放 ≤1.05",
+        "rationale": "宠物是页面主操作的背景，动作过大会抢按钮；该口径已在 W17-3 定过，沿用比新造一套更容易验收",
+        "evidence": "H01 实测角度跨度 6.98°、横向 17.8px（往返），峰值帧 build/w30-peak-2.png 肉眼可见 -4° 歪头",
+        "related_screen": "A1 / A2"
+      },
+      {
+        "decision": "Quality.low 下习性整段不跑，静态姿态照常落地",
+        "rationale": "Quality.low 在本工程即 reduced-motion；低端机连续 tween 会挤占渲染，关掉生活线最稳",
+        "evidence": "PetBehavior.animate() 在 Quality.low 早退；motion-apply reduced_motion 记录",
+        "related_screen": "全部"
+      }
+    ],
+    "asks": [
+      {
+        "ask": "「小屋」维持内嵌面板，还是按设计稿 A2 改全屏独立场景？",
+        "why_needed": "G3-A 已拍板为内嵌面板而设计稿 A2 是全屏小屋，两者只能选一个，后续所有小屋相关屏都按此口径画与做",
+        "decision_needed_by": "2026-11-13",
+        "impact_if_no_decision": "小屋改造排期无法开始，本期只能交付习性动作与按钮体系，A2/A3 设计稿保持不可落地状态"
+      },
+      {
+        "ask": "是否为习性动作补云存储帧序列（20 只 × 3 动作）？",
+        "why_needed": "当前 Tween 形变零美术成本但表现力有限；帧序列更生动，但需美术产出 + 云存储上传 + 包体预算",
+        "decision_needed_by": "2026-11-14",
+        "impact_if_no_decision": "默认沿用形变版；若内侧反馈读不出动作，下一版仍需补帧，届时 20 只 × 3 动作是一次性大单"
+      },
+      {
+        "ask": "设计稿的四套主题与 320 金币定价，是否本期落进配置文件？",
+        "why_needed": "主题与定价属数值 / 配置口径，不能由美术稿直接决定；落配置才能开发装修商店与埋点",
+        "decision_needed_by": "2026-11-13",
+        "impact_if_no_decision": "装修商店 UI 可先做壳但无法接购买流程，主题切换只能停留在设计稿"
+      },
+      {
+        "ask": "商店的加载中 / 加载失败 / 空态是否纳入本期？",
+        "why_needed": "design.html 只画了正常态，三种异常态需要补稿与实现，直接决定本期工作量",
+        "decision_needed_by": "2026-11-13",
+        "impact_if_no_decision": "默认只做正常态、异常态按现有 Toast 兜底；上架后网络抖动时玩家会看到空白商店且没有出口"
+      },
+      {
+        "ask": "设计稿 11 屏里，本期实际落地哪几屏？",
+        "why_needed": "11 屏含回家 / 装修商店 / 按钮体系 / 主题预览多条支线，全做等于一个完整版本，需要明确本期边界",
+        "decision_needed_by": "2026-11-12",
+        "impact_if_no_decision": "工程只能按「先按钮、再商店、后小屋」的猜测顺序推进，可能出现做完即推翻"
+      }
+    ]
+  },
+  "source_skills": {
+    "frame": false,
+    "scope": false,
+    "audit": true,
+    "brief": true,
+    "stories": false,
+    "flow_web": false,
+    "flow_mobile": true,
+    "check": false,
+    "qa": true,
+    "edge": false
+  },
+  "thin_sections": [
+    "缺 frame：persona 由 brief 用户画像合成，没有真实访谈引用；对外提案建议补一句玩家原话",
+    "缺 stories：Ask 5 的范围切分没有对应验收标准，建议拍板后补故事卡"
+  ]
+}

@@ -18,6 +18,7 @@
 | --- | --- | --- |
 | 2026-11-08 | P0-A 动效地基：DURATION 扩表 + ParticleKit | 已入库 |
 | 2026-11-10 | motion-apply 链式落地：补 4 个缺口（阴影跟随、散步带 bandIn/backOut、抛投 anticipation、洗澡微缩） | 已入库（W29） |
+| 2026-11-10 | W30-1 习性动作：idle 档在呼吸间插走动/伸懒腰/舔爪（PetHabits + PetHabitPlan），大厅散步带与小屋卡片开启 | 已入库（f412774） |
 
 ## Preferences / conventions
 
@@ -26,7 +27,9 @@
 - 立绘形变只改 `PetVisual.contentNode`；阴影是兄弟节点，必须单独跟手，否则会僵在半途。
 - 入场位移固定 14px（`MotionKit.RISE`），stagger 0.06，总编排 ≤500ms。
 - 常驻循环只允许 PetBehavior 的呼吸/摇尾与阴影呼吸，且必须可被抚摸打断后接回。
+- 习性动作用「抽签纯函数 + Tween 编排 + 独立定时器」：tween 被打断（squash/chew）后定时器仍会拉起下一轮，生活线不会死。
+- 习性幅度口径：位移 ±9px、旋转 ≤4°、缩放 ≤1.05；只在散步带与在小屋卡片开，图鉴/治疗/领养保持静态。
 
 ## Open issues
 
-- 无头构建（2026-11-10，web-mobile）未产出 `cocos-js` 引擎文件，预览时用同版本旧构建补齐；下次构建先核对引擎拷贝任务。
+- （已解决 2026-11-10）无头构建缺 `cocos-js/`：根因是 `%TEMP%\CocosCreator\3.8.0\builder\engine\69d3bcfe...` 引擎缓存残缺（目录里只有空的 `assets`），删除该缓存条目后重建即产出完整引擎。

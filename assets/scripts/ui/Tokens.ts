@@ -99,6 +99,10 @@ export const DURATION = {
   squashOut: 0.26,
   /** 道具抛物线单程。 */
   toss: 0.45,
+  /** 起飞前的下压预备（缩到 0.94），playful 的 anticipation，不含飞行。 */
+  tossAnticipate: 0.06,
+  /** 洗澡时立绘的一缩一放，只做 scale 不抢粒子视线。 */
+  bathNudge: 0.18,
   /** 咀嚼单次脉冲，播两次。 */
   chew: 0.12,
   /** 单颗粒子从出生到淡出。 */

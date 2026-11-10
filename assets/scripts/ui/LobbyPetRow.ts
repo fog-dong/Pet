@@ -62,7 +62,8 @@ function rebuild(
   }
   const nodes: Node[] = [];
   picked.forEach((entry, index) => nodes.push(addPet(band, index, picked.length, entry, size, onPick)));
-  playStaggerIn(nodes);
+  // 散步带是「回到大厅」的门面：入场比面板长一档，用 backOut 让脚落地时带一点过冲。
+  playStaggerIn(nodes, { duration: DURATION.bandIn, easing: 'backOut' });
 }
 
 /** 空带文字直接压在柜台木板上太生硬：垫一块奶油色圆角牌，读成前台摆的小立牌。 */

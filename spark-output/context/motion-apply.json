@@ -1,0 +1,155 @@
+{
+  "skill": "motion-apply",
+  "generated_at": "2026-11-10",
+  "project_name": "萌宠救助日记",
+  "framework": "non-web",
+  "framework_detail": "Cocos Creator 3.8.0 + TypeScript strict，微信小游戏；无 React / 无 DOM，ReactBits 与 CSS 动效均不适用",
+  "scene": "dashboard",
+  "scene_note": "游戏内 HUD（功能性界面），按 DASHBOARD 强度上限执行：无无限循环、单次触发、位移 ≤14px、scale 过冲 ≤1.14；常驻呼吸/摇尾交给 PetBehavior 的循环档，不新增常驻 tween",
+  "personality_applied": {
+    "archetype": "Playful",
+    "source": "motion-plan-link"
+  },
+  "path_decisions": [
+    {
+      "target": "抚摸立绘 Q 弹 + 爱心粒子 + 阴影跟随",
+      "path": "native-framework-solution",
+      "reason": "cc.Tween 已覆盖该规格；motion-plan 已把三档时长与缓动名翻成 cc.Tween 口径，装库只会多一层运行时"
+    },
+    {
+      "target": "喂食 / 高级粮抛物线 + 咀嚼 + 起飞预备",
+      "path": "native-framework-solution",
+      "reason": "两段 to() 合成重力弧线，Graphics 矢量绘制零美术资源；新增 anticipation 也只需在 flight 前插两段 scale"
+    },
+    {
+      "target": "洗澡泡泡 + 立绘轻微一缩一放",
+      "path": "native-framework-solution",
+      "reason": "粒子和形变都已在 ui/ParticleKit.ts / ui/MotionKit.ts，按 motion-plan ambient 层补 nudge 即可"
+    },
+    {
+      "target": "小屋卡片 / 大厅散步带入场",
+      "path": "native-framework-solution",
+      "reason": "沿用 MotionKit.playStaggerIn，给 StaggerOptions 开放 duration/easing，散步带单独走 bandIn 0.30s backOut"
+    },
+    {
+      "target": "按钮按下回弹",
+      "path": "native-framework-solution",
+      "reason": "UIButton.bindPress 已是 press 0.10 / release 0.18 backOut，与规格一致，不改"
+    }
+  ],
+  "installed_components": [],
+  "css_snippets": [],
+  "native_motion_snippets": [
+    {
+      "target": "抚摸立绘",
+      "file_path": "assets/scripts/ui/MotionKit.ts",
+      "animation_name": "squash",
+      "duration": "squashIn 0.09 + squashOut 0.26",
+      "easing": "quadOut → quadOut → backOut",
+      "scene_compliance_passed": true,
+      "status": "existing"
+    },
+    {
+      "target": "抚摸阴影跟随",
+      "file_path": "assets/scripts/game/PetVisualChrome.ts",
+      "animation_name": "pulseShadow / startShadowBreath",
+      "duration": "squashIn 0.09 + squashOut 0.26，然后接回 1.1s 呼吸循环",
+      "easing": "quadOut → backOut",
+      "scene_compliance_passed": true,
+      "status": "added"
+    },
+    {
+      "target": "喂食 / 高级粮抛物线",
+      "file_path": "assets/scripts/ui/ParticleKit.ts",
+      "animation_name": "tossTo",
+      "duration": "tossAnticipate 0.06 ×2 + toss 0.45",
+      "easing": "quadOut / backOut，飞行上升 quadOut 下落 quadIn",
+      "scene_compliance_passed": true,
+      "status": "updated (anticipation 新增)"
+    },
+    {
+      "target": "洗澡泡泡 + 立绘微缩",
+      "file_path": "assets/scripts/ui/MotionKit.ts",
+      "animation_name": "nudge",
+      "duration": "bathNudge 0.18",
+      "easing": "sineInOut → backOut",
+      "scene_compliance_passed": true,
+      "status": "added"
+    },
+    {
+      "target": "大厅散步带入场",
+      "file_path": "assets/scripts/ui/LobbyPetRow.ts",
+      "animation_name": "playStaggerIn",
+      "duration": "bandIn 0.30，stagger 0.06",
+      "easing": "backOut",
+      "scene_compliance_passed": true,
+      "status": "updated (duration/easing 可配)"
+    },
+    {
+      "target": "按钮按下回弹",
+      "file_path": "assets/scripts/ui/UIButton.ts",
+      "animation_name": "bindPress",
+      "duration": "press 0.10 / release 0.18",
+      "easing": "quadOut / backOut",
+      "scene_compliance_passed": true,
+      "status": "existing, unchanged"
+    }
+  ],
+  "prop_overrides": [
+    { "element": "抚摸立绘", "duration_ms": { "squashIn": 90, "squashOut": 260 }, "easing": "quadOut/backOut", "stagger_ms": 0 },
+    { "element": "阴影跟随", "duration_ms": { "in": 90, "out": 260 }, "easing": "quadOut/backOut", "stagger_ms": 0 },
+    { "element": "道具抛物线", "duration_ms": { "anticipate": 60, "fly": 450, "chew_each": 120 }, "easing": "quadOut/quadIn/backOut", "stagger_ms": 0 },
+    { "element": "洗澡", "duration_ms": { "particle": 750, "stagger": 60, "nudge": 180 }, "easing": "quadOut/sineInOut/backOut", "stagger_ms": 60 },
+    { "element": "散步带入場", "duration_ms": { "bandIn": 300, "stagger": 60 }, "easing": "backOut", "stagger_ms": 60 },
+    { "element": "按钮", "duration_ms": { "press": 100, "release": 180 }, "easing": "quadOut/backOut", "stagger_ms": 0 }
+  ],
+  "tokens_changed": [
+    "assets/scripts/ui/Tokens.ts: 新增 DURATION.tossAnticipate 0.06",
+    "assets/scripts/ui/Tokens.ts: 新增 DURATION.bathNudge 0.18"
+  ],
+  "reduced_motion": {
+    "mechanism": "Quality.low（工程内语义等价 prefers-reduced-motion）",
+    "applied": [
+      "playStaggerIn 直接落终态",
+      "squash 退化为 playRock",
+      "nudge / pulseShadow 不播",
+      "tossTo 跳过 anticipation 并把飞行缩到 1/4",
+      "startShadowBreath 不启动循环"
+    ]
+  },
+  "scene_compliance_passed": true,
+  "scene_compliance_notes": [
+    "无新增 animation infinite：阴影呼吸 1.1s 循环沿用既有，且抚摸时先 stop 再压一下，符合『用户触发可打断』",
+    "入场单次播放：stagger 总时长 0.42s（3 只，0.30 + 2×0.06）≤ 500ms 预算",
+    "位移上限 14px（MotionKit.RISE），scale 最大 1.14（squash）与 1.08（阴影 scaleX）",
+    "无持续背景动效、无超 2s 入场"
+  ],
+  "not_applied": [
+    {
+      "item": "点击散步带某只时其余两只 UIOpacity→150（staging）",
+      "reason": "当前点击即开小屋面板，其余两只被遮罩盖住，肉眼收益为零；等独立小屋视图落地后再接",
+      "owner_decision_needed": false
+    },
+    {
+      "item": "洗澡时其余行 UIOpacity→200（staging）",
+      "reason": "小屋列表按卡片滚动，洗澡反馈只作用于单卡；同屏多卡压暗会与滚动可读性冲突",
+      "owner_decision_needed": false
+    }
+  ],
+  "verification": {
+    "tsc": "根 / tsconfig.scaffold.json / cloudfunctions 三份 tsc --noEmit 全部通过",
+    "build": "web-mobile 无头构建成功（build/w29-motion2；引擎文件按同版本旧构建补齐后本地预览）",
+    "screenshots": [
+      "build/shots/w29-motion-lobby.png（720×1280 大厅，散步带 1 只）",
+      "build/shots/w29-motion-habitat.png（小屋面板）",
+      "build/shots/w29-pet-130ms.png（抚摸瞬间：Q 弹 + 爱心 + 治愈气泡）",
+      "build/shots/w29-pet-590ms.png（回弹收住）"
+    ],
+    "runtime_errors": 0,
+    "caveat": "动效为连续帧，截图只验证了起手/收势两帧与无运行时报错；缓动手感需真机确认"
+  },
+  "profile_path": "spark-output/profile/motion-apply.md",
+  "open_questions": [
+    "本地无头构建未产出 cocos-js 引擎文件（build/w29-motion、w29-motion2 均只有空 assets 目录），已用同版本旧构建补齐预览；下次构建需确认编辑器引擎拷贝任务是否被缓存跳过"
+  ]
+}

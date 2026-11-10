@@ -1,5 +1,6 @@
 // STATUS: implemented, W20-1 M3 错峰入场（透明度淡入 + 14px 轻浮落位，Quality.low 直接落终态）
 import { Node, Tween, UIOpacity, Vec3, tween } from 'cc';
+import type { TweenEasing } from 'cc';
 import { Quality } from '../config/Quality';
 import { DURATION } from './Tokens';
 
@@ -9,13 +10,21 @@ const STAGGER = 0.06;
 /** 入场未完的节点停在半路会被 UIButton 当成家位置，这里留一份真实坐标用于归位。 */
 const homes = new Map<Node, Vec3>();
 
+export interface StaggerOptions {
+  /** 默认走 DURATION.card；散步带这类「回到大厅」的入场用 DURATION.bandIn 长一档。 */
+  duration?: number;
+  easing?: TweenEasing;
+}
+
 /** 相邻 60ms、每枚 0.24s；三枚一行总编排 0.48s，入场即结束，不留在屏上循环。 */
-export function playStaggerIn(nodes: readonly Node[]): void {
+export function playStaggerIn(nodes: readonly Node[], options: StaggerOptions = {}): void {
   if (Quality.low) {
     return;
   }
+  const duration = options.duration ?? DURATION.card;
+  const easing = options.easing ?? 'quadOut';
   nodes.forEach((node, index) => {
-    withShadow(node).forEach((item) => enter(item, index * STAGGER));
+    withShadow(node).forEach((item) => enter(item, index * STAGGER, duration, easing));
   });
 }
 
@@ -31,19 +40,19 @@ export function settleEntrance(node: Node): void {
   fadeTo(node, 255);
 }
 
-function enter(node: Node, delay: number): void {
+function enter(node: Node, delay: number, duration: number, easing: TweenEasing): void {
   const home = node.position.clone();
   homes.set(node, home);
   node.setPosition(home.x, home.y - RISE, 0);
   fadeTo(node, 0);
   tween(node)
     .delay(delay)
-    .to(DURATION.card, { position: new Vec3(home.x, home.y, 0) }, { easing: 'quadOut' })
+    .to(duration, { position: new Vec3(home.x, home.y, 0) }, { easing })
     .call(() => homes.delete(node))
     .start();
   const opacity = node.getComponent(UIOpacity);
   if (opacity) {
-    tween(opacity).delay(delay).to(DURATION.card, { opacity: 255 }).start();
+    tween(opacity).delay(delay).to(duration, { opacity: 255 }).start();
   }
 }
 
@@ -92,6 +101,20 @@ export function chew(node: Node | null): void {
     .to(DURATION.chew, { scale: new Vec3(1, 1, 1) }, { easing: 'sineInOut' })
     .to(DURATION.chew, { scale: bite }, { easing: 'sineInOut' })
     .to(DURATION.chew, { scale: new Vec3(1, 1, 1) }, { easing: 'sineInOut' })
+    .call(() => node.setScale(1, 1, 1))
+    .start();
+}
+
+/** 洗澡等轻反馈：整只立绘一缩一放，不做位移，避免和泡泡抢视线。 */
+export function nudge(node: Node | null): void {
+  if (!node || Quality.low) {
+    return;
+  }
+  Tween.stopAllByTarget(node);
+  node.setScale(1, 1, 1);
+  tween(node)
+    .to(DURATION.bathNudge * 0.5, { scale: new Vec3(0.98, 1.02, 1) }, { easing: 'sineInOut' })
+    .to(DURATION.bathNudge * 0.5, { scale: new Vec3(1, 1, 1) }, { easing: 'backOut' })
     .call(() => node.setScale(1, 1, 1))
     .start();
 }

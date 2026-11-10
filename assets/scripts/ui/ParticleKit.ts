@@ -57,7 +57,14 @@ export function tossTo(
   }
   const apex = (from.y + to.y) / 2 + Math.abs(to.x - from.x) * 0.35 + 40;
   const half = Quality.low ? DURATION.toss / 4 : DURATION.toss / 2;
-  tween(node)
+  const flight = tween(node);
+  if (!Quality.low) {
+    // 起飞前先缩一下：playful 的 anticipation，让抛物线有蓄力感而不是凭空出现。
+    flight
+      .to(DURATION.tossAnticipate, { scale: new Vec3(0.94, 0.94, 1) }, { easing: 'quadOut' })
+      .to(DURATION.tossAnticipate, { scale: Vec3.ONE }, { easing: 'backOut' });
+  }
+  flight
     .to(half, { position: new Vec3((from.x + to.x) / 2, apex, 0) }, { easing: 'quadOut' })
     .to(half, { position: new Vec3(to.x, to.y, 0) }, { easing: 'quadIn' })
     .call(() => {

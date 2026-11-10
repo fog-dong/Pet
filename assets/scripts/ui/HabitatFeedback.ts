@@ -8,7 +8,7 @@ import { HabitatAction } from '../game/HabitatRules';
 import { PetVisual } from '../game/PetVisual';
 import { Sfx } from '../game/Sfx';
 import { floatText } from './FloatText';
-import { chew, squash } from './MotionKit';
+import { chew, nudge, squash } from './MotionKit';
 import { Point, spawnBubbles, spawnHearts, tossTo } from './ParticleKit';
 import { COLORS } from './Tokens';
 
@@ -47,9 +47,11 @@ export function playFeedback(
   const content = visual.contentNode;
   if (action === 'pet') {
     squash(content, touchX);
+    visual.pulseShadow();
     spawnHearts(host, { x: portrait.x, y: portrait.y + 30 });
   } else if (action === 'bath') {
     spawnBubbles(host, { x: portrait.x, y: portrait.y - 30 });
+    nudge(content);
   } else if (origin && content) {
     tossTo(host, origin, { x: portrait.x, y: portrait.y + 10 }, action === 'premium' ? 'pellet' : 'bone', () => chew(content));
   }

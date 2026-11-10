@@ -1,9 +1,10 @@
 // STATUS: implemented, W17-3 立绘外围绘制（地面阴影 + 缺图占位），从 PetVisual 拆出以守住单文件 150 行
 // W20-3 模块二：占位色改取 pets.json 的 baseLook，缺图时也能一眼分辨品种。
-import { Color, Graphics, Label, Node, tween, UITransform, Vec3 } from 'cc';
+import { Color, Graphics, Label, Node, Tween, tween, UITransform, Vec3 } from 'cc';
 import { CharacterConfig, LookShape } from '../config/CharacterConfig';
 import { Quality } from '../config/Quality';
 import { addLabel, hexToColor, PALETTE } from '../ui/SceneUI';
+import { DURATION } from '../ui/Tokens';
 
 export interface PlaceholderLook {
   color: Color;
@@ -69,16 +70,36 @@ export function buildShadow(parent: Node, size: number): Node {
   graphics.fillColor = new Color(0, 0, 0, 38);
   graphics.ellipse(0, 0, size * 0.28, size * 0.07);
   graphics.fill();
+  startShadowBreath(node);
+  return node;
+}
+
+/** 呼吸循环单独成函数：抚摸时先停下、压一下再把它接回来，否则阴影会僵在半途。 */
+export function startShadowBreath(node: Node): void {
   if (Quality.low) {
-    return node;
+    return;
   }
+  Tween.stopAllByTarget(node);
+  node.setScale(Vec3.ONE);
   tween(node)
     .to(1.1, { scale: new Vec3(1.06, 1, 1) })
     .to(1.1, { scale: Vec3.ONE })
     .union()
     .repeatForever()
     .start();
-  return node;
+}
+
+/** 抚摸时阴影跟着压一下再交回呼吸；放在这里是为了守住 PetVisual 的单文件行数。 */
+export function pulseShadow(node: Node | null): void {
+  if (!node || Quality.low) {
+    return;
+  }
+  Tween.stopAllByTarget(node);
+  tween(node)
+    .to(DURATION.squashIn, { scale: new Vec3(1.08, 1, 1) }, { easing: 'quadOut' })
+    .to(DURATION.squashOut, { scale: Vec3.ONE }, { easing: 'backOut' })
+    .call(() => startShadowBreath(node))
+    .start();
 }
 
 /** 缺图兜底：两层圆角矩形叠出柔和过渡；小尺寸缩略图只画色块，不塞文字。 */

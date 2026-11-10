@@ -3,7 +3,13 @@ import { _decorator, Color, Component, Label, Node, Sprite, SpriteFrame, Tween, 
 import { artName, loadPetFrame } from './PetAssetManager';
 import { PetBehavior } from './PetBehavior';
 import type { PetState } from './CharacterLook';
-import { buildPlaceholder, buildShadow, petPlaceholderLook, PlaceholderLook } from './PetVisualChrome';
+import {
+  buildPlaceholder,
+  buildShadow,
+  petPlaceholderLook,
+  PlaceholderLook,
+  pulseShadow as playShadowPulse,
+} from './PetVisualChrome';
 
 const { ccclass } = _decorator;
 
@@ -80,6 +86,11 @@ export class PetVisual extends Component {
     if (this.art) {
       this.art.color = color;
     }
+  }
+
+  /** 抚摸时阴影跟着压一下再交回呼吸循环；立绘本身的 Q 弹由 MotionKit.squash 负责。 */
+  pulseShadow(): void {
+    playShadowPulse(this.shadow);
   }
 
   protected onDestroy(): void {

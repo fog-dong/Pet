@@ -1,0 +1,983 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>萌宠救助日记 · 移动端 Flow 设计稿（W29 重设计）</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+/* =========================================================
+   萌宠救助日记 · 720×1280 移动端设计稿
+   色板取自 assets/scripts/ui/Tokens.ts（唯一口径，不在稿里另起一套）
+   本文件零依赖，双击即可打开；仅作落地对照，不参与 Cocos 构建
+   ========================================================= */
+:root{
+  --cream:#F7EFE3; --floor:#EFE2D2; --wall:#F3E8DA; --skirt:#D9C3A6;
+  --clay:#D98E73;  --clay-deep:#BD7059; --sage:#A8C3A0; --mist:#A9C7D9;
+  --ink:#4A3F35;   --sub:#7B6B5E;  --paper:#FFFCF5;  --gold:#E3B23C;
+  --danger:#C97B6E; --alert:#E4573D; --shadow:#3E322A;
+  --stage-baby:#CDE0C8; --stage-adult:#F6E2AE; --stage-senior:#CFDCE7;
+  --r-card:16px; --r-btn:24px;
+  --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:24px; --s6:32px;
+  font-family:"PingFang SC","Microsoft YaHei","Segoe UI",system-ui,sans-serif;
+}
+/* 主题：只换墙 / 地 / 家具主色，色相关系与大厅保持一致（brief 策略一） */
+[data-theme="cream"]{ --t-wall:#F3E8DA; --t-wall2:#EDDFCE; --t-floor:#EFE2D2; --t-floor2:#E4D3BE; --t-accent:#D98E73; --t-soft:#F6E2AE; --t-name:"奶油诊室"; }
+[data-theme="sakura"]{ --t-wall:#FBECEA; --t-wall2:#F7E0DD; --t-floor:#F3DED9; --t-floor2:#E9CCC6; --t-accent:#D98AA0; --t-soft:#F7DCE4; --t-name:"樱花小筑"; }
+[data-theme="ocean"]{ --t-wall:#E9F1F5; --t-wall2:#DFEBF0; --t-floor:#E1EDF1; --t-floor2:#D2E2E8; --t-accent:#7FA9BF; --t-soft:#CFE3EC; --t-name:"海盐午后"; }
+[data-theme="forest"]{ --t-wall:#EDF2E7; --t-wall2:#E2EBD9; --t-floor:#E6EDDF; --t-floor2:#D8E3CD; --t-accent:#7E9E6F; --t-soft:#D6E6C9; --t-name:"森林晨光"; }
+
+*{box-sizing:border-box;-webkit-font-smoothing:antialiased;}
+html,body{margin:0;background:#2A2420;color:var(--ink);}
+body{display:flex;flex-direction:column;min-height:100vh;align-items:center;}
+
+/* ---------- 稿纸外壳（不属于游戏画面） ---------- */
+.spec-head{width:100%;max-width:1180px;padding:20px 24px 8px;color:#F3E8DA;}
+.spec-head h1{margin:0;font-size:20px;letter-spacing:.5px;font-weight:700;}
+.spec-head p{margin:6px 0 0;font-size:12px;line-height:1.7;color:#B9A897;max-width:860px;}
+.spec-bar{display:flex;gap:8px;flex-wrap:wrap;padding:12px 24px 4px;width:100%;max-width:1180px;}
+.chip{appearance:none;border:1px solid rgba(255,252,245,.18);background:rgba(255,252,245,.06);color:#D9CBBB;font:inherit;font-size:13px;padding:8px 14px;border-radius:999px;cursor:pointer;transition:.15s;}
+.chip:hover{background:rgba(255,252,245,.12);}
+.chip.on{background:#F3E8DA;color:#2A2420;border-color:#F3E8DA;font-weight:600;}
+.chip.ghost{margin-left:auto;}
+.stage-wrap{position:relative;width:100%;display:flex;justify-content:center;align-items:flex-start;gap:28px;padding:16px 24px 8px;}
+.nav-arrow{position:sticky;top:46vh;width:44px;height:44px;border-radius:50%;border:1px solid rgba(255,252,245,.18);background:rgba(255,252,245,.06);color:#F3E8DA;font-size:18px;cursor:pointer;flex:0 0 auto;transition:.15s;}
+.nav-arrow:hover{background:rgba(255,252,245,.14);}
+.device{width:720px;height:1280px;flex:0 0 auto;position:relative;border-radius:36px;overflow:hidden;background:var(--cream);box-shadow:0 30px 80px rgba(0,0,0,.45),0 0 0 10px #1E1915;}
+.screen{position:absolute;inset:0;display:none;flex-direction:column;overflow:hidden;background:var(--cream);}
+.screen.on{display:flex;animation:screenIn .28s cubic-bezier(.22,1,.36,1);}
+@keyframes screenIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.spec-foot{width:100%;max-width:1180px;display:flex;gap:20px;align-items:flex-start;padding:6px 24px 40px;color:#B9A897;}
+.thumbs{display:flex;gap:8px;flex-wrap:wrap;}
+.thumb{width:86px;border:1px solid rgba(255,252,245,.16);border-radius:10px;overflow:hidden;cursor:pointer;background:#1E1915;opacity:.55;transition:.15s;}
+.thumb img{display:block;width:100%;height:150px;object-fit:cover;object-position:top;}
+.thumb.on{opacity:1;border-color:#F3E8DA;}
+.thumb span{display:block;font-size:10px;padding:4px 6px;color:#D9CBBB;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+/* ---------- 状态栏 / HUD ---------- */
+.statusbar{height:40px;flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;padding:0 28px;font-size:13px;font-weight:600;letter-spacing:.4px;position:relative;z-index:6;}
+.statusbar .sig{display:flex;gap:5px;align-items:center;font-size:11px;}
+.statusbar .bat{width:22px;height:11px;border:1.5px solid currentColor;border-radius:3px;position:relative;}
+.statusbar .bat::after{content:"";position:absolute;inset:1.5px;right:5px;background:currentColor;border-radius:1px;}
+.hud{height:52px;flex:0 0 auto;display:flex;align-items:center;gap:10px;padding:0 24px;position:relative;z-index:6;}
+.pill{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 14px 0 8px;border-radius:999px;background:rgba(255,252,245,.86);box-shadow:0 4px 12px rgba(62,50,42,.10),inset 0 0 0 1px rgba(74,63,53,.06);font-size:15px;font-weight:700;font-variant-numeric:tabular-nums;}
+.pill .coin{width:20px;height:20px;border-radius:50%;background:radial-gradient(circle at 34% 30%,#FFE7A3,#E3B23C 62%,#B5822A);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.45);}
+.pill .heart{width:20px;height:20px;color:var(--clay);}
+.pill .plus{width:20px;height:20px;border-radius:50%;background:rgba(74,63,53,.08);color:var(--sub);font-size:14px;display:grid;place-items:center;margin-left:2px;}
+.hud .spacer{flex:1;}
+.icon-btn{width:38px;height:38px;border-radius:50%;background:rgba(255,252,245,.86);box-shadow:0 4px 12px rgba(62,50,42,.10);display:grid;place-items:center;color:var(--sub);}
+.icon-btn svg{width:20px;height:20px;}
+
+/* ---------- 通用图标 ---------- */
+.ic{width:22px;height:22px;stroke:currentColor;stroke-width:1.9;fill:none;stroke-linecap:round;stroke-linejoin:round;}
+.ic.fill{fill:currentColor;stroke:none;}
+
+/* ---------- Flow A-1 大厅 ---------- */
+.lobby{flex:1;display:flex;flex-direction:column;position:relative;background:linear-gradient(180deg,#FBF4EA 0%,var(--t-wall) 22%,var(--t-wall2) 58%,var(--t-floor) 58.2%,var(--t-floor) 100%);transition:background .35s;}
+.lobby .wallpaper{position:absolute;left:0;right:0;top:0;height:58%;background:repeating-linear-gradient(90deg,rgba(255,255,255,.5) 0 2px,transparent 2px 26px);opacity:.5;pointer-events:none;}
+.lobby .light{position:absolute;left:50%;top:-140px;width:560px;height:420px;transform:translateX(-50%);background:radial-gradient(ellipse at 50% 30%,rgba(255,246,220,.95),rgba(255,246,220,0) 70%);pointer-events:none;}
+.title-block{padding:2px 28px 0;position:relative;z-index:3;}
+.title-block h2{margin:0;font-size:26px;letter-spacing:1px;font-weight:800;}
+.title-block .rank{display:inline-flex;align-items:center;gap:6px;margin-top:8px;padding:5px 12px;border-radius:999px;background:rgba(255,252,245,.8);font-size:12px;color:var(--sub);box-shadow:inset 0 0 0 1px rgba(74,63,53,.06);}
+.title-block .rank b{color:var(--ink);}
+.room{position:relative;z-index:2;flex:1;min-height:0;}
+.door{position:absolute;left:50%;transform:translateX(-50%);top:26px;width:250px;height:300px;border-radius:126px 126px 10px 10px;background:linear-gradient(180deg,rgba(255,255,255,.62),rgba(255,255,255,.28));box-shadow:inset 0 0 0 7px rgba(255,252,245,.85),0 16px 30px rgba(62,50,42,.08);}
+.door::after{content:"";position:absolute;inset:14px;border-radius:112px 112px 6px 6px;background:linear-gradient(180deg,#EAF2EC,#DCE9DF);z-index:0;}
+.door .kitten{position:absolute;left:50%;bottom:16px;width:132px;transform:translateX(-50%);filter:drop-shadow(0 10px 10px rgba(62,50,42,.18));z-index:2;}
+.counter{position:absolute;left:24px;right:24px;bottom:0;height:150px;border-radius:18px 18px 0 0;background:linear-gradient(180deg,#E7CFAC,#D6B489 60%,#C9A376);box-shadow:0 -8px 24px rgba(62,50,42,.08),inset 0 2px 0 rgba(255,255,255,.5);}
+.counter::before{content:"";position:absolute;inset:0;border-radius:inherit;background:repeating-linear-gradient(90deg,rgba(255,255,255,.16) 0 1px,transparent 1px 46px);}
+.counter .top{position:absolute;left:-6px;right:-6px;top:-14px;height:26px;border-radius:10px;background:linear-gradient(180deg,#F0DDBF,#DFC29B);box-shadow:0 4px 10px rgba(62,50,42,.12);}
+.plant{position:absolute;left:34px;bottom:138px;width:120px;height:100px;filter:drop-shadow(0 10px 14px rgba(62,50,42,.16));}
+.plant::before{content:"";position:absolute;left:27px;bottom:0;width:58px;height:46px;border-radius:7px 7px 15px 15px;background:linear-gradient(180deg,#E3A98C,#C97B6E);box-shadow:inset 0 5px 0 rgba(255,255,255,.28),inset 0 -7px 0 rgba(0,0,0,.06);}
+.plant::after{content:"";position:absolute;left:2px;bottom:34px;width:108px;height:76px;background:radial-gradient(ellipse 30px 47px at 22% 76%,#A7C49B 0 99%,transparent 100%),radial-gradient(ellipse 25px 42px at 50% 58%,#93B186 0 99%,transparent 100%),radial-gradient(ellipse 30px 47px at 78% 76%,#A7C49B 0 99%,transparent 100%);filter:drop-shadow(0 6px 10px rgba(62,50,42,.14));}
+.clock{position:absolute;right:66px;top:52px;width:80px;height:80px;border-radius:50%;background:#FFFDF8;box-shadow:0 10px 20px rgba(62,50,42,.10),inset 0 0 0 7px #F1E3D1;}
+.clock::before{content:"";position:absolute;left:50%;top:20px;width:3px;height:22px;background:#4A3F35;border-radius:2px;transform-origin:bottom;transform:translateX(-50%) rotate(18deg);}
+.clock::after{content:"";position:absolute;left:50%;top:16px;width:3px;height:26px;background:#7B6B5E;border-radius:2px;transform-origin:bottom;transform:translateX(-50%) rotate(108deg);}
+.poster{position:absolute;left:40px;top:96px;width:150px;padding:12px;border-radius:10px;background:#FFFDF8;box-shadow:0 8px 18px rgba(62,50,42,.10);transform:rotate(-1.5deg);font-size:11px;color:var(--sub);line-height:1.5;}
+.poster b{display:block;font-size:13px;color:var(--ink);margin-bottom:2px;}
+.desk-sign{position:absolute;left:168px;bottom:128px;padding:10px 16px;border-radius:12px;background:var(--paper);box-shadow:0 8px 18px rgba(62,50,42,.12);font-size:12px;color:var(--sub);line-height:1.4;transform:rotate(-2deg);}
+.desk-sign b{display:block;color:var(--ink);font-size:14px;}
+.band{position:relative;z-index:4;padding:0 20px 8px;}
+.band-head{display:flex;align-items:baseline;justify-content:space-between;padding:0 6px 10px;}
+.band-head b{font-size:15px;}
+.band-head span{font-size:12px;color:var(--sub);}
+.band-row{display:flex;gap:12px;}
+.pet-card{flex:1;border-radius:18px;background:linear-gradient(180deg,rgba(255,252,245,.96),rgba(255,252,245,.82));box-shadow:0 10px 24px rgba(62,50,42,.12),inset 0 0 0 1px rgba(74,63,53,.05);padding:10px 10px 12px;display:flex;flex-direction:column;align-items:center;gap:6px;position:relative;}
+.pet-card .pic{width:100%;height:112px;display:grid;place-items:center;border-radius:12px;background:radial-gradient(ellipse at 50% 80%,rgba(217,142,115,.16),rgba(217,142,115,0) 70%);}
+.pet-card img{width:104px;filter:drop-shadow(0 8px 8px rgba(62,50,42,.18));}
+.pet-card .nm{font-size:14px;font-weight:700;}
+.pet-card .sub2{font-size:11px;color:var(--sub);}
+.pet-card .dot{position:absolute;top:10px;right:10px;width:9px;height:9px;border-radius:50%;background:var(--alert);box-shadow:0 0 0 3px rgba(228,87,61,.16);}
+.tabbar{flex:0 0 auto;position:relative;margin:0 16px 10px;height:96px;border-radius:24px;background:linear-gradient(180deg,#FBF4EA,#F1E3D1);box-shadow:0 10px 26px rgba(62,50,42,.14),inset 0 0 0 1px rgba(74,63,53,.06);display:flex;align-items:center;padding:0 10px;gap:6px;}
+.tab{flex:1;height:76px;border-radius:18px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:var(--sub);font-size:12px;position:relative;}
+.tab svg{width:24px;height:24px;}
+.tab.on{background:var(--paper);color:var(--ink);font-weight:700;box-shadow:0 6px 14px rgba(62,50,42,.12);}
+.tab.on::after{content:"";position:absolute;bottom:7px;width:16px;height:3px;border-radius:3px;background:var(--t-accent);}
+.tab .badge{position:absolute;top:11px;right:calc(50% - 22px);min-width:16px;height:16px;padding:0 4px;border-radius:9px;background:var(--alert);color:#fff;font-size:10px;font-weight:700;display:grid;place-items:center;box-shadow:0 0 0 2px #F6EBDB;}
+.home-ind{height:22px;flex:0 0 auto;display:grid;place-items:center;}
+.home-ind i{width:220px;height:5px;border-radius:3px;background:rgba(74,63,53,.28);}
+
+/* ---------- 注释层 ---------- */
+.anno{position:absolute;z-index:20;display:none;align-items:center;gap:8px;font-size:12px;color:#0F3B57;background:rgba(169,199,217,.94);border:1px solid rgba(15,59,87,.18);border-radius:10px;padding:6px 10px;box-shadow:0 6px 16px rgba(15,59,87,.18);max-width:300px;line-height:1.45;}
+.anno b{flex:0 0 auto;width:18px;height:18px;border-radius:50%;background:#0F3B57;color:#EAF3F8;font-size:11px;display:grid;place-items:center;}
+.show-anno .anno{display:flex;}
+.show-anno .hot{outline:2px dashed #0F3B57;outline-offset:3px;border-radius:14px;}
+
+/* ---------- Flow A-2 专属小屋（全屏） ---------- */
+.hab{flex:1;display:flex;flex-direction:column;position:relative;min-height:0;}
+.hab-top{height:64px;flex:0 0 auto;display:flex;align-items:center;gap:12px;padding:0 24px;position:relative;z-index:8;}
+.back-btn{width:40px;height:40px;border-radius:50%;background:rgba(255,252,245,.9);box-shadow:0 4px 12px rgba(62,50,42,.10);display:grid;place-items:center;color:var(--ink);}
+.hab-name{font-size:19px;font-weight:800;letter-spacing:.4px;}
+.tag{display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 9px;border-radius:8px;font-size:11px;font-weight:700;}
+.tag.baby{background:var(--stage-baby);color:#4C6B49;}
+.tag.adult{background:var(--stage-adult);color:#8A6416;}
+.hab-scene{flex:1;min-height:0;position:relative;overflow:hidden;background:linear-gradient(180deg,#FDF8F0 0%,var(--t-wall) 26%,var(--t-wall2) 61.4%,var(--t-floor) 61.6%,var(--t-floor2) 100%);}
+.hab-scene .stripes{position:absolute;inset:0 0 38.4% 0;background:repeating-linear-gradient(90deg,rgba(255,255,255,.46) 0 2px,transparent 2px 30px);opacity:.55;}
+.hab-scene .glow{position:absolute;left:50%;top:-120px;width:620px;height:460px;transform:translateX(-50%);background:radial-gradient(ellipse at 50% 32%,rgba(255,247,224,.98),rgba(255,247,224,0) 68%);}
+.window{position:absolute;left:56px;top:44px;width:196px;height:172px;border-radius:98px 98px 8px 8px;background:linear-gradient(180deg,#CFE3EC,#E9F3F6);box-shadow:inset 0 0 0 8px #FFFDF8,0 10px 22px rgba(62,50,42,.10);overflow:hidden;}
+.window .cloud{position:absolute;width:70px;height:22px;border-radius:20px;background:rgba(255,255,255,.9);top:34px;left:24px;box-shadow:26px 12px 0 -4px rgba(255,255,255,.9);}
+.window .hill{position:absolute;left:-20px;right:-20px;bottom:-30px;height:80px;border-radius:50% 50% 0 0;background:#AFC9A2;}
+.window .hill2{position:absolute;left:60px;right:-40px;bottom:-40px;height:86px;border-radius:50% 50% 0 0;background:#98B98C;}
+.window .bar{position:absolute;left:50%;top:0;bottom:0;width:8px;transform:translateX(-50%);background:#FFFDF8;}
+.window .bar2{position:absolute;top:46%;left:0;right:0;height:8px;background:#FFFDF8;}
+.curtain{position:absolute;top:26px;width:70px;height:214px;border-radius:0 0 36px 36px;background:repeating-linear-gradient(90deg,rgba(255,255,255,.22) 0 9px,rgba(255,255,255,0) 9px 20px),linear-gradient(180deg,var(--t-accent),color-mix(in srgb,var(--t-accent) 66%,#fff));opacity:.42;box-shadow:0 10px 22px rgba(62,50,42,.10);}
+.curtain.l{left:28px;transform:skewY(-1.5deg);}
+.curtain.r{right:28px;transform:skewY(1.5deg);}
+.shelf{position:absolute;right:44px;top:58px;width:170px;height:12px;border-radius:6px;background:linear-gradient(180deg,#E7CFAC,#CFA97F);box-shadow:0 6px 12px rgba(62,50,42,.12);}
+.shelf .frame{position:absolute;bottom:12px;width:58px;height:66px;border-radius:6px;background:#FFFDF8;box-shadow:0 6px 12px rgba(62,50,42,.10);display:grid;place-items:center;}
+.shelf .frame i{width:40px;height:46px;border-radius:4px;background:linear-gradient(160deg,var(--t-soft),color-mix(in srgb,var(--t-accent) 55%,#fff));}
+.shelf .frame.f2{left:64px;height:58px;}
+.shelf .pot{position:absolute;bottom:12px;right:4px;width:46px;height:38px;border-radius:8px 8px 14px 14px;background:linear-gradient(180deg,#E3A98C,#C97B6E);}
+.shelf .pot::before{content:"";position:absolute;left:50%;bottom:34px;width:60px;height:44px;transform:translateX(-50%);border-radius:60% 60% 40% 40%;background:radial-gradient(circle at 40% 40%,#A8C3A0,#7E9E6F);}
+.lamp{position:absolute;left:50%;top:-10px;transform:translateX(-50%);width:2px;height:70px;background:rgba(74,63,53,.28);}
+.lamp::after{content:"";position:absolute;left:50%;bottom:-16px;width:92px;height:34px;transform:translateX(-50%);border-radius:0 0 46px 46px;background:linear-gradient(180deg,#F5D9A8,#E3B23C);box-shadow:0 10px 26px rgba(227,178,60,.35);}
+.rug{position:absolute;left:50%;bottom:52px;width:470px;height:150px;transform:translateX(-50%);border-radius:50%;background:radial-gradient(ellipse at 50% 40%,color-mix(in srgb,var(--t-soft) 92%,#fff),color-mix(in srgb,var(--t-accent) 30%,#fff));box-shadow:inset 0 0 0 10px rgba(255,255,255,.55),0 12px 24px rgba(62,50,42,.08);}
+.pet-stage{position:absolute;left:50%;bottom:88px;width:330px;height:330px;transform:translateX(-50%);display:grid;place-items:center;}
+.pet-stage img{width:318px;filter:drop-shadow(0 22px 18px rgba(62,50,42,.26));}
+.pet-shadow{position:absolute;left:50%;bottom:-6px;width:250px;height:40px;transform:translateX(-50%);border-radius:50%;background:radial-gradient(ellipse,rgba(62,50,42,.24),rgba(62,50,42,0) 70%);}
+.bubble{position:absolute;left:50%;top:118px;transform:translateX(-50%);max-width:420px;padding:12px 18px;border-radius:16px;background:rgba(255,253,248,.97);box-shadow:0 10px 24px rgba(62,50,42,.14),inset 0 0 0 1px rgba(74,63,53,.05);font-size:14px;line-height:1.5;color:var(--ink);}
+.bubble::after{content:"";position:absolute;left:50%;bottom:-8px;width:16px;height:16px;transform:translateX(-50%) rotate(45deg);background:rgba(255,253,248,.97);border-radius:3px;}
+.bubble .who{display:block;font-size:11px;color:var(--sub);margin-bottom:2px;}
+.fx{position:absolute;z-index:5;pointer-events:none;color:var(--clay);opacity:.9;}
+.fx svg{width:var(--s,26px);height:var(--s,26px);}
+.float-num{position:absolute;z-index:6;font-size:30px;font-weight:800;color:var(--clay);text-shadow:0 2px 0 #fff,0 8px 16px rgba(189,112,89,.35);letter-spacing:.5px;}
+.hab-bars{flex:0 0 auto;padding:0 24px 10px;display:flex;flex-direction:column;gap:9px;}
+.stat{display:flex;align-items:center;gap:12px;height:44px;padding:0 14px;border-radius:14px;background:rgba(255,252,245,.86);box-shadow:inset 0 0 0 1px rgba(74,63,53,.05);}
+.stat .ico{width:26px;height:26px;border-radius:9px;display:grid;place-items:center;color:#fff;}
+.stat .ico svg{width:16px;height:16px;}
+.stat .lbl{width:44px;font-size:13px;font-weight:700;}
+.stat .track{display:block;flex:1;height:10px;border-radius:6px;background:rgba(74,63,53,.10);overflow:hidden;}
+.stat .fill{display:block;height:100%;border-radius:6px;box-shadow:inset 0 1px 0 rgba(255,255,255,.5);}
+.stat .val{width:56px;text-align:right;font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--sub);}
+.hab-actions{flex:0 0 auto;display:flex;gap:10px;padding:0 20px 8px;}
+.key{flex:1;height:88px;border-radius:20px;background:linear-gradient(180deg,#FFFDF8,#F6EBDC);box-shadow:0 5px 0 #DCC9B0,0 12px 22px rgba(62,50,42,.12),inset 0 1px 0 #fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;font-size:13px;font-weight:700;color:var(--ink);position:relative;}
+.key .ic{width:25px;height:25px;color:var(--t-accent);}
+.key small{font-size:10px;font-weight:600;color:var(--sub);}
+.key.deco{flex:0 0 96px;background:linear-gradient(180deg,color-mix(in srgb,var(--t-accent) 16%,#fff),color-mix(in srgb,var(--t-accent) 30%,#fff));box-shadow:0 5px 0 color-mix(in srgb,var(--t-accent) 55%,#BFA98F),0 12px 22px rgba(62,50,42,.12),inset 0 1px 0 rgba(255,255,255,.8);color:color-mix(in srgb,var(--t-accent) 70%,#4A3F35);}
+.key.deco .ic{color:color-mix(in srgb,var(--t-accent) 82%,#3E322A);}
+.key .cd{position:absolute;top:8px;right:10px;font-size:10px;font-weight:700;color:var(--sub);background:rgba(74,63,53,.08);border-radius:7px;padding:1px 6px;}
+.key.off{background:linear-gradient(180deg,#EFEAE3,#E4DDD4);box-shadow:0 4px 0 #CFC6BB,0 8px 16px rgba(62,50,42,.08);color:#8C8178;}
+.key.off .ic{color:#9A9088;}
+.home-ind.on-light i{background:rgba(74,63,53,.22);}
+
+/* ---------- 空屋态 ---------- */
+.empty-room{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:linear-gradient(180deg,#FBF4EA,var(--cream));padding:0 60px;text-align:center;}
+.empty-room .board{width:100%;max-width:460px;border-radius:20px;background:var(--paper);box-shadow:0 14px 34px rgba(62,50,42,.14),inset 0 0 0 1px rgba(74,63,53,.05);padding:26px 24px;}
+.empty-room .board h3{margin:0 0 8px;font-size:20px;}
+.empty-room .board p{margin:0;font-size:13px;line-height:1.7;color:var(--sub);}
+.empty-room .illus{position:relative;width:100%;max-width:460px;height:250px;border-radius:18px;overflow:hidden;background:linear-gradient(180deg,#FBF4EA 0%,#F1E4D3 62%,#E9DAC7 62.2%,#E0CEB6 100%);box-shadow:inset 0 0 0 1px rgba(74,63,53,.09),0 12px 26px rgba(62,50,42,.08);}
+.empty-room .illus .win{position:absolute;left:40px;top:36px;width:96px;height:86px;border-radius:48px 48px 6px 6px;background:repeating-linear-gradient(45deg,rgba(127,169,191,.14) 0 8px,transparent 8px 16px);border:2px dashed rgba(127,169,191,.55);}
+.empty-room .illus .bed{position:absolute;right:36px;bottom:34px;width:168px;height:58px;border-radius:12px;border:2px dashed rgba(217,142,115,.55);background:rgba(217,142,115,.07);}
+.empty-room .illus .bed::before{content:"";position:absolute;left:10px;top:8px;width:46px;height:22px;border-radius:9px;border:2px dashed rgba(217,142,115,.38);}
+.empty-room .illus .bed::after{content:"";position:absolute;right:8px;bottom:-12px;width:8px;height:12px;border-radius:0 0 4px 4px;background:rgba(217,142,115,.30);box-shadow:-140px 0 0 rgba(217,142,115,.30);}
+.empty-room .illus .bowl{position:absolute;left:112px;bottom:34px;width:74px;height:26px;border-radius:0 0 36px 36px;border:2px dashed rgba(123,107,94,.45);background:rgba(123,107,94,.06);}
+.empty-room .illus .tag{position:absolute;left:0;right:0;top:16px;text-align:center;font-size:11px;letter-spacing:.5px;color:var(--sub);}
+.btn{height:60px;border-radius:var(--r-btn);display:flex;align-items:center;justify-content:center;gap:8px;font-size:17px;font-weight:800;letter-spacing:.5px;}
+.btn-primary{background:linear-gradient(180deg,#EFAF92,#D98E73);color:#fff;box-shadow:0 6px 0 var(--clay-deep),0 14px 26px rgba(189,112,89,.30),inset 0 1px 0 rgba(255,255,255,.5);}
+.btn-ghost{background:rgba(255,252,245,.92);color:var(--ink);box-shadow:0 5px 0 #DCC9B0,0 10px 20px rgba(62,50,42,.10),inset 0 0 0 1.5px rgba(74,63,53,.10);}
+.btn-off{background:linear-gradient(180deg,#EDE7DF,#E2DAD1);color:#8C8178;box-shadow:0 4px 0 #CFC6BB,inset 0 0 0 1px rgba(74,63,53,.06);}
+.btn .ic{width:22px;height:22px;}
+
+/* ---------- 过渡帧 ---------- */
+.transition{flex:1;position:relative;display:grid;place-items:center;background:#3E322A;overflow:hidden;}
+.transition .iris{position:relative;width:420px;height:420px;border-radius:50%;overflow:hidden;background:radial-gradient(circle,#FFF7E8 0%,#F3E8DA 62%,#3E322A 63%);box-shadow:0 0 0 2000px #3E322A;animation:iris .5s ease-out;}
+@keyframes iris{from{width:40px;height:40px;opacity:.4}to{width:420px;height:420px;opacity:1}}
+.transition .iris .peek{position:absolute;inset:0;background:linear-gradient(180deg,#FFF9EE 0%,#F5E7D6 55%,#EFE2D2 55.4%,#E2CEB5 100%);}
+.transition .iris .peek::after{content:"";position:absolute;inset:0;background:radial-gradient(circle at 50% 44%,rgba(255,255,255,0) 52%,rgba(62,50,42,.16) 100%);}
+.transition .iris .peek .pk-win{position:absolute;left:52px;top:62px;width:78px;height:70px;border-radius:39px 39px 4px 4px;background:linear-gradient(180deg,#CFE3EC,#EAF3F6);box-shadow:inset 0 0 0 5px #FFFDF8;}
+.transition .iris .peek .pk-rug{position:absolute;left:50%;bottom:54px;width:216px;height:62px;transform:translateX(-50%);border-radius:50%;background:#F2DFC8;}
+.transition .iris .peek img{position:absolute;left:50%;bottom:74px;width:148px;transform:translateX(-50%);filter:drop-shadow(0 9px 10px rgba(62,50,42,.24));}
+.transition .cap{position:absolute;bottom:150px;color:#F3E8DA;font-size:14px;letter-spacing:2px;opacity:.8;}
+.transition .cap b{display:block;text-align:center;font-size:20px;letter-spacing:4px;margin-bottom:8px;}
+
+/* ---------- Sheet 通用 ---------- */
+.mask{position:absolute;inset:0;z-index:15;background:rgba(62,50,42,.42);display:flex;align-items:flex-end;}
+.sheet{width:100%;border-radius:30px 30px 0 0;background:var(--paper);box-shadow:0 -20px 60px rgba(62,50,42,.30);padding:10px 24px 10px;animation:sheetUp .26s cubic-bezier(.22,1,.36,1);}
+@keyframes sheetUp{from{transform:translateY(40px);opacity:.6}to{transform:none;opacity:1}}
+.sheet .grab{width:52px;height:5px;border-radius:3px;background:rgba(74,63,53,.18);margin:0 auto 14px;}
+.sheet-head{display:flex;align-items:baseline;gap:10px;margin-bottom:16px;}
+.sheet-head h3{margin:0;font-size:21px;font-weight:800;}
+.sheet-head span{font-size:12px;color:var(--sub);}
+.sheet-head .bal{margin-left:auto;}
+
+/* ---------- Flow B-2 装修小店 ---------- */
+.shop-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.theme-card{border-radius:18px;background:#fff;box-shadow:0 8px 20px rgba(62,50,42,.10),inset 0 0 0 1px rgba(74,63,53,.05);overflow:hidden;position:relative;}
+.theme-card .thumbpic{height:148px;position:relative;overflow:hidden;}
+.theme-card .thumbpic .sw{position:absolute;inset:0;}
+.theme-card .thumbpic .fl{position:absolute;left:0;right:0;bottom:0;height:42%;}
+.theme-card .thumbpic .fur{position:absolute;left:50%;bottom:12px;width:74px;transform:translateX(-50%);}
+.theme-card .thumbpic .wd{position:absolute;left:16px;top:18px;width:44px;height:40px;border-radius:22px 22px 4px 4px;background:linear-gradient(180deg,#CFE3EC,#EAF3F6);box-shadow:inset 0 0 0 3px rgba(255,253,248,.92);}
+.theme-card .meta{padding:10px 12px 12px;}
+.theme-card .nm{font-size:14px;font-weight:800;}
+.theme-card .desc{font-size:11px;color:var(--sub);margin-top:3px;}
+.theme-card .buy{display:flex;align-items:center;gap:6px;margin-top:8px;font-size:13px;font-weight:800;color:var(--ink);}
+.theme-card .buy .coin-sm{width:16px;height:16px;border-radius:50%;background:radial-gradient(circle at 34% 30%,#FFE7A3,#E3B23C 62%,#B5822A);}
+.theme-card .owned{position:absolute;top:10px;right:10px;padding:3px 9px;border-radius:9px;background:rgba(168,195,160,.95);color:#35502F;font-size:11px;font-weight:800;}
+.theme-card.on{box-shadow:0 0 0 3px var(--clay),0 10px 24px rgba(217,142,115,.28);}
+.theme-card .try{position:absolute;top:10px;left:10px;padding:3px 9px;border-radius:9px;background:rgba(74,63,53,.72);color:#FFFDF8;font-size:11px;font-weight:700;}
+
+/* ---------- Flow B-3 主题预览 ---------- */
+.preview-wrap{flex:1;display:flex;flex-direction:column;gap:14px;padding:0 24px 10px;min-height:0;}
+.seg{display:flex;gap:6px;padding:5px;border-radius:14px;background:rgba(74,63,53,.07);}
+.seg div{flex:1;height:38px;border-radius:10px;display:grid;place-items:center;font-size:13px;font-weight:700;color:var(--sub);}
+.seg div.on{background:var(--paper);color:var(--ink);box-shadow:0 4px 10px rgba(62,50,42,.10);}
+.mini{border-radius:20px;overflow:hidden;position:relative;box-shadow:0 14px 32px rgba(62,50,42,.14),inset 0 0 0 1px rgba(74,63,53,.06);background:#fff;}
+.mini .cap{position:absolute;left:12px;top:12px;padding:4px 10px;border-radius:9px;background:rgba(255,253,248,.92);font-size:11px;font-weight:800;color:var(--sub);z-index:3;}
+.mini .lock{position:absolute;right:12px;top:12px;z-index:3;padding:4px 10px;border-radius:9px;background:rgba(62,50,42,.72);color:#FFFDF8;font-size:11px;font-weight:700;}
+.lobby-mini{flex:1;min-height:280px;background:linear-gradient(180deg,#FBF4EA 0%,var(--t-wall) 26%,var(--t-wall2) 62%,var(--t-floor) 62.2%,var(--t-floor2) 100%);}
+.lobby-mini .mtitle{position:absolute;left:16px;top:44px;font-size:15px;font-weight:800;color:var(--ink);}
+.lobby-mini .mdoor{position:absolute;left:50%;top:74px;width:112px;height:134px;transform:translateX(-50%);border-radius:56px 56px 6px 6px;background:linear-gradient(180deg,#FFF6E4,#F6E3C8);box-shadow:inset 0 0 0 5px #FFFDF8,0 8px 18px rgba(62,50,42,.10);}
+.lobby-mini .mdoor::after{content:"";position:absolute;inset:12px;border-radius:44px 44px 3px 3px;background:radial-gradient(ellipse at 50% 120%,#FFE9C6,#FFF8EC 70%);}
+.lobby-mini .mpet{position:absolute;bottom:96px;left:64%;width:74px;transform:translateX(-50%);filter:drop-shadow(0 8px 8px rgba(62,50,42,.24));}
+.lobby-mini .mtabs{position:absolute;left:14px;right:14px;bottom:8px;height:34px;border-radius:12px;background:rgba(255,252,245,.9);display:flex;align-items:center;justify-content:space-around;font-size:9px;color:var(--sub);}
+.room-mini{flex:1;min-height:280px;background:linear-gradient(180deg,#FDF8F0 0%,var(--t-wall) 26%,var(--t-wall2) 62%,var(--t-floor) 62.2%,var(--t-floor2) 100%);}
+.room-mini .mwin{position:absolute;left:24px;top:34px;width:88px;height:76px;border-radius:44px 44px 6px 6px;background:linear-gradient(180deg,#CFE3EC,#EAF3F6);box-shadow:inset 0 0 0 4px #FFFDF8,inset 0 0 0 6px rgba(217,142,115,.16),0 3px 8px rgba(62,50,42,.10);}
+.room-mini .mrug{position:absolute;left:50%;bottom:20px;width:210px;height:64px;transform:translateX(-50%);border-radius:50%;background:color-mix(in srgb,var(--t-soft) 88%,#fff);}
+.room-mini .mpet2{position:absolute;left:50%;bottom:26px;width:126px;transform:translateX(-50%);filter:drop-shadow(0 8px 8px rgba(62,50,42,.24));}
+.room-mini .mbar{position:absolute;left:16px;right:16px;bottom:8px;display:flex;gap:6px;z-index:3;}
+.room-mini .mbar i{flex:1;height:8px;border-radius:5px;background:rgba(74,63,53,.10);overflow:hidden;}
+.room-mini .mbar i::after{content:"";display:block;height:100%;border-radius:5px;}
+.room-mini .mbar i:nth-child(1)::after{width:62%;background:#E3B23C;}
+.room-mini .mbar i:nth-child(2)::after{width:78%;background:#8FB6C9;}
+.room-mini .mbar i:nth-child(3)::after{width:86%;background:#D98E73;}
+.preview-info{padding:2px 4px;display:flex;flex-direction:column;gap:6px;}
+.preview-info h3{margin:0;font-size:22px;font-weight:800;}
+.preview-info p{margin:0;font-size:12px;color:var(--sub);line-height:1.6;}
+.legend{display:flex;gap:16px;flex-wrap:wrap;padding:0 4px;font-size:11px;color:var(--sub);}
+.legend span{display:flex;align-items:center;gap:6px;}
+.legend i{width:14px;height:14px;border-radius:4px;box-shadow:inset 0 0 0 1px rgba(74,63,53,.30),0 1px 2px rgba(62,50,42,.10);}
+.buy-bar{flex:0 0 auto;display:flex;align-items:center;gap:14px;padding:12px 24px 4px;}
+.buy-bar .price{display:flex;align-items:center;gap:8px;font-size:24px;font-weight:800;font-variant-numeric:tabular-nums;}
+.buy-bar .price .coin-sm{width:24px;height:24px;border-radius:50%;background:radial-gradient(circle at 34% 30%,#FFE7A3,#E3B23C 62%,#B5822A);}
+.buy-bar .btn{flex:1;}
+
+/* ---------- Flow B-4 购买确认 ---------- */
+.buy-row{display:flex;gap:14px;align-items:center;padding:14px;border-radius:16px;background:#F8F1E6;margin-bottom:14px;}
+.buy-row .pic{width:84px;height:84px;border-radius:12px;overflow:hidden;position:relative;flex:0 0 auto;}
+.buy-row .pic .sw{position:absolute;inset:0;}
+.buy-row .pic .fl{position:absolute;left:0;right:0;bottom:0;height:40%;}
+.buy-row .nm{font-size:16px;font-weight:800;}
+.buy-row .ds{font-size:12px;color:var(--sub);margin-top:4px;}
+.cost{display:flex;flex-direction:column;gap:10px;margin-bottom:14px;}
+.cost .line{display:flex;justify-content:space-between;font-size:14px;color:var(--sub);}
+.cost .line b{color:var(--ink);font-variant-numeric:tabular-nums;}
+.cost .line.total{border-top:1px dashed rgba(74,63,53,.18);padding-top:10px;font-size:16px;color:var(--ink);font-weight:800;}
+.warn{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:12px;background:rgba(228,87,61,.10);color:#A63A26;font-size:12px;line-height:1.5;margin-bottom:12px;}
+.warn b{font-variant-numeric:tabular-nums;}
+.sheet .btn{height:58px;margin-bottom:8px;}
+
+/* ---------- Flow B-5 生效反馈 ---------- */
+.toast{position:absolute;left:50%;top:auto;bottom:16px;transform:translateX(-50%);z-index:12;display:flex;align-items:center;gap:9px;padding:12px 20px;border-radius:999px;background:rgba(62,50,42,.90);color:#FFF8EC;font-size:14px;font-weight:700;box-shadow:0 12px 30px rgba(62,50,42,.35);}
+.toast .dot{width:8px;height:8px;border-radius:50%;background:var(--sage);box-shadow:0 0 0 3px rgba(168,195,160,.28);}
+.flash{position:absolute;inset:0;z-index:9;background:radial-gradient(circle at 50% 42%,rgba(255,255,255,.85),rgba(255,255,255,0) 62%);animation:flash .6s ease-out;}
+@keyframes flash{from{opacity:1}to{opacity:0}}
+
+/* ---------- 按钮规范屏 ---------- */
+.spec{flex:1;overflow:auto;background:var(--cream);padding:0 28px 24px;}
+.spec h2{margin:6px 0 4px;font-size:24px;}
+.spec .lead{margin:0 0 20px;font-size:12px;color:var(--sub);line-height:1.7;}
+.spec-sec{margin-bottom:22px;}
+.spec-sec h4{margin:0 0 10px;font-size:14px;letter-spacing:.5px;}
+.demo-card{border-radius:18px;background:var(--paper);box-shadow:0 10px 24px rgba(62,50,42,.10),inset 0 0 0 1px rgba(74,63,53,.05);padding:18px;}
+.demo-card .row{display:flex;gap:12px;align-items:center;}
+.demo-card .row + .row{margin-top:14px;}
+.demo-card .btn{flex:1;height:56px;font-size:16px;}
+.demo-card .note{font-size:11px;color:var(--sub);line-height:1.6;margin-top:10px;}
+.hit{position:relative;padding:14px 12px;}
+.hit::after{content:"";position:absolute;inset:0;border:1.5px dashed #7FA9BF;border-radius:30px;pointer-events:none;background:rgba(169,199,217,.06);}
+.hit-note{margin-top:14px;font-size:10px;color:#4E6379;display:flex;align-items:center;gap:6px;}
+.hit-note::before{content:"";width:18px;height:0;border-top:1.5px dashed #7FA9BF;}
+.kv{display:grid;grid-template-columns:110px 1fr;gap:8px 12px;font-size:12px;line-height:1.6;}
+.kv dt{color:var(--sub);}
+.kv dd{margin:0;color:var(--ink);}
+.swatches{display:flex;gap:8px;}
+.swatches i{flex:1;height:44px;border-radius:10px;box-shadow:inset 0 0 0 1px rgba(74,63,53,.08);position:relative;}
+.swatches i span{position:absolute;bottom:4px;left:6px;font-size:9px;font-weight:700;color:rgba(74,63,53,.75);}
+
+/* 截图模式：?shot=1#A2 只渲染设备本体，导出 720×1280 */
+body.shot-mode{background:#F7EFE3;}
+body.shot-mode .spec-head,body.shot-mode .spec-bar,body.shot-mode .spec-foot,body.shot-mode .nav-arrow{display:none;}
+body.shot-mode .stage-wrap{padding:0;gap:0;}
+body.shot-mode .device{border-radius:0;box-shadow:none;}
+body.shot-mode .screen.on{animation:none;}
+body.shot-mode .transition .iris{animation:none;}
+</style>
+</head>
+<body>
+
+<header class="spec-head">
+  <h1>萌宠救助日记 · 移动端控屏 Flow 设计稿</h1>
+  <p>720×1280 微信小游戏画面。Flow A 解决「领养后没有家」，Flow B 解决「换装修看不出」。色板直接取工程 <b>ui/Tokens.ts</b>，主题只换墙 / 地 / 家具主色，与大厅保持同一色相关系。本稿为落地对照，不参与构建。</p>
+</header>
+
+<div class="spec-bar">
+  <button class="chip on" data-flow="A">Flow A · 回家</button>
+  <button class="chip" data-flow="B">Flow B · 换装修</button>
+  <button class="chip" data-flow="S">按钮规范</button>
+  <button class="chip ghost" id="annoBtn">显示交互注释</button>
+</div>
+
+<div class="stage-wrap">
+  <button class="nav-arrow" id="prev">‹</button>
+  <div class="device" id="device">
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
+    <symbol id="i-steth" viewBox="0 0 24 24"><path d="M6 4v6a6 6 0 0 0 12 0V4"/><path d="M12 16v3"/><circle cx="12" cy="20" r="2.2"/></symbol>
+    <symbol id="i-leaf" viewBox="0 0 24 24"><path d="M20 4C10 4 4 10 4 20c10 0 16-6 16-16z"/><path d="M8 16c2-4 5-7 9-9"/></symbol>
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M9 22v-8h6v8"/></symbol>
+    <symbol id="i-medal" viewBox="0 0 24 24"><circle cx="12" cy="9" r="5"/><path d="M8.5 13.5L7 22l5-3 5 3-1.5-8.5"/></symbol>
+    <symbol id="i-bowl" viewBox="0 0 24 24"><path d="M4 12h16a8 8 0 0 1-16 0z"/><path d="M2 20h20"/></symbol>
+    <symbol id="i-drop" viewBox="0 0 24 24"><path d="M12 3s6 7 6 11a6 6 0 0 1-12 0c0-4 6-11 6-11z"/></symbol>
+    <symbol id="i-hand" viewBox="0 0 24 24"><path d="M8 12V6a2 2 0 0 1 4 0v6"/><path d="M12 12V5a2 2 0 0 1 4 0v7"/><path d="M16 12V7a2 2 0 0 1 4 0v8a7 7 0 0 1-7 7h-1a6 6 0 0 1-5-3l-3-5a2 2 0 0 1 3-2l3 3"/></symbol>
+    <symbol id="i-brush" viewBox="0 0 24 24"><path d="M4 20l4-1 10-10a2.8 2.8 0 0 0-4-4L4 15z"/><path d="M14 6l4 4"/></symbol>
+    <symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 20s-7-4.5-7-9a4 4 0 0 1 7-2.5A4 4 0 0 1 19 11c0 4.5-7 9-7 9z"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></symbol>
+    <symbol id="i-warn" viewBox="0 0 24 24"><path d="M12 3l9 16H3z"/><path d="M12 9v4"/><path d="M12 16.5v.5"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M4 12.5l5 5L20 6.5"/></symbol>
+  </defs>
+</svg>
+
+<!-- ===================== Flow A-1 · 大厅 ===================== -->
+<section class="screen on" data-id="A1" data-flow="A" data-theme="cream" data-title="A1 大厅 · 散步带">
+  <div class="statusbar"><span>9:41</span><span class="sig">●●● ▮▮ <i class="bat"></i></span></div>
+  <div class="hud">
+    <span class="pill"><i class="coin"></i>200<span class="plus">+</span></span>
+    <span class="pill"><svg class="ic heart" viewBox="0 0 24 24"><use href="#i-heart"/></svg>20<span class="plus">+</span></span>
+    <span class="spacer"></span>
+    <span class="icon-btn"><svg class="ic" viewBox="0 0 24 24"><use href="#i-settings"/></svg></span>
+  </div>
+  <div class="lobby">
+    <div class="wallpaper"></div><div class="light"></div>
+    <div class="title-block">
+      <h2>萌宠救助日记</h2>
+      <span class="rank">本季称号 · <b>温柔新手医生</b></span>
+    </div>
+    <div class="room">
+      <div class="door"><img class="kitten" src="assets/pets/siamese.png" alt=""></div>
+      <div class="clock"></div>
+      <div class="poster"><b>今日可接诊</b>轻症 4 · 重症 2<br>值班：林医生</div>
+      <div class="plant"></div>
+      <div class="counter"><div class="top"></div></div>
+      <img src="assets/pets/shiba.png" alt="" style="position:absolute;right:112px;bottom:130px;width:132px;filter:drop-shadow(0 10px 10px rgba(62,50,42,.20));">
+      <div class="desk-sign"><b>欢迎回家</b>散步回来记得进屋看看</div>
+    </div>
+    <div class="band">
+      <div class="band-head"><b>散步回来的小家伙</b><span>点一下进屋看看</span></div>
+      <div class="band-row">
+        <div class="pet-card"><span class="dot"></span><div class="pic"><img src="assets/pets/orange_cat.png" alt="橘子"></div><span class="nm">橘子</span><span class="sub2">幼年 · 心情 86</span></div>
+        <div class="pet-card"><div class="pic"><img src="assets/pets/golden.png" alt="奶糖"></div><span class="nm">奶糖</span><span class="sub2">成年 · 心情 72</span></div>
+        <div class="pet-card"><div class="pic"><img src="assets/pets/corgi.png" alt="团子"></div><span class="nm">团子</span><span class="sub2">成年 · 心情 64</span></div>
+      </div>
+    </div>
+    <nav class="tabbar">
+      <div class="tab"><svg class="ic" viewBox="0 0 24 24"><use href="#i-steth"/></svg>诊疗</div>
+      <div class="tab"><svg class="ic" viewBox="0 0 24 24"><use href="#i-leaf"/></svg>后院</div>
+      <div class="tab on"><span class="badge">2</span><svg class="ic" viewBox="0 0 24 24"><use href="#i-home"/></svg>小屋</div>
+      <div class="tab"><svg class="ic" viewBox="0 0 24 24"><use href="#i-medal"/></svg>成就</div>
+    </nav>
+    <div class="home-ind"><i></i></div>
+  </div>
+  <div class="anno hot" style="left:34px;top:846px;width:252px"><b>1</b>散步带卡片＝回家入口：点卡片或「小屋」TAB 直接进专属小屋</div>
+  <div class="anno" style="left:400px;top:1080px;width:250px"><b>2</b>红点数＝小屋里有几只待互动（饱食低于 40 或心情低于 50）</div>
+  <div class="anno" style="left:34px;top:186px;width:246px"><b>3</b>换装修后，这面墙与地板会整体换成主题色</div>
+</section>
+
+<!-- ===================== Flow A-2 · 专属小屋 ===================== -->
+<section class="screen" data-id="A2" data-flow="A" data-theme="cream" data-title="A2 专属小屋（全屏）">
+  <div class="statusbar"><span>9:41</span><span class="sig">●●● ▮▮ <i class="bat"></i></span></div>
+  <div class="hud">
+    <span class="pill"><i class="coin"></i>200<span class="plus">+</span></span>
+    <span class="pill"><svg class="ic heart" viewBox="0 0 24 24"><use href="#i-heart"/></svg>20<span class="plus">+</span></span>
+    <span class="spacer"></span>
+  </div>
+  <div class="hab">
+    <div class="hab-top">
+      <span class="back-btn"><svg class="ic" viewBox="0 0 24 24"><use href="#i-back"/></svg></span>
+      <span class="hab-name">橘子的小屋</span>
+      <span class="tag baby">幼年</span>
+      <span class="spacer" style="flex:1"></span>
+      <span class="icon-btn"><svg class="ic" viewBox="0 0 24 24"><use href="#i-settings"/></svg></span>
+    </div>
+    <div class="hab-scene">
+      <div class="stripes"></div><div class="glow"></div>
+      <div class="lamp"></div>
+      <div class="window"><div class="bar"></div><div class="bar2"></div><div class="cloud"></div><div class="hill"></div><div class="hill2"></div></div>
+      <div class="curtain l"></div><div class="curtain r"></div>
+      <div class="shelf"><div class="frame"><i></i></div><div class="frame f2"><i style="background:linear-gradient(160deg,#CFE3EC,#A9C7D9)"></i></div><div class="pot"></div></div>
+      <div class="rug"></div>
+      <div class="pet-stage"><div class="pet-shadow"></div><img src="assets/pets/orange_cat.png" alt="橘子"></div>
+      <div class="bubble"><span class="who">橘子</span>今天也要健健康康的呀～</div>
+    </div>
+    <div class="hab-bars">
+      <div class="stat"><span class="ico" style="background:#E3B23C"><svg class="ic" viewBox="0 0 24 24"><use href="#i-bowl"/></svg></span><span class="lbl">饱食</span><span class="track"><span class="fill" style="width:62%;background:linear-gradient(90deg,#F0C960,#E3B23C)"></span></span><span class="val">62</span></div>
+      <div class="stat"><span class="ico" style="background:#7FA9BF"><svg class="ic" viewBox="0 0 24 24"><use href="#i-drop"/></svg></span><span class="lbl">清洁</span><span class="track"><span class="fill" style="width:78%;background:linear-gradient(90deg,#BCD8E5,#8FB6C9)"></span></span><span class="val">78</span></div>
+      <div class="stat"><span class="ico" style="background:#D98E73"><svg class="ic" viewBox="0 0 24 24"><use href="#i-heart"/></svg></span><span class="lbl">心情</span><span class="track"><span class="fill" style="width:86%;background:linear-gradient(90deg,#EFAF92,#D98E73)"></span></span><span class="val">86</span></div>
+    </div>
+    <div class="hab-actions">
+      <div class="key"><svg class="ic" viewBox="0 0 24 24"><use href="#i-bowl"/></svg>喂食<small>普通粮</small></div>
+      <div class="key"><svg class="ic" viewBox="0 0 24 24"><use href="#i-drop"/></svg>洗澡<small>泡泡</small></div>
+      <div class="key"><svg class="ic" viewBox="0 0 24 24"><use href="#i-hand"/></svg>抚摸<small>今日 2/3</small></div>
+      <div class="key deco"><svg class="ic" viewBox="0 0 24 24"><use href="#i-brush"/></svg>装修</div>
+    </div>
+    <div class="home-ind"><i></i></div>
+  </div>
+  <div class="anno hot" style="left:180px;top:642px;width:250px"><b>1</b>立绘＝抚摸热区（TOUCH_START/END），Q 弹 + 阴影跟随</div>
+  <div class="anno" style="left:24px;top:1004px;width:236px"><b>2</b>三动作键：图标在上、动作名在下，触控 88px</div>
+  <div class="anno" style="left:452px;top:1004px;width:244px"><b>3</b>装修键走主色描底，和日常动作区分开</div>
+</section>
+
+<!-- ===================== Flow A-3 · 动作反馈 ===================== -->
+<section class="screen" data-id="A3" data-flow="A" data-theme="cream" data-title="A3 抚摸反馈态">
+  <div class="statusbar"><span>9:41</span><span class="sig">●●● ▮▮ <i class="bat"></i></span></div>
+  <div class="hud">
+    <span class="pill"><i class="coin"></i>200<span class="plus">+</span></span>
+    <span class="pill"><svg class="ic heart" viewBox="0 0 24 24"><use href="#i-heart"/></svg>20<span class="plus">+</span></span>
+    <span class="spacer"></span>
+  </div>
+  <div class="hab">
+    <div class="hab-top">
+      <span class="back-btn"><svg class="ic" viewBox="0 0 24 24"><use href="#i-back"/></svg></span>
+      <span class="hab-name">橘子的小屋</span>
+      <span class="tag baby">幼年</span>
+      <span class="spacer" style="flex:1"></span>
+      <span class="icon-btn"><svg class="ic" viewBox="0 0 24 24"><use href="#i-settings"/></svg></span>
+    </div>
+    <div class="hab-scene">
+      <div class="stripes"></div><div class="glow"></div>
+      <div class="lamp"></div>
+      <div class="window"><div class="bar"></div><div class="bar2"></div><div class="cloud"></div><div class="hill"></div><div class="hill2"></div></div>
+      <div class="curtain l"></div><div class="curtain r"></div>
+      <div class="shelf"><div class="frame"><i></i></div><div class="frame f2"><i style="background:linear-gradient(160deg,#CFE3EC,#A9C7D9)"></i></div><div class="pot"></div></div>
+      <div class="rug"></div>
+      <div class="pet-stage"><div class="pet-shadow" style="width:276px;opacity:.75"></div><img src="assets/pets/orange_cat.png" alt="橘子" style="transform:scale(1.05,.93)"></div>
+      <span class="fx" style="left:222px;bottom:400px;--s:38px;opacity:1"><svg viewBox="0 0 24 24" fill="currentColor"><use href="#i-heart"/></svg></span>
+      <span class="fx" style="left:470px;bottom:438px;--s:30px;opacity:.9"><svg viewBox="0 0 24 24" fill="currentColor"><use href="#i-heart"/></svg></span>
+      <span class="fx" style="left:258px;bottom:486px;--s:22px;opacity:.72"><svg viewBox="0 0 24 24" fill="currentColor"><use href="#i-heart"/></svg></span>
+      <span class="fx" style="left:448px;bottom:362px;--s:18px;opacity:.6"><svg viewBox="0 0 24 24" fill="currentColor"><use href="#i-heart"/></svg></span>
+      <span class="float-num" style="left:296px;bottom:520px">+3 心情</span>
+      <div class="bubble" style="top:96px"><span class="who">治愈</span>被摸到打呼噜了，心情 +3</div>
+    </div>
+    <div class="hab-bars">
+      <div class="stat"><span class="ico" style="background:#E3B23C"><svg class="ic" viewBox="0 0 24 24"><use href="#i-bowl"/></svg></span><span class="lbl">饱食</span><span class="track"><span class="fill" style="width:62%;background:linear-gradient(90deg,#F0C960,#E3B23C)"></span></span><span class="val">62</span></div>
+      <div class="stat"><span class="ico" style="background:#7FA9BF"><svg class="ic" viewBox="0 0 24 24"><use href="#i-drop"/></svg></span><span class="lbl">清洁</span><span class="track"><span class="fill" style="width:78%;background:linear-gradient(90deg,#BCD8E5,#8FB6C9)"></span></span><span class="val">78</span></div>
+      <div class="stat"><span class="ico" style="background:#D98E73"><svg class="ic" viewBox="0 0 24 24"><use href="#i-heart"/></svg></span><span class="lbl">心情</span><span class="track"><span class="fill" style="width:89%;background:linear-gradient(90deg,#EFAF92,#D98E73);box-shadow:0 0 0 2px rgba(217,142,115,.18)"></span></span><span class="val" style="color:#BD7059">89</span></div>
+    </div>
+    <div class="hab-actions">
+      <div class="key"><svg class="ic" viewBox="0 0 24 24"><use href="#i-bowl"/></svg>喂食<small>普通粮</small></div>
+      <div class="key"><svg class="ic" viewBox="0 0 24 24"><use href="#i-drop"/></svg>洗澡<small>泡泡</small></div>
+      <div class="key"><svg class="ic" viewBox="0 0 24 24"><use href="#i-hand"/></svg>抚摸<small>今日 3/3</small></div>
+      <div class="key deco"><svg class="ic" viewBox="0 0 24 24"><use href="#i-brush"/></svg>装修</div>
+    </div>
+    <div class="home-ind"><i></i></div>
+  </div>
+  <div class="anno" style="left:210px;top:560px;width:290px"><b>1</b>0.09s 压扁 → 0.26s 回弹过冲；爱心 0.9s 上浮淡出，属性条同步涨 3</div>
+  <div class="anno" style="left:24px;top:1150px;width:260px"><b>2</b>反馈结束后自动回到稳定态，不留在屏上循环</div>
+</section>
+
+<!-- ===================== Flow A-4 · 空屋态 ===================== -->
+<section class="screen" data-id="A4" data-flow="A" data-theme="cream" data-title="A4 空屋态">
+  <div class="statusbar"><span>9:41</span><span class="sig">●●● ▮▮ <i class="bat"></i></span></div>
+  <div class="hud">
+    <span class="pill"><i class="coin"></i>200<span class="plus">+</span></span>
+    <span class="pill"><svg class="ic heart" viewBox="0 0 24 24"><use href="#i-heart"/></svg>20<span class="plus">+</span></span>
+    <span class="spacer"></span>
+  </div>
+  <div class="hab">
+    <div class="hab-top">
+      <span class="back-btn"><svg class="ic" viewBox="0 0 24 24"><use href="#i-back"/></svg></span>
+      <span class="hab-name">小屋</span>
+      <span class="spacer" style="flex:1"></span>
+    </div>
+    <div class="empty-room">
+      <div class="illus">
+        <div class="tag">这间屋子还空着</div>
+        <div class="win"></div>
+        <div class="bed"></div>
+        <div class="bowl"></div>
+      </div>
+      <div class="board">
+        <h3>还没有搬进来的小家伙</h3>
+        <p>先去诊疗 TAB 接诊，治好并送养成功后，它就会住进这间小屋。每天记得回来喂食和抚摸。</p>
+        <div class="btn btn-primary" style="margin-top:18px;height:58px">去大厅接诊</div>
+      </div>
+    </div>
+    <div class="home-ind"><i></i></div>
+  </div>
+  <div class="anno" style="left:150px;top:770px;width:300px"><b>1</b>空态不留死胡同：给出唯一出口「去大厅接诊」</div>
+</section>
+
+<!-- ===================== Flow A-5 · 进门过渡 ===================== -->
+<section class="screen" data-id="A5" data-flow="A" data-theme="cream" data-title="A5 进门过渡 240ms">
+  <div class="transition">
+    <div class="iris">
+      <div class="peek"><div class="pk-win"></div><div class="pk-rug"></div><img src="assets/pets/orange_cat.png" alt=""></div>
+    </div>
+    <div class="cap"><b>推门</b>240ms · 大厅淡出 → 小屋从中央展开</div>
+  </div>
+  <div class="anno" style="left:210px;top:940px;width:300px"><b>1</b>位移控制在一屏内，不做三秒以上的转场；低端机直接切换</div>
+</section>
+<!-- ===================== Flow B-1 · 小屋 · 装修入口 ===================== -->
+<section class="screen" data-id="B1" data-flow="B" data-theme="cream" data-title="B1 小屋 · 装修入口">
+  <div class="statusbar"><span>9:41</span><span class="sig">●●● ▮▮ <i class="bat"></i></span></div>
+  <div class="hud">
+    <span class="pill"><i class="coin"></i>200<span class="plus">+</span></span>
+    <span class="pill"><svg class="ic heart" viewBox="0 0 24 24"><use href="#i-heart"/></svg>20<span class="plus">+</span></span>
+    <span class="spacer"></span>
+  </div>
+  <div class="hab">
+    <div class="hab-top">
+      <span class="back-btn"><svg class="ic" viewBox="0 0 24 24"><use href="#i-back"/></svg></span>
+      <span class="hab-name">橘子的小屋</span>
+      <span class="tag baby">幼年</span>
+      <span class="spacer" style="flex:1"></span>
+      <span class="icon-btn"><svg class="ic" viewBox="0 0 24 24"><use href="#i-settings"/></svg></span>
+    </div>
+    <div class="hab-scene">
+      <div class="stripes"></div><div class="glow"></div>
+      <div class="lamp"></div>
+      <div class="window"><div class="bar"></div><div class="bar2"></div><div class="cloud"></div><div class="hill"></div><div class="hill2"></div></div>
+      <div class="curtain l"></div><div class="curtain r"></div>
+      <div class="shelf"><div class="frame"><i></i></div><div class="frame f2"><i style="background:linear-gradient(160deg,#CFE3EC,#A9C7D9)"></i></div><div class="pot"></div></div>
+      <div class="rug"></div>
+      <div class="pet-stage"><div class="pet-shadow"></div><img src="assets/pets/orange_cat.png" alt="橘子"></div>
+      <div class="bubble"><span class="who">橘子</span>墙面有点旧了，想换个新家～</div>
+    </div>
+    <div class="hab-bars">
+      <div class="stat"><span class="ico" style="background:#E3B23C"><svg class="ic" viewBox="0 0 24 24"><use href="#i-bowl"/></svg></span><span class="lbl">饱食</span><span class="track"><span class="fill" style="width:62%;background:linear-gradient(90deg,#F0C960,#E3B23C)"></span></span><span class="val">62</span></div>
+      <div class="stat"><span class="ico" style="background:#7FA9BF"><svg class="ic" viewBox="0 0 24 24"><use href="#i-drop"/></svg></span><span class="lbl">清洁</span><span class="track"><span class="fill" style="width:78%;background:linear-gradient(90deg,#BCD8E5,#8FB6C9)"></span></span><span class="val">78</span></div>
+      <div class="stat"><span class="ico" style="background:#D98E73"><svg class="ic" viewBox="0 0 24 24"><use href="#i-heart"/></svg></span><span class="lbl">心情</span><span class="track"><span class="fill" style="width:86%;background:linear-gradient(90deg,#EFAF92,#D98E73)"></span></span><span class="val">86</span></div>
+    </div>
+    <div class="hab-actions">
+      <div class="key"><svg class="ic" viewBox="0 0 24 24"><use href="#i-bowl"/></svg>喂食<small>普通粮</small></div>
+      <div class="key"><svg class="ic" viewBox="0 0 24 24"><use href="#i-drop"/></svg>洗澡<small>泡泡</small></div>
+      <div class="key"><svg class="ic" viewBox="0 0 24 24"><use href="#i-hand"/></svg>抚摸<small>今日 2/3</small></div>
+      <div class="key deco hot" style="box-shadow:0 0 0 4px rgba(217,142,115,.22),0 5px 0 color-mix(in srgb,var(--t-accent) 55%,#BFA98F),0 12px 22px rgba(62,50,42,.12)"><svg class="ic" viewBox="0 0 24 24"><use href="#i-brush"/></svg>装修<span class="cd">4 款</span></div>
+    </div>
+    <div class="home-ind"><i></i></div>
+  </div>
+  <div class="anno hot" style="left:250px;top:930px;width:270px"><b>1</b>装修入口常驻第四键，带主题数量角标（4 款）</div>
+  <div class="anno" style="left:34px;top:520px;width:280px"><b>2</b>当前墙 / 地 / 家具色都来自所选主题，不再是固定贴图</div>
+</section>
+
+<!-- ===================== Flow B-2 · 装修小店 ===================== -->
+<section class="screen" data-id="B2" data-flow="B" data-theme="cream" data-title="B2 装修小店（Sheet）">
+  <div class="statusbar"><span>9:41</span><span class="sig">●●● ▮▮ <i class="bat"></i></span></div>
+  <div class="hud">
+    <span class="pill"><i class="coin"></i>200<span class="plus">+</span></span>
+    <span class="pill"><svg class="ic heart" viewBox="0 0 24 24"><use href="#i-heart"/></svg>20<span class="plus">+</span></span>
+    <span class="spacer"></span>
+  </div>
+  <div class="hab" style="background:var(--cream)">
+    <div class="hab-top">
+      <span class="back-btn"><svg class="ic" viewBox="0 0 24 24"><use href="#i-back"/></svg></span>
+      <span class="hab-name">橘子的小屋</span>
+      <span class="tag baby">幼年</span>
+    </div>
+    <div class="hab-scene" style="opacity:.55;height:620px;flex:0 0 auto">
+      <div class="stripes"></div><div class="glow"></div>
+      <div class="window"><div class="bar"></div><div class="bar2"></div><div class="cloud"></div><div class="hill"></div><div class="hill2"></div></div>
+      <div class="curtain l"></div><div class="curtain r"></div>
+      <div class="rug"></div>
+      <div class="pet-stage"><img src="assets/pets/orange_cat.png" alt=""></div>
+    </div>
+  </div>
+  <div class="mask" style="background:rgba(62,50,42,.30)">
+    <div class="sheet" style="display:flex;flex-direction:column">
+      <div class="grab"></div>
+      <div class="sheet-head">
+        <h3>装修小店</h3><span>主题会同时换大厅与小屋</span>
+        <span class="pill bal" style="height:30px;font-size:14px"><i class="coin" style="width:18px;height:18px"></i>200</span>
+      </div>
+      <div class="shop-grid">
+        <div class="theme-card on">
+          <div class="thumbpic">
+            <div class="sw" style="background:linear-gradient(180deg,#FBF4EA,#F3E8DA 60%,#EFE2D2 60%)"></div>
+            <div class="fl" style="background:#E4D3BE"></div>
+            <div class="wd"></div>
+            <img class="fur" src="assets/pets/orange_cat.png" alt="">
+            <span class="owned">使用中</span>
+          </div>
+          <div class="meta"><div class="nm">奶油诊室</div><div class="desc">默认 · 暖木与米白</div><div class="buy" style="color:#8A6416">已拥有</div></div>
+        </div>
+        <div class="theme-card">
+          <div class="thumbpic">
+            <div class="sw" style="background:linear-gradient(180deg,#FFF6F5,#FBECEA 60%,#F3DED9 60%)"></div>
+            <div class="fl" style="background:#E9CCC6"></div>
+            <div class="wd" style="background:linear-gradient(180deg,#FBE3E8,#FFF1F3)"></div>
+            <img class="fur" src="assets/pets/siamese.png" alt="">
+            <span class="try">预览</span>
+          </div>
+          <div class="meta"><div class="nm">樱花小筑</div><div class="desc">粉墙 · 樱色窗帘</div><div class="buy"><i class="coin-sm"></i>320</div></div>
+        </div>
+        <div class="theme-card">
+          <div class="thumbpic">
+            <div class="sw" style="background:linear-gradient(180deg,#F4F9FB,#E9F1F5 60%,#E1EDF1 60%)"></div>
+            <div class="fl" style="background:#D2E2E8"></div>
+            <div class="wd" style="background:linear-gradient(180deg,#CFE3EC,#EAF3F6)"></div>
+            <img class="fur" src="assets/pets/shiba.png" alt="">
+            <span class="try" style="background:rgba(228,87,61,.9)">差 280</span>
+          </div>
+          <div class="meta"><div class="nm">海盐午后</div><div class="desc">灰蓝 · 海风窗景</div><div class="buy"><i class="coin-sm"></i>480</div></div>
+        </div>
+        <div class="theme-card">
+          <div class="thumbpic">
+            <div class="sw" style="background:linear-gradient(180deg,#F6F9F2,#EDF2E7 60%,#E6EDDF 60%)"></div>
+            <div class="fl" style="background:#D8E3CD"></div>
+            <div class="wd" style="background:linear-gradient(180deg,#DCEBCF,#F1F7E8)"></div>
+            <img class="fur" src="assets/pets/corgi.png" alt="">
+            <span class="try" style="background:rgba(228,87,61,.9)">差 440</span>
+          </div>
+          <div class="meta"><div class="nm">森林晨光</div><div class="desc">浅绿 · 木质与藤</div><div class="buy" style="color:#8C8178"><i class="coin-sm" style="filter:grayscale(.7);opacity:.7"></i>640</div></div>
+        </div>
+      </div>
+      <div style="margin-top:auto;padding:10px 0 14px;font-size:12px;color:var(--sub);display:flex;align-items:center;gap:8px">
+        <svg class="ic" viewBox="0 0 24 24" style="width:16px;height:16px"><use href="#i-warn"/></svg>
+        点卡片先看双联预览，确认后再扣金币；买不起的主题会直接标出差额
+      </div>
+    </div>
+  </div>
+  <div class="anno" style="left:24px;top:552px;width:270px"><b>1</b>2 列大卡：缩略图＝该主题下的真实房间，不是纯色块</div>
+  <div class="anno" style="left:396px;top:552px;width:300px"><b>2</b>买不起不下架：卡角常驻差额，引导去赚金币</div>
+</section>
+
+<!-- ===================== Flow B-3 · 主题预览 ===================== -->
+<section class="screen" data-id="B3" data-flow="B" data-theme="cream" data-title="B3 主题双联预览">
+  <div class="statusbar"><span>9:41</span><span class="sig">●●● ▮▮ <i class="bat"></i></span></div>
+  <div class="hud">
+    <span class="pill"><i class="coin"></i>200<span class="plus">+</span></span>
+    <span class="pill"><svg class="ic heart" viewBox="0 0 24 24"><use href="#i-heart"/></svg>20<span class="plus">+</span></span>
+    <span class="spacer"></span>
+  </div>
+  <div class="hab-top" style="height:56px">
+    <span class="back-btn"><svg class="ic" viewBox="0 0 24 24"><use href="#i-back"/></svg></span>
+    <span class="hab-name" style="font-size:17px">樱花小筑</span>
+    <span class="tag adult" style="background:#F7DCE4;color:#9C4257">预览中</span>
+  </div>
+  <div class="preview-wrap" data-theme="sakura">
+    <div class="seg"><div class="on">大厅</div><div>小屋</div><div style="opacity:.55">后院</div></div>
+    <div class="mini lobby-mini">
+      <span class="cap">大厅</span><span class="lock">未拥有 · 预览</span>
+      <div class="mtitle">萌宠救助日记</div>
+      <div class="mdoor"></div>
+      <img class="mpet" src="assets/pets/orange_cat.png" alt="">
+      <div class="mtabs"><span>诊疗</span><span>后院</span><span style="font-weight:800;color:#4A3F35">小屋</span><span>成就</span></div>
+    </div>
+    <div class="mini room-mini">
+      <span class="cap">小屋</span>
+      <div class="mwin"><div class="hill" style="position:absolute;left:-10px;right:-10px;bottom:-10px;height:26px;border-radius:50% 50% 0 0;background:#AFC9A2"></div></div>
+      <div class="mrug"></div>
+      <img class="mpet2" src="assets/pets/orange_cat.png" alt="">
+      <div class="mbar"><i></i><i></i><i></i></div>
+    </div>
+    <div class="preview-info">
+      <h3>樱花小筑</h3>
+      <p>墙、地板、窗帘、家具与柜台同步换色。大厅和小屋会一起变，回家时不会割裂。</p>
+    </div>
+    <div class="legend">
+      <span><i style="background:var(--t-wall)"></i>墙面</span>
+      <span><i style="background:var(--t-floor)"></i>地板</span>
+      <span><i style="background:var(--t-accent)"></i>窗帘</span>
+      <span><i style="background:var(--t-soft)"></i>家具</span>
+    </div>
+    <div class="buy-bar">
+      <span class="price"><i class="coin-sm"></i>320</span>
+      <div class="btn btn-primary">购买主题</div>
+    </div>
+    <div class="home-ind"><i></i></div>
+  </div>
+  <div class="anno" style="left:24px;top:760px;width:250px"><b>1</b>双联预览：同一主题下大厅与小屋并排，先看整体再决定</div>
+</section>
+
+<!-- ===================== Flow B-4 · 购买确认（金币不足） ===================== -->
+<section class="screen" data-id="B4" data-flow="B" data-theme="cream" data-title="B4 购买确认 · 差额态">
+  <div class="statusbar"><span>9:41</span><span class="sig">●●● ▮▮ <i class="bat"></i></span></div>
+  <div class="hud">
+    <span class="pill"><i class="coin"></i>200<span class="plus">+</span></span>
+    <span class="pill"><svg class="ic heart" viewBox="0 0 24 24"><use href="#i-heart"/></svg>20<span class="plus">+</span></span>
+    <span class="spacer"></span>
+  </div>
+  <div class="preview-wrap" data-theme="sakura" style="opacity:.62;padding:8px 24px 0">
+    <div class="mini room-mini" style="flex:1">
+      <div class="mwin"><div class="hill" style="position:absolute;left:-10px;right:-10px;bottom:-10px;height:26px;border-radius:50% 50% 0 0;background:#AFC9A2"></div></div>
+      <div class="mrug" style="bottom:640px"></div>
+      <img class="mpet2" src="assets/pets/orange_cat.png" alt="" style="bottom:660px;width:150px">
+      <div class="mbar"><i></i><i></i><i></i></div>
+    </div>
+  </div>
+  <div class="mask">
+    <div class="sheet" style="height:600px;display:flex;flex-direction:column">
+      <div class="grab"></div>
+      <div class="sheet-head"><h3>确认购买</h3><span>价格不会随好评变化</span></div>
+      <div class="buy-row">
+        <div class="pic"><div class="sw" style="background:linear-gradient(180deg,#FFF6F5,#FBECEA 58%,#F3DED9 58%)"></div><div class="fl" style="background:#E9CCC6"></div></div>
+        <div><div class="nm">樱花小筑</div><div class="ds">整局生效 · 含大厅底板与柜台</div></div>
+      </div>
+      <div class="cost">
+        <div class="line"><span>主题价格</span><b>320</b></div>
+        <div class="line"><span>当前金币</span><b>200</b></div>
+        <div class="line total"><span>还差</span><b style="color:#A63A26">120</b></div>
+      </div>
+      <div class="warn"><svg class="ic" viewBox="0 0 24 24" style="width:18px;height:18px;flex:0 0 auto"><use href="#i-warn"/></svg><span>金币不足，先接诊 / 后院收获凑够 <b>120</b> 再来。主题会一直留在这里。</span></div>
+      <div class="btn btn-off" style="margin-top:auto"><svg class="ic" viewBox="0 0 24 24"><use href="#i-lock"/></svg>购买主题（差 120）</div>
+      <div class="btn btn-ghost"><svg class="ic" viewBox="0 0 24 24"><use href="#i-leaf"/></svg>去后院赚金币</div>
+    </div>
+  </div>
+  <div class="anno" style="left:24px;top:752px;width:290px"><b>1</b>置灰但保留动作名与差额，不做「点了没反应」的死色块</div>
+  <div class="anno" style="left:24px;top:892px;width:300px"><b>2</b>给唯一可行出口：去后院 / 接诊，避免卡死</div>
+</section>
+
+<!-- ===================== Flow B-5 · 生效反馈 ===================== -->
+<section class="screen" data-id="B5" data-flow="B" data-theme="sakura" data-title="B5 已生效 · 樱花小筑">
+  <div class="statusbar"><span>9:41</span><span class="sig">●●● ▮▮ <i class="bat"></i></span></div>
+  <div class="hud">
+    <span class="pill"><i class="coin"></i>0<span class="plus">+</span></span>
+    <span class="pill"><svg class="ic heart" viewBox="0 0 24 24"><use href="#i-heart"/></svg>20<span class="plus">+</span></span>
+    <span class="spacer"></span>
+  </div>
+  <div class="flush" style="position:absolute;inset:0;z-index:0"></div>
+  <div class="hab">
+    <div class="hab-top">
+      <span class="back-btn"><svg class="ic" viewBox="0 0 24 24"><use href="#i-back"/></svg></span>
+      <span class="hab-name">橘子的小屋</span>
+      <span class="tag baby">幼年</span>
+      <span class="spacer" style="flex:1"></span>
+      <span class="icon-btn"><svg class="ic" viewBox="0 0 24 24"><use href="#i-settings"/></svg></span>
+    </div>
+    <div class="hab-scene">
+      <div class="stripes"></div><div class="glow"></div>
+      <div class="lamp"></div>
+      <div class="window"><div class="bar"></div><div class="bar2"></div><div class="cloud"></div><div class="hill"></div><div class="hill2"></div></div>
+      <div class="curtain l"></div><div class="curtain r"></div>
+      <div class="shelf"><div class="frame"><i style="background:linear-gradient(160deg,#F7DCE4,#D98AA0)"></i></div><div class="frame f2"><i style="background:linear-gradient(160deg,#F7DCE4,#E9A8B8)"></i></div><div class="pot"></div></div>
+      <div class="rug"></div>
+      <div class="pet-stage"><div class="pet-shadow"></div><img src="assets/pets/orange_cat.png" alt="橘子"></div>
+      <div class="bubble"><span class="who">橘子</span>哇，墙变成粉色了！</div>
+      <div class="toast"><i class="dot"></i>已换上 · 樱花小筑</div>
+    </div>
+    <div class="hab-bars">
+      <div class="stat"><span class="ico" style="background:#E3B23C"><svg class="ic" viewBox="0 0 24 24"><use href="#i-bowl"/></svg></span><span class="lbl">饱食</span><span class="track"><span class="fill" style="width:62%;background:linear-gradient(90deg,#F0C960,#E3B23C)"></span></span><span class="val">62</span></div>
+      <div class="stat"><span class="ico" style="background:#7FA9BF"><svg class="ic" viewBox="0 0 24 24"><use href="#i-drop"/></svg></span><span class="lbl">清洁</span><span class="track"><span class="fill" style="width:78%;background:linear-gradient(90deg,#BCD8E5,#8FB6C9)"></span></span><span class="val">78</span></div>
+      <div class="stat"><span class="ico" style="background:#D98E73"><svg class="ic" viewBox="0 0 24 24"><use href="#i-heart"/></svg></span><span class="lbl">心情</span><span class="track"><span class="fill" style="width:86%;background:linear-gradient(90deg,#EFAF92,#D98E73)"></span></span><span class="val">86</span></div>
+    </div>
+    <div class="hab-actions">
+      <div class="key"><svg class="ic" viewBox="0 0 24 24"><use href="#i-bowl"/></svg>喂食<small>普通粮</small></div>
+      <div class="key"><svg class="ic" viewBox="0 0 24 24"><use href="#i-drop"/></svg>洗澡<small>泡泡</small></div>
+      <div class="key"><svg class="ic" viewBox="0 0 24 24"><use href="#i-hand"/></svg>抚摸<small>今日 2/3</small></div>
+      <div class="key deco"><svg class="ic" viewBox="0 0 24 24"><use href="#i-brush"/></svg>装修<span class="cd">4 款</span></div>
+    </div>
+    <div class="home-ind"><i></i></div>
+  </div>
+  <div class="anno" style="left:24px;top:200px;width:300px"><b>1</b>换色 240ms 交叉过渡 + 一次白光；大厅底板的主题变量同时写入</div>
+  <div class="anno" style="left:24px;top:1100px;width:290px"><b>2</b>Toasts 2.2s 后自动消失，不挡返回操作</div>
+</section>
+
+<!-- ===================== 按钮规范 ===================== -->
+<section class="screen" data-id="S1" data-flow="S" data-theme="cream" data-title="S1 按钮体系">
+  <div class="statusbar"><span>9:41</span><span class="sig">●●● ▮▮ <i class="bat"></i></span></div>
+  <div class="spec">
+    <h2>按钮体系</h2>
+    <p class="lead">三档只靠「填充 / 描边 / 置灰」区分，不再用纯色文字块。尺寸以 720 宽为基准，落地时按 750 设计稿同比缩放。</p>
+
+    <div class="spec-sec">
+      <h4>主操作 · Primary</h4>
+      <div class="demo-card">
+        <div class="row hit"><div class="btn btn-primary">购买主题</div></div>
+        <div class="hit-note">虚线框为 88 高触控热区，可见按钮 60</div>
+        <div class="note">按下压深 3px、缩放 0.96，松手 backOut 回弹。全屏只有一枚。</div>
+      </div>
+    </div>
+
+    <div class="spec-sec">
+      <h4>次操作 · Secondary</h4>
+      <div class="demo-card">
+        <div class="row">
+          <div class="key" style="height:84px;flex:1"><svg class="ic" viewBox="0 0 24 24"><use href="#i-bowl"/></svg>喂食<small>普通粮</small></div>
+          <div class="key" style="height:84px;flex:1"><svg class="ic" viewBox="0 0 24 24"><use href="#i-drop"/></svg>洗澡<small>泡泡</small></div>
+          <div class="key" style="height:84px;flex:1"><svg class="ic" viewBox="0 0 24 24"><use href="#i-hand"/></svg>抚摸<small>今日 2/3</small></div>
+        </div>
+        <div class="row"><div class="btn btn-ghost">去后院赚金币</div></div>
+        <div class="note">图标在上、动作名在下，图标先于文字被读懂；三键等分，间距 10–12。</div>
+      </div>
+    </div>
+
+    <div class="spec-sec">
+      <h4>禁用 · Disabled</h4>
+      <div class="demo-card">
+        <div class="row"><div class="btn btn-off"><svg class="ic" viewBox="0 0 24 24"><use href="#i-lock"/></svg>购买主题（差 120）</div></div>
+        <div class="note">明度降 40%、锁图标、差额进文案。点击给 2px 横向轻抖，不弹 toast。</div>
+      </div>
+    </div>
+
+    <div class="spec-sec">
+      <h4>状态与动效</h4>
+      <div class="demo-card">
+        <dl class="kv">
+          <dt>默认</dt><dd>inset 1px 描边 + 0 5px 实心投影，底边读成厚度</dd>
+          <dt>按下</dt><dd>translateY(3px)，投影收到 2px，100ms</dd>
+          <dt>松手</dt><dd>180ms backOut 回位，过冲不超过 4%</dd>
+          <dt>低端机</dt><dd>只保留位移，不做缩放与阴影插值</dd>
+        </dl>
+      </div>
+    </div>
+
+    <div class="spec-sec">
+      <h4>色板（来自 Tokens.ts）</h4>
+      <div class="demo-card">
+        <div class="swatches">
+          <i style="background:#D98E73"><span>clay</span></i>
+          <i style="background:#FFE7A3"><span>gold</span></i>
+          <i style="background:#A8C3A0"><span>sage</span></i>
+          <i style="background:#A9C7D9"><span>mist</span></i>
+          <i style="background:#F7EFE3"><span>cream</span></i>
+          <i style="background:#4A3F35"><span style="color:#F7EFE3">ink</span></i>
+        </div>
+        <div class="note">主色只用 clay；sage / mist 只作状态色；不新增第二个主色。</div>
+      </div>
+    </div>
+  </div>
+  <div class="home-ind"><i></i></div>
+</section>
+
+
+  </div>
+  <button class="nav-arrow" id="next">›</button>
+</div>
+
+<div class="spec-foot">
+  <div class="thumbs" id="thumbs"></div>
+</div>
+
+<script>
+const device = document.getElementById('device');
+const screens = [...document.querySelectorAll('.screen')];
+const thumbBox = document.getElementById('thumbs');
+const THEME_BG = {
+  cream: 'linear-gradient(180deg,#FBF4EA,#F3E8DA 52%,#EFE2D2 52%,#E4D3BE)',
+  sakura: 'linear-gradient(180deg,#FFF6F5,#FBECEA 52%,#F3DED9 52%,#E9CCC6)',
+  ocean: 'linear-gradient(180deg,#F4F9FB,#E9F1F5 52%,#E1EDF1 52%,#D2E2E8)',
+  forest: 'linear-gradient(180deg,#F6F9F2,#EDF2E7 52%,#E6EDDF 52%,#D8E3CD)'
+};
+let flow = 'A';
+let index = 0;
+
+const list = () => screens.filter((s) => s.dataset.flow === flow);
+
+function render() {
+  const items = list();
+  index = Math.max(0, Math.min(index, items.length - 1));
+  screens.forEach((s) => s.classList.remove('on'));
+  items[index].classList.add('on');
+
+  document.querySelectorAll('.chip[data-flow]').forEach((c) => {
+    c.classList.toggle('on', c.dataset.flow === flow);
+  });
+
+  thumbBox.innerHTML = '';
+  items.forEach((s, i) => {
+    const t = document.createElement('div');
+    t.className = 'thumb' + (i === index ? ' on' : '');
+    t.innerHTML = '<div style="height:150px;background:' + (THEME_BG[s.dataset.theme] || THEME_BG.cream) +
+      ';display:grid;place-items:center;font-size:22px;font-weight:800;color:rgba(74,63,53,.55)">' +
+      s.dataset.id + '</div><span>' + s.dataset.title.replace(/^[ABS]\d+\s*/, '') + '</span>';
+    t.onclick = () => { index = i; render(); };
+    thumbBox.appendChild(t);
+  });
+
+  const bar = document.querySelector('.spec-bar');
+  [...bar.querySelectorAll('.chip')].forEach((c) => {
+    if (c.id === 'annoBtn') return;
+    c.classList.toggle('on', c.dataset.flow === flow);
+  });
+}
+
+document.querySelectorAll('.chip[data-flow]').forEach((c) => {
+  c.onclick = () => { flow = c.dataset.flow; index = 0; render(); };
+});
+
+document.getElementById('prev').onclick = () => { index = (index - 1 + list().length) % list().length; render(); };
+document.getElementById('next').onclick = () => { index = (index + 1) % list().length; render(); };
+
+document.getElementById('annoBtn').onclick = (e) => {
+  device.classList.toggle('show-anno');
+  e.currentTarget.classList.toggle('on');
+  e.currentTarget.textContent = device.classList.contains('show-anno') ? '隐藏交互注释' : '显示交互注释';
+};
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowLeft') { index = (index - 1 + list().length) % list().length; render(); }
+  if (e.key === 'ArrowRight') { index = (index + 1) % list().length; render(); }
+  if (e.key === '1') { flow = 'A'; index = 0; render(); }
+  if (e.key === '2') { flow = 'B'; index = 0; render(); }
+  if (e.key === '3') { flow = 'S'; index = 0; render(); }
+  if (e.key === 'a') { document.getElementById('annoBtn').click(); }
+});
+
+function fit() {
+  if (document.body.classList.contains('shot-mode')) {
+    device.style.zoom = 1;
+    return;
+  }
+  const usableH = window.innerHeight - 250;
+  const usableW = window.innerWidth - 200;
+  const k = Math.min(1, usableH / 1280, usableW / 720);
+  device.style.zoom = k.toFixed(3);
+}
+window.addEventListener('resize', fit);
+
+function applyHash() {
+  const id = (location.hash || '').replace('#', '');
+  const target = screens.find((s) => s.dataset.id === id);
+  if (!target) {
+    return;
+  }
+  flow = target.dataset.flow;
+  index = list().indexOf(target);
+  render();
+}
+window.addEventListener('hashchange', applyHash);
+
+if (location.search.indexOf('shot=1') >= 0) {
+  document.body.classList.add('shot-mode');
+  const id = (location.hash || '#A1').replace('#', '');
+  document.querySelectorAll('.chip[data-flow]').forEach((c) => {
+    if (c.dataset.flow === 'A' || c.dataset.flow === 'B' || c.dataset.flow === 'S') {
+      c.style.display = 'none';
+    }
+  });
+  const target = screens.find((s) => s.dataset.id === id);
+  if (target) {
+    flow = target.dataset.flow;
+    index = list().indexOf(target);
+  }
+}
+fit();
+render();
+applyHash();
+
+</script>
+</body>
+</html>

@@ -1,0 +1,166 @@
+{
+  "skill": "flow-mobile",
+  "generated_at": "2026-11-10T15:49:47+08:00",
+  "project_name": "萌宠救助日记",
+  "scenario": "Marketplace（装修商店）+ Productivity（每日互动）",
+  "scenario_note": "项目为 720×1280 竖屏微信小游戏，flow-mobile 的 16 类移动场景无游戏直接匹配，按双参照执行",
+  "tech_stack": "H5 单文件设计稿（不产出 React/RN 代码，工程侧仍为 Cocos Creator 3.8）",
+  "delivery": {
+    "mode": "single-file-html",
+    "path": "spark-output/flow-mobile/design.html",
+    "frame": "720x1280",
+    "screen_count": 11,
+    "preview_dir": "build/shots/flow-mobile",
+    "features": [
+      "hash 路由逐屏，#A1…#S1",
+      "?shot=1 截图模式（关闭入场动画与注释层）",
+      "四主题 data-theme：cream / sakura / ocean / forest",
+      "交互注释层可切换（.show-anno），标注触控热区与状态规则",
+      "零依赖、零构建、双击可看"
+    ]
+  },
+  "navigation": {
+    "model": "TabBar（4 Tab）+ Stack 全屏页",
+    "tabs": ["诊疗", "后院", "小屋", "成就"],
+    "rationale": "大厅已有四 TAB 内容坞（LobbyTabs.ts），小屋为全屏 Stack 页，装修与主题商店以 Sheet 叠加，不新增第五个 TAB"
+  },
+  "flows": [
+    {
+      "name": "Flow A · 回家（专属小屋）",
+      "goal": "领养后能回到专属小屋与宠物互动，并把小屋做成每日回访的理由",
+      "entry": "大厅底部 TAB「小屋」，或直接点大厅散步带上的宠物",
+      "exit_states": {
+        "success": "完成一次互动（喂食/洗澡/抚摸任一），状态条与今日次数即时更新",
+        "error": "空屋态——没有可进小屋的宠物，给出「去大厅接诊」唯一出口",
+        "abandon": "返回大厅，状态与今日次数保留"
+      },
+      "screens": [
+        {
+          "id": "A1",
+          "name": "大厅·散步带",
+          "file_path": "spark-output/flow-mobile/design.html#A1",
+          "shot": "build/shots/flow-mobile/A1.png",
+          "main_action": "点宠物或 TAB「小屋」进入",
+          "key_components": ["资源条", "四 TAB 栏", "散步带宠物立绘", "小屋入口"]
+        },
+        {
+          "id": "A2",
+          "name": "专属小屋（全屏）",
+          "file_path": "spark-output/flow-mobile/design.html#A2",
+          "shot": "build/shots/flow-mobile/A2.png",
+          "main_action": "喂食 / 洗澡 / 抚摸 / 装修",
+          "key_components": ["房间场景", "宠物立绘", "三条状态条", "四键动作栏"]
+        },
+        {
+          "id": "A3",
+          "name": "抚摸反馈态",
+          "file_path": "spark-output/flow-mobile/design.html#A3",
+          "shot": "build/shots/flow-mobile/A3.png",
+          "main_action": "抚摸（每日 3 次）",
+          "key_components": ["爱心粒子", "心情条 +3", "次数角标 2/3"]
+        },
+        {
+          "id": "A4",
+          "name": "空屋态",
+          "file_path": "spark-output/flow-mobile/design.html#A4",
+          "shot": "build/shots/flow-mobile/A4.png",
+          "main_action": "去大厅接诊（唯一出口）",
+          "key_components": ["虚线空屋插画", "说明卡", "主 CTA"]
+        },
+        {
+          "id": "A5",
+          "name": "进门过渡 240ms",
+          "file_path": "spark-output/flow-mobile/design.html#A5",
+          "shot": "build/shots/flow-mobile/A5.png",
+          "main_action": "无（自动过渡）",
+          "key_components": ["圆形揭幕", "暖光内景预演"]
+        }
+      ]
+    },
+    {
+      "name": "Flow B · 换装修（全局生效）",
+      "goal": "主题购买决策闭环：先看双联预览 → 确认差额 → 支付或去赚金币 → 全局生效反馈",
+      "entry": "小屋页动作栏「装修」或大厅小屋入口角标「4 款」",
+      "exit_states": {
+        "success": "扣金币 → 全局换装 → 回到小屋看到已生效 + 一次性 toast",
+        "error": "金币不足：按钮置灰但保留动作名与差额，给「去后院赚金币」出口",
+        "abandon": "关闭 Sheet，主题仍在商店，不做二次询问"
+      },
+      "screens": [
+        {
+          "id": "B1",
+          "name": "小屋·装修入口",
+          "file_path": "spark-output/flow-mobile/design.html#B1",
+          "shot": "build/shots/flow-mobile/B1.png",
+          "main_action": "点「装修」",
+          "key_components": ["气泡引导", "动作栏", "装修键角标 4 款"]
+        },
+        {
+          "id": "B2",
+          "name": "装修小店 Sheet",
+          "file_path": "spark-output/flow-mobile/design.html#B2",
+          "shot": "build/shots/flow-mobile/B2.png",
+          "main_action": "选主题看预览",
+          "key_components": ["2 列主题卡", "真实缩略图", "买不起差额角标"]
+        },
+        {
+          "id": "B3",
+          "name": "主题双联预览",
+          "file_path": "spark-output/flow-mobile/design.html#B3",
+          "shot": "build/shots/flow-mobile/B3.png",
+          "main_action": "购买主题 / 返回",
+          "key_components": ["大厅+小屋双联缩略", "配色图例", "价格与主按钮"]
+        },
+        {
+          "id": "B4",
+          "name": "购买确认·差额态",
+          "file_path": "spark-output/flow-mobile/design.html#B4",
+          "shot": "build/shots/flow-mobile/B4.png",
+          "main_action": "去后院赚金币（差额态唯一出口）",
+          "key_components": ["背景预览", "价格/当前/还差三行", "置灰主按钮 + 次按钮"]
+        },
+        {
+          "id": "B5",
+          "name": "已生效·樱花小筑",
+          "file_path": "spark-output/flow-mobile/design.html#B5",
+          "shot": "build/shots/flow-mobile/B5.png",
+          "main_action": "继续互动",
+          "key_components": ["全局换色后的房间", "一次性生效 toast"]
+        }
+      ]
+    },
+    {
+      "name": "Flow S · 按钮体系",
+      "goal": "统一主/次/置灰/危险四类按钮的尺寸、热区与按压反馈",
+      "entry": "—",
+      "screens": [
+        {
+          "id": "S1",
+          "name": "按钮体系",
+          "file_path": "spark-output/flow-mobile/design.html#S1",
+          "shot": "build/shots/flow-mobile/S1.png",
+          "main_action": "—",
+          "key_components": ["88 触控热区虚线", "可见按钮 60", "四类按钮状态矩阵"]
+        }
+      ]
+    }
+  ],
+  "states_covered": [
+    "默认",
+    "输入/操作中（抚摸反馈、购买确认）",
+    "空（无宠物小屋）",
+    "错误/不足（金币差额）",
+    "过渡（进屋 240ms）",
+    "成功反馈（主题生效 toast）"
+  ],
+  "design_criteria_mapping": {
+    "换装后场景变化可感知 ≥ 90%": "B2 真实缩略图 + B3 大厅/小屋双联预览 + B5 全局换色后的完整房间",
+    "大厅与小屋调性一致不割裂": "B3 双联预览同屏对照，同一 data-theme 驱动两处",
+    "动作键 3 秒内可认出功能": "A2 四键各带图标 + 名称 + 副文案，抚摸键常驻今日次数"
+  },
+  "deviations": [
+    "16 类移动场景无游戏匹配，按 Marketplace（商店）+ Productivity（每日互动）双参照执行",
+    "交付形态为单文件 HTML 设计稿，不产出 React/RN 代码：Cocos Creator 工程无法运行 H5/RN 方案，代码落地依据本稿另行实施",
+    "主题数量与价格（4 款 / 320 金币）为设计稿占位值，以配置表为准"
+  ]
+}

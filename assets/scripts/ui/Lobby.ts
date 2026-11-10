@@ -20,6 +20,7 @@ import { LobbyBottomHandle, mountLobbyBottom } from './LobbyBottom';
 import { LobbyMenuHost, openLobbyMenu } from './LobbyMenu';
 import { openGachaFromLobby } from './LobbyStart';
 import { lobbyDoctorSize, lobbyDoctorY } from './LobbyDockLayout';
+import type { CoverPetHandle } from './LobbyCoverPet';
 import { LobbyHint } from './LobbyHint';
 import { mountLobbyScene } from './LobbyScene';
 import type { PetBandHandle } from './LobbyPetRow';
@@ -40,6 +41,7 @@ export class Lobby extends Component {
   private hint: LobbyHint | null = null;
   private hud: HudHandle | null = null;
   private band: PetBandHandle | null = null;
+  private cover: CoverPetHandle | null = null;
   private dock: LobbyBottomHandle | null = null;
   private doctorSlot: Node | null = null;
   private achievements: LobbyAchievementsHandle | null = null;
@@ -55,6 +57,7 @@ export class Lobby extends Component {
     this.doctorSlot = scene.doctorSlot;
     this.hud = scene.hud;
     this.band = scene.band;
+    this.cover = scene.cover;
     this.dock = mountLobbyBottom(this.node, {
       host: this.node,
       startButton: this.startButton,
@@ -152,11 +155,14 @@ export class Lobby extends Component {
     this.dock?.show(tab);
   }
 
-  /** 散步带的重建判定在 LobbyPetRow 内部（人没变就跳过），这里只负责拿最新列表。 */
+  /** 封面位先挑最新领养的那只，散步带再排除它：同一只宠物不会在大厅出现两次。 */
   private refreshBand(): void {
-    if (this.band && CharacterConfig.ready) {
-      this.band.refresh(habitatList());
+    if (!this.band || !this.cover || !CharacterConfig.ready) {
+      return;
     }
+    const list = habitatList();
+    const focusId = this.cover.refresh(list);
+    this.band.refresh(list, focusId ?? undefined);
   }
 
   private onStartClick(): void {

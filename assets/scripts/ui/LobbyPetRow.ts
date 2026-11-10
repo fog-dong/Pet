@@ -24,7 +24,8 @@ const MAX_VISIBLE = 2;
 const EMPTY_TEXT = '救回第一只小家伙后，它会在这里等你';
 
 export interface PetBandHandle {
-  refresh(entries: readonly HabitatPet[]): void;
+  /** excludeId 由封面宠回传：同一只不同屏出现两次，散步带只补「还需要照顾」的其余宠物。 */
+  refresh(entries: readonly HabitatPet[], excludeId?: string): void;
 }
 
 export function mountLobbyPetRow(parent: Node, onPick: (petId: string) => void): PetBandHandle {
@@ -33,16 +34,17 @@ export function mountLobbyPetRow(parent: Node, onPick: (petId: string) => void):
   let key = '';
   let built = false;
   return {
-    refresh(entries: readonly HabitatPet[]): void {
-      const picked = bandPets(entries);
+    refresh(entries: readonly HabitatPet[], excludeId?: string): void {
+      const pool = excludeId ? entries.filter((entry) => entry.petId !== excludeId) : entries;
+      const picked = bandPets(pool);
       // 小屋每做一次互动都会回调刷资源；台上人和状态没变就别重建，否则每点一下都在重播入场。
-      const next = picked.map((entry) => `${entry.petId}:${petMoodState(entry)}`).join('|');
+      const next = `${picked.map((entry) => `${entry.petId}:${petMoodState(entry)}`).join('|')}#${entries.length}`;
       if (built && next === key) {
         return;
       }
       built = true;
       key = next;
-      rebuild(band, picked, size, onPick);
+      rebuild(band, picked, size, onPick, entries.length);
     },
   };
 }
@@ -52,10 +54,14 @@ function rebuild(
   picked: readonly HabitatPet[],
   size: number,
   onPick: (petId: string) => void,
+  total: number,
 ): void {
   band.destroyAllChildren();
   if (picked.length === 0) {
-    addEmptyPlaque(band);
+    // 有宠物但都上了封面：台面空着就好，不再挂「去救一只」的空牌。
+    if (total === 0) {
+      addEmptyPlaque(band);
+    }
     return;
   }
   const nodes: Node[] = [];
@@ -95,7 +101,7 @@ function addPet(
   visual.apply(entry.petId);
   // 散步带是「回来一眼看到它」的门面，只在这两只身上插入习性动作，图鉴等批量立绘保持安静。
   visual.playState(petMoodState(entry), true);
-  bindPick(visual.node, () => onPick(entry.petId));
+  bindPetTap(visual.node, () => onPick(entry.petId));
   return visual.node;
 }
 
@@ -105,8 +111,8 @@ function bandPets(entries: readonly HabitatPet[]): HabitatPet[] {
     .slice(0, MAX_VISIBLE);
 }
 
-/** 按下压一档、松手先回弹再演 Q 弹，然后才开面板：手感在前，面板在后。 */
-function bindPick(node: Node, onPick: () => void): void {
+/** 按下压一档、松手先回弹再演 Q 弹，然后才开面板：手感在前，面板在后。散步带与封面宠共用。 */
+export function bindPetTap(node: Node, onPick: () => void): void {
   node.on(Node.EventType.TOUCH_START, () => {
     Tween.stopAllByTarget(node);
     settleEntrance(node);

@@ -121,3 +121,23 @@ function dockFloorY(): number {
 export function lobbyToastY(): number {
   return lobbyDockY() + dockHeight() / 2 + TOAST_OVER_DOCK;
 }
+
+/** 房间层可用高度：天花板到台沿之间的整面墙，窗、钟、光柱都按它派生。 */
+export function lobbyRoomH(): number {
+  return lobbyCeilY() - lobbyDeskEdgeY();
+}
+
+/** 封面宠：站在医生右侧柜台后，尺寸跟医生走；右墙还要给挂钟留位置，所以上限压在医生 0.64。 */
+export function lobbyCoverPetSize(): number {
+  return clamp(120, lobbyDoctorSize() * 0.64, 200);
+}
+
+export function lobbyCoverPetX(): number {
+  return (lobbyDoctorSize() + lobbyCoverPetSize()) * 0.42;
+}
+
+/** 脚底比医生再沉 18：它比医生矮，露出的身体比例才和柜台一致，不会被读成飘在台面上。 */
+export function lobbyCoverPetY(): number {
+  const foot = lobbyDeskEdgeY() - DOCTOR_SINK - 18;
+  return foot + ART_FOOT_RATIO * lobbyCoverPetSize();
+}

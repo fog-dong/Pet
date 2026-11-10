@@ -1,6 +1,7 @@
 // STATUS: implemented, W7 额外检查按钮（每日频控 + 广告位配置校验 + 统一失败文案）
 import { Button, Label, Node } from 'cc';
 import { adButtonText } from '../cache/AdQuota';
+import { isAdConfigured } from '../config/AdConfig';
 import { adFailHint, canOfferAd, showAd } from '../net/AdGateway';
 import { addButton, PALETTE, setButtonState } from '../ui/SceneUI';
 
@@ -11,6 +12,8 @@ export function buildInspection(parent: Node, onWatch: () => void): Button {
   if (label) {
     label.fontSize = 24;
   }
+  // 未配置广告位时整条入口不渲染：提审包里不能出现「暂未开放」的灰按钮。
+  button.node.active = isAdConfigured('extra_inspection');
   return button;
 }
 

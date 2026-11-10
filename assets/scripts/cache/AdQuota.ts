@@ -49,10 +49,13 @@ export class AdQuotaStore {
 
 export const AdQuota = new AdQuotaStore();
 
-/** 按钮文案：可用时显示剩余次数，未配置/超限时明确提示原因。 */
+/**
+ * 按钮文案：可用时显示剩余次数，超限时说明原因。
+ * 未配置广告位时调用方本就不渲染入口（提审包不允许出现「暂未开放」），这里只回动作名兜底。
+ */
 export function adButtonText(scene: string, base: string): string {
   if (!isAdConfigured(scene)) {
-    return `${base}（广告暂未开放）`;
+    return base;
   }
   return AdQuota.canShow(scene)
     ? `${base}（剩余 ${AdQuota.remaining(scene)} 次）`

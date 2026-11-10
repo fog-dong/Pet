@@ -3,6 +3,7 @@ import type { Node } from 'cc';
 import { Hospital } from './Hospital';
 import { CaseCrisis } from './CaseCrisis';
 import { adButtonText } from '../cache/AdQuota';
+import { isAdConfigured } from '../config/AdConfig';
 import { adFailHint, canOfferAd, showAd } from '../net/AdGateway';
 import { Track } from '../track/Track';
 import { ChoicePanel, PanelAction } from '../ui/ChoicePanel';
@@ -33,7 +34,11 @@ export class TreatmentFallback {
   medicineShortage(name: string, withRetry: boolean): void {
     this.focus = name || this.hooks.requiredMedicine();
     this.panel.open(this.hooks.root(), `「${this.focus}」库存不足`, this.medicineActions(withRetry));
-    this.panel.setHint('广告 / 好友送药 / 等待补给，三条免费路径都能继续。');
+    this.panel.setHint(
+      isAdConfigured('extra_medicine')
+        ? '广告 / 好友送药 / 等待补给，三条免费路径都能继续。'
+        : '好友送药 / 等待补给，两条免费路径都能继续。',
+    );
   }
 
   /**
@@ -54,7 +59,7 @@ export class TreatmentFallback {
   }
 
   bedShortage(): void {
-    this.panel.open(this.hooks.root(), '床位已满', [
+    const actions: PanelAction[] = [
       {
         text: '改门诊治疗（评分略低）',
         action: () => {
@@ -63,14 +68,20 @@ export class TreatmentFallback {
         },
         color: PALETTE.primary,
       },
-      {
+    ];
+    // 未配置广告位时整条入口不渲染：提审包里不能出现「暂未开放」的选项。
+    if (isAdConfigured('extra_bed')) {
+      actions.push({
         text: adButtonText('extra_bed', '看广告临时加床'),
         action: () => this.fillBed('ad'),
         disabled: !canOfferAd('extra_bed'),
-      },
+      });
+    }
+    actions.push(
       { text: '好友腾床 +1', action: () => this.fillBed('friend') },
       { text: '等待空床（3 秒）', action: () => this.fillBed('wait') },
-    ]);
+    );
+    this.panel.open(this.hooks.root(), '床位已满', actions);
     this.panel.setHint(`当前 ${Hospital.bedsOccupied}/${Hospital.bedsOwned}，改门诊也能完成治疗。`);
   }
 
@@ -83,12 +94,14 @@ export class TreatmentFallback {
         color: PALETTE.primary,
       });
     }
-    actions.push(
-      {
+    if (isAdConfigured('extra_medicine')) {
+      actions.push({
         text: adButtonText('extra_medicine', '看广告补药'),
         action: () => this.fillMedicine('ad'),
         disabled: !canOfferAd('extra_medicine'),
-      },
+      });
+    }
+    actions.push(
       { text: '好友送药 +1', action: () => this.fillMedicine('friend') },
       { text: '等待补给（3 秒）', action: () => this.fillMedicine('wait') },
     );

@@ -6,6 +6,7 @@ import { CharacterView } from './CharacterView';
 import { RecoveryMilestones } from './RecoveryMilestones';
 import { Sfx } from './Sfx';
 import { CharacterConfig } from '../config/CharacterConfig';
+import { isAdConfigured } from '../config/AdConfig';
 import { GameState } from '../core/GameFSM';
 import { goState } from '../core/SceneFlow';
 import { adButtonText } from '../cache/AdQuota';
@@ -52,13 +53,18 @@ export class Recovery extends Component {
       color: PALETTE.sub,
     });
     // 560 宽：文案最长「看广告加速 50%（剩余 3 次）」在 30 号字下约 420，留足左右内边距不折行。
-    this.speedButton = addButton(root, 'AdSpeedButton', '', -165, () => void this.speedUp(), PALETTE.accent, 560);
-    this.refreshSpeed();
-    addButton(root, 'AdoptButton', '进入领养', -330, () => void this.finish(), PALETTE.primary);
+    // 未配置广告位时整条加速入口不渲染，领养按钮上移补位。
+    const withAd = isAdConfigured('accelerate');
+    if (withAd) {
+      this.speedButton = addButton(root, 'AdSpeedButton', '', -165, () => void this.speedUp(), PALETTE.accent, 560);
+      this.refreshSpeed();
+    }
+    addButton(root, 'AdoptButton', '进入领养', withAd ? -330 : -236, () => void this.finish(), PALETTE.primary);
     this.mountPet(item.petId);
     mountBackButton(root, () => this.abandon(), true);
     // 用药后果走到这里才公示：本页的「预计 N 秒」已经是拉长后的康复时长。
-    showNotice(root, CasePressure.takeNotice());
+    // -430 落在加速/领养按钮下方，不再用默认 -320 压住按钮。
+    showNotice(root, CasePressure.takeNotice(), { y: -430 });
   }
 
   private abandon(): void {
@@ -167,7 +173,7 @@ export class Recovery extends Component {
 
   private async finish(): Promise<void> {
     if (!this.done) {
-      this.setHint('还在恢复中，可以等进度条，或看广告加速');
+      this.setHint(this.speedButton ? '还在恢复中，可以等进度条，或看广告加速' : '还在恢复中，等进度条走完就能进入领养');
       return;
     }
     await goState(GameState.Adoption, 'Adoption');

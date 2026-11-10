@@ -2,6 +2,7 @@
 import type { Button, Node } from 'cc';
 import { adButtonText } from '../cache/AdQuota';
 import { Save } from '../cache/Save';
+import { isAdConfigured } from '../config/AdConfig';
 import { adFailHint, canOfferAd, showAd } from '../net/AdGateway';
 import { addButton, PALETTE, setButtonState } from '../ui/SceneUI';
 import { showToast } from '../ui/Toast';
@@ -24,7 +25,11 @@ export class DoubleReward {
     private readonly options: DoubleRewardOptions,
   ) {}
 
+  /** 未配置广告位时整条入口不渲染：提审包里不能出现「暂未开放」的灰按钮。 */
   mount(): void {
+    if (!isAdConfigured('double_reward')) {
+      return;
+    }
     this.button = addButton(
       this.parent,
       'DoubleRewardButton',

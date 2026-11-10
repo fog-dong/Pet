@@ -2,6 +2,7 @@
 import { Node, UITransform } from 'cc';
 import { adButtonText } from '../cache/AdQuota';
 import { CharacterConfig } from '../config/CharacterConfig';
+import { isAdConfigured } from '../config/AdConfig';
 import { canOfferAd } from '../net/AdGateway';
 import { PetVisual } from '../game/PetVisual';
 import { addButton, addLabel, PALETTE, setButtonState } from './SceneUI';
@@ -95,10 +96,16 @@ export function renderAdoptionBody(
 
   if (!state.slotFree) {
     addButton(body, 'ShareSlot', '分享求助腾位', -66, handlers.shareSlot, PALETTE.secondary, 480, 82);
-    const adButton = addButton(body, 'AdSlot', '', -151, handlers.adSlot, PALETTE.accent, 480, 82);
-    setButtonState(adButton, canOfferAd('free_slot'), adButtonText('free_slot', '看广告腾位'), PALETTE.accent);
-    addButton(body, 'WaitSlot', waitText(state.waiting), -236, handlers.startWait, PALETTE.secondary, 480, 82);
-    addButton(body, 'LaterSlot', '稍后再说', -320, handlers.leave, PALETTE.secondary, 300, 76);
+    // 未配置广告位时整条入口不渲染，剩余按钮依次上移补位。
+    if (isAdConfigured('free_slot')) {
+      const adButton = addButton(body, 'AdSlot', '', -151, handlers.adSlot, PALETTE.accent, 480, 82);
+      setButtonState(adButton, canOfferAd('free_slot'), adButtonText('free_slot', '看广告腾位'), PALETTE.accent);
+      addButton(body, 'WaitSlot', waitText(state.waiting), -236, handlers.startWait, PALETTE.secondary, 480, 82);
+      addButton(body, 'LaterSlot', '稍后再说', -320, handlers.leave, PALETTE.secondary, 300, 76);
+      return body;
+    }
+    addButton(body, 'WaitSlot', waitText(state.waiting), -151, handlers.startWait, PALETTE.secondary, 480, 82);
+    addButton(body, 'LaterSlot', '稍后再说', -236, handlers.leave, PALETTE.secondary, 300, 76);
     return body;
   }
 

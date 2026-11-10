@@ -109,14 +109,15 @@ export class LeaderboardPanel {
 
   private emptyText(data: LeaderboardPage): string {
     if (this.type === 'friends') {
-      return '好友榜需要关系链，暂未开放';
+      // 文案只说明原因，不写「暂未开放」：提审包里不出现未开放功能的占位说法。
+      return '好友榜需要微信好友关系，先看本周榜';
     }
     return data.total === 0 ? '暂无排行' : '本页暂无数据';
   }
 
   private footerText(data: LeaderboardPage): string {
     if (this.type === 'friends') {
-      return '好友榜暂未开放，先看本周榜吧';
+      return '好友榜依赖微信好友关系，先看本周榜吧';
     }
     const mine = data.self ? `我的名次：第 ${data.self.rank} 名 · ${data.self.score} 分` : '我还没有上榜';
     return `第 ${data.page}/${this.pages} 页 · 共 ${data.total} 人　${mine}`;

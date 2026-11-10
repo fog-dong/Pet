@@ -1,6 +1,7 @@
 // STATUS: implemented, W3 诊断失败兜底（重试 / 广告线索 / 电池跳过，广告带频控）
 import type { Node } from 'cc';
 import { adButtonText } from '../cache/AdQuota';
+import { isAdConfigured } from '../config/AdConfig';
 import { adFailHint, canOfferAd, showAd } from '../net/AdGateway';
 import { ChoicePanel, PanelAction } from '../ui/ChoicePanel';
 import { PALETTE } from '../ui/SceneUI';
@@ -28,23 +29,28 @@ export class DiagnosisFallback {
           this.hooks.retry(false);
         },
       },
-      {
+    ];
+    // 未配置广告位时整条入口不渲染：提审包里不能出现「暂未开放」的选项。
+    if (isAdConfigured('extra_check')) {
+      actions.push({
         text: adButtonText('extra_check', '看广告获得线索'),
         action: () => void this.watch(),
         color: PALETTE.accent,
         disabled: !available,
+      });
+    }
+    actions.push({
+      text: '用听诊器电池跳过',
+      action: () => {
+        this.panel.close();
+        this.hooks.useBattery();
       },
-      {
-        text: '用听诊器电池跳过',
-        action: () => {
-          this.panel.close();
-          this.hooks.useBattery();
-        },
-        color: PALETTE.primary,
-      },
-    ];
+      color: PALETTE.primary,
+    });
     this.panel.open(this.hooks.root(), '这次没查完，选一条路继续', actions);
-    this.panel.setHint('三条路都不需要付费，电池用完也能免费重试。');
+    this.panel.setHint(
+      actions.length > 2 ? '三条路都不需要付费，电池用完也能免费重试。' : '两条路都不需要付费，电池用完也能免费重试。',
+    );
   }
 
   private async watch(): Promise<void> {

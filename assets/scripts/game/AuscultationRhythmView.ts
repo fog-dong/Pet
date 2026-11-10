@@ -42,10 +42,11 @@ export class AuscultationRhythmView {
     paintRing(this.flash, COLORS.clay, 8);
     this.flashOpacity = this.flash.addComponent(UIOpacity);
     this.flashOpacity.opacity = 0;
-    this.combo = addLabel(this.board, 'RhythmCombo', '', 196, {
+    // 连击与判定两行中心距 60：之前 44 会在 390 宽屏上贴成一团。
+    this.combo = addLabel(this.board, 'RhythmCombo', '', 202, {
       size: 30, color: PALETTE.primary, width: 440,
     });
-    this.judgeLabel = addLabel(this.board, 'RhythmJudge', '', 152, {
+    this.judgeLabel = addLabel(this.board, 'RhythmJudge', '', 142, {
       size: 26, color: PALETTE.sub, width: 440,
     });
     this.progress = addLabel(this.board, 'RhythmProgress', '', -BOARD_H / 2 + 30, {

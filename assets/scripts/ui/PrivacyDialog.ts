@@ -16,6 +16,8 @@ export interface PrivacyDialogOptions {
   readonly onAgree?: () => void;
   readonly onGuest?: () => void;
   readonly onClose?: () => void;
+  /** 面板下方常驻内容的高度：启动页用它把面板抬到忠告/适龄两行之上。 */
+  readonly bottomReserve?: number;
 }
 
 let overlay: Node | null = null;
@@ -34,9 +36,12 @@ function renderGate(panel: Node): void {
     color: PALETTE.sub,
   });
   const row = addRect(body, 'PrivacyCheck', -168, panelW() - 100, 60, new Color(247, 241, 232, 255));
-  paintCheckBox(row, checked);
+  // 勾选框单独成节点：画在行原点会和居中文案压在一起，挪到文案左侧 12 的空档。
+  const box = createNode(row, 'PrivacyCheckBox', 0, 44, 44);
+  box.setPosition(-150, 0, 0);
+  paintCheckBox(box, checked);
   bindPressEffect(row);
-  addLabel(row, 'CheckText', PRIVACY_CHECK_TEXT, 0, { size: 24, width: panelW() - 240, x: 60 });
+  addLabel(row, 'CheckText', PRIVACY_CHECK_TEXT, 0, { size: 24, width: panelW() - 240, x: 28 });
   agreeButton = addDialogButton(body, 'PrivacyAgree', '请先勾选协议', -buttonX(), PALETTE.primary, () => {
     if (!checked) {
       return;
@@ -50,7 +55,7 @@ function renderGate(panel: Node): void {
   // 整行（panelW-100 × 60）都是热区，手指点文字也能勾选。
   row.on(Node.EventType.TOUCH_END, () => {
     checked = !checked;
-    paintCheckBox(row, checked);
+    paintCheckBox(box, checked);
     if (agreeButton) {
       setButtonState(agreeButton, checked, checked ? '同意并进入' : '请先勾选协议');
     }
@@ -110,7 +115,7 @@ export function openPrivacyDialog(parent: Node, next: PrivacyDialogOptions): voi
   overlay.setSiblingIndex(parent.children.length - 1);
   // 面板不再挂 SafeArea：四边 Widget 会被引擎改写成整屏，正文与按钮就贴到边上了。
   // 改为按安全区算出下沿（距屏幕底 = 安全区 + 80），底部按钮再统一放 actionY。
-  const panel = addRect(overlay, 'PrivacyPanel', panelCenterY(), panelW(), panelH(), PALETTE.panel);
+  const panel = addRect(overlay, 'PrivacyPanel', panelCenterY(next.bottomReserve), panelW(), panelH(), PALETTE.panel);
   addLabel(panel, 'PrivacyTitle', '隐私保护与用户协议', panelH() / 2 - 55, { size: 34 });
   if (next.mode === 'gate') {
     renderGate(panel);

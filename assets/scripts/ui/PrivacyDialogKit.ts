@@ -21,9 +21,13 @@ export const BUTTON_H = 76;
 /** 面板底部按钮到面板下沿的留白。 */
 const ACTION_MARGIN = 58;
 
-/** 面板贴安全区上方的下沿：距屏幕下沿 = 安全区底部 + 80。 */
-export function panelCenterY(): number {
-  return safeAreaBottom() + 80 + panelH() / 2 - screenHeight() / 2;
+/**
+ * 面板贴安全区上方的下沿：距屏幕下沿 = 安全区底部 + 80。
+ * `reserve`：给面板下方需要常驻的内容让位（启动页的忠告 + 适龄两行），
+ * 面板整体上移，高度不变，正文与按钮的相对位置不受影响。
+ */
+export function panelCenterY(reserve = 0): number {
+  return safeAreaBottom() + 80 + reserve + panelH() / 2 - screenHeight() / 2;
 }
 
 /** 底部按钮在面板局部坐标里的 y；所有弹窗共用同一口径。 */

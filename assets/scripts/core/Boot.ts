@@ -35,6 +35,8 @@ const SPLASH_NAME_TOP = 48;
 // 忠告全文在 720 宽下折成两行，底部对齐后节点会向上长高，适龄行必须再抬高一行。
 const LEGAL_NOTICE_BOTTOM = 40;
 const LEGAL_AGE_BOTTOM = 132;
+// 隐私门面板下沿让出合规两行的高度：否则 390 宽屏上「适龄提示」会压在面板按钮上。
+const GATE_LEGAL_RESERVE = 220;
 
 @ccclass('Boot')
 export class Boot extends Component {
@@ -120,6 +122,7 @@ export class Boot extends Component {
     return new Promise<'granted' | 'guest'>((resolve) => {
       openPrivacyDialog(this.node, {
         mode: 'gate',
+        bottomReserve: GATE_LEGAL_RESERVE,
         onAgree: (): void => {
           agreePrivacy();
           resolve('granted');

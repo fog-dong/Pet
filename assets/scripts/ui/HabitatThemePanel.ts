@@ -1,12 +1,15 @@
-// STATUS: implemented, W25 P1-C 小屋装修入口与三选一弹窗（购买/切换后由外面重建小屋，单行拆到 HabitatThemeRow）
+// STATUS: implemented, W25 P1-C 小屋装修入口与弹窗（购买/切换后由外面重建小屋）
+// W31：按设计稿 B2 改为 2×2 大卡网格 + 双联预览；卡面常驻差额，点卡先看不直接扣钱。
 import { BlockInputEvents, Color, Node } from 'cc';
 import { Save } from '../cache/Save';
 import { COPY } from '../config/CopyText';
-import { HABITAT_THEMES, isThemeOwned, ThemeOutcome } from '../game/HabitatThemes';
+import { currentHabitatTheme, HABITAT_THEMES, isThemeOwned, ThemeOutcome } from '../game/HabitatThemes';
 import { addLabel, addRect } from './SceneUI';
 import { addCard } from './PanelKit';
 import { fitWidth, screenHeight, screenWidth } from './ScreenMetrics';
-import { buildThemeRow } from './HabitatThemeRow';
+import { buildThemeCard } from './HabitatThemeCard';
+import { openThemePreview } from './HabitatThemePreview';
+import { refreshLobbyBackdrop } from './Backdrop';
 import { addEarnGuide } from './EarnGuide';
 import { showToast } from './Toast';
 import { COLORS } from './Tokens';
@@ -14,7 +17,9 @@ import { addUIButton } from './UIButton';
 
 const PANEL_W = 660;
 const PANEL_H = 680;
-const ROW_Y = [130, -10, -150];
+const GRID_X = 154;
+/** 首排顶边 214，给 y=254 的指引条（高 48）留出 16px 空隙。 */
+const ROW_Y = [104, -122];
 
 let picker: Node | null = null;
 
@@ -64,13 +69,13 @@ export function openThemePicker(
   picker = overlay;
   const width = fitWidth(PANEL_W, 30);
   const panel = addCard(overlay, 'ThemePanel', 0, width, PANEL_H, { color: COLORS.paper });
-  addLabel(panel, 'ThemeTitle', COPY.habitatThemeTitle, 290, { size: 32 });
-  addLabel(panel, 'ThemeCoins', `金币 ${Save.coins}`, 290, { size: 20, color: COLORS.sub, x: 208, width: 150 });
+  addLabel(panel, 'ThemeTitle', COPY.habitatThemeTitle, 302, { size: 32 });
+  addLabel(panel, 'ThemeCoins', `金币 ${Save.coins}`, 302, { size: 20, color: COLORS.sub, x: 208, width: 150 });
   if (unaffordable()) {
-    // 买不起的时候这句副标题没有信息量，让位给「去哪弄金币」指引条（同一条 y=244 的横向位置）。
-    addEarnGuide(panel, 244, 'coins', onJump ?? closeThemePicker, 'ThemeEarnGuide');
+    // 买不起的时候这句副标题没有信息量，让位给「去哪弄金币」指引条（同一条 y=254 的横向位置）。
+    addEarnGuide(panel, 254, 'coins', onJump ?? closeThemePicker, 'ThemeEarnGuide');
   } else {
-    addLabel(panel, 'ThemeSubtitle', '买下喜欢的小屋，随时可以换回来', 244, {
+    addLabel(panel, 'ThemeSubtitle', COPY.habitatThemeSubtitle, 254, {
       size: 18,
       color: COLORS.sub,
       width: width - 80,
@@ -86,13 +91,27 @@ export function openThemePicker(
     }
     closeThemePicker();
     onApplied();
+    refreshLobbyBackdrop();
     showToast(toastHost, outcome.text);
   };
   HABITAT_THEMES.forEach((theme, index) => {
-    buildThemeRow(panel, theme, ROW_Y[index], host, finish);
+    const x = index % 2 === 0 ? -GRID_X : GRID_X;
+    const y = ROW_Y[Math.floor(index / 2)];
+    buildThemeCard(panel, theme, x, y, (picked) => {
+      if (currentHabitatTheme().id === picked.id) {
+        showToast(toastHost, COPY.habitatThemeUsing);
+        return;
+      }
+      openThemePreview(overlay, picked, { toastHost, finish, onJump: onJump ?? closeThemePicker });
+    });
+  });
+  addLabel(panel, 'ThemeHint', COPY.habitatThemeHint, -252, {
+    size: 14,
+    color: COLORS.sub,
+    width: width - 40,
   });
   addUIButton(panel, 'ThemeClose', '关 闭', closeThemePicker, {
-    y: -276,
+    y: -298,
     width: 220,
     height: 64,
     color: COLORS.sub,

@@ -1,6 +1,8 @@
 // STATUS: implemented, W28 P1 三条收尾验收（CDP 驱动 web-mobile 构建；只读本地存档，不碰线上）
 // 覆盖：P1-1 缺驱虫药剂时护理面板有可点出路、P1-2 缺爱心时小屋引导行换成获取指引、
 // P1-3 装修买不起的行直接禁用并写「差 N 金币」，以及三处「资源够了就不该出现指引」的反例。
+// W31 追加：装修小店 4 套大卡 / 差额卡角 / 双联预览（大厅 + 小屋）/ 差额态置灰不弹确认 / 有钱档恢复原价。
+// W31 再追加：真买下樱花 → 存档 habitatTheme=sakura 且金币扣到 3680 → 退出小屋截大厅换色图。
 // 前置：本地起 web-mobile 构建静态服务 + headless Chrome 开 CDP 端口。
 // 用法：node scripts/verify-w28-p1-browser.js <CDP端口> <站点端口> <截图前缀>
 'use strict';
@@ -94,7 +96,7 @@ const FIND = `(nm) => { const find = (n) => { if (n.name === nm) return n; for (
 const SCENE = `(() => { const s = window.cc && cc.director.getScene(); return s ? s.name : 'none'; })()`;
 
 /**
- * 种子默认「三样都缺」：hearts 2 买不起 8 爱心高级粮、coins 80 买不起 200 卧室、items 空即没驱虫药剂。
+ * 种子默认「三样都缺」：hearts 2 买不起 8 爱心高级粮、coins 80 买不起 320 樱花小筑、items 空即没驱虫药剂。
  * 每个字段单独可覆盖，用来跑反例（资源够了指引条必须闭嘴）。
  */
 function seedSave(overrides) {
@@ -202,6 +204,17 @@ function seedSave(overrides) {
     })()`);
   const interactable = (nm) =>
     ev(`(() => { const n = (${FIND})('${nm}'); const b = n && n.getComponent('cc.Button'); return b ? b.interactable : null; })()`);
+  const countThemes = () =>
+    ev(`(() => {
+      let total = 0;
+      const walk = (n) => {
+        if (n.name.startsWith('ThemePick_')) total++;
+        n.children.forEach(walk);
+      };
+      const s = cc.director.getScene();
+      if (s) walk(s);
+      return total;
+    })()`);
   const shot = async (file) => {
     const img = await cdp.call('Page.captureScreenshot', { format: 'png' });
     fs.writeFileSync(`${SHOT_DIR}/${file}.png`, Buffer.from(img.data, 'base64'));
@@ -297,42 +310,97 @@ function seedSave(overrides) {
   await click('CareClose');
   await sleep(600);
 
-  console.log('\n=== 5. P1-3 装修买不起：当场禁用 + 差 N 金币 ===');
+  console.log('\n=== 5. 装修 B2/B4：四套大卡 + 差额不下架 + 预览里置灰但给出路 ===');
   await boot({});
   await openHabitat();
   await click('HabitatThemeEntry');
   if (!(await waitFor('ThemePanel', 12000))) throw new Error('装修弹窗没打开');
   await sleep(700);
-  const bedText = await label('ThemePick_bedroom');
-  judge('W16', '卧室按钮写「差 120 金币」（200−80，当场算差额）', bedText === '差 120 金币', `文案=${bedText}`);
-  judge('W17', '买不起的行按禁用态渲染', (await interactable('ThemePick_bedroom')) === false, `interactable=${await interactable('ThemePick_bedroom')}`);
-  const balconyText = await label('ThemePick_balcony');
-  judge('W18', '阳台同样是差额口径（500−80）', balconyText === '差 420 金币', `文案=${balconyText}`);
-  judge('W19', '默认诊所是「使用中」而非价格', (await label('ThemePick_clinic')) === '使用中', `文案=${await label('ThemePick_clinic')}`);
+  judge('W16', '四套主题都在（奶油 / 樱花 / 海盐 / 森林）', await countThemes() === 4, `现有=${await countThemes()}`);
+  const sakuraBadge = await label('ThemeBadgeText_sakura');
+  judge('W17', '樱花卡角写「差 240 金币」（320−80，当场算差额）', sakuraBadge === '差 240 金币', `文案=${sakuraBadge}`);
+  const seaBadge = await label('ThemeBadgeText_sea');
+  judge('W18', '海盐同样是差额口径（480−80）', seaBadge === '差 400 金币', `文案=${seaBadge}`);
+  judge('W19', '默认主题是「使用中」而非价格', (await label('ThemeBadgeText_clinic')) === '使用中', `文案=${await label('ThemeBadgeText_clinic')}`);
+  judge('W20', '买不起的卡仍可点开预览（不下架）', (await interactable('ThemePick_sakura')) === true, `interactable=${await interactable('ThemePick_sakura')}`);
   await shot(`${OUT}-3-theme-lack`);
   const coinsBefore = await label('ThemeCoins');
-  await click('ThemePick_bedroom');
-  await sleep(800);
-  judge('W20', '禁用后点下去不再弹二次确认（旧缺口）', (await has('ChoicePanel')) === false, `ChoicePanel=${await has('ChoicePanel')}`);
-  judge('W21', '金币分文未动', (await label('ThemeCoins')) === coinsBefore, `${coinsBefore} → ${await label('ThemeCoins')}`);
+  await click('ThemePick_sakura');
+  if (!(await waitFor('ThemePreview', 12000))) throw new Error('双联预览没打开');
+  await sleep(600);
+  const lobbyMini = await has('MiniLobbyCard');
+  const roomMini = await has('MiniRoomCard');
+  judge('W21', '预览是双联：大厅 + 小屋两块同时在', lobbyMini && roomMini, `大厅=${lobbyMini} 小屋=${roomMini}`);
+  judge('W22', '差额态主按钮保留动作名并写差额', (await label('ThemeBuy')) === '购买主题（差 240）', `文案=${await label('ThemeBuy')}`);
+  judge('W23', '差额态主按钮禁用', (await interactable('ThemeBuy')) === false, `interactable=${await interactable('ThemeBuy')}`);
+  judge('W24', '差额态给唯一出路（去后院赚金币）', (await has('ThemeBuyGuide')) === true, `ThemeBuyGuide=${await has('ThemeBuyGuide')}`);
+  await shot(`${OUT}-4-theme-preview-lack`);
+  await click('ThemeBuy');
+  await sleep(600);
+  judge('W25', '禁用后点下去不弹确认（旧缺口）', (await has('ChoicePanel')) === false, `ChoicePanel=${await has('ChoicePanel')}`);
+  judge('W26', '金币分文未动', (await label('ThemeCoins')) === coinsBefore, `${coinsBefore} → ${await label('ThemeCoins')}`);
+  await click('ThemePreviewBack');
+  await sleep(500);
 
-  console.log('\n=== 6. P1-3 反例：钱够了恢复原价与可点 ===');
+  console.log('\n=== 6. 反例：钱够了恢复原价、预览可购买、不硬塞指引 ===');
   await boot({ coins: 4000 });
   await openHabitat();
   await click('HabitatThemeEntry');
   if (!(await waitFor('ThemePanel', 12000))) throw new Error('装修弹窗没打开（有钱档）');
   await sleep(700);
-  judge('W22', '买得起时按钮回到「200 金币」', (await label('ThemePick_bedroom')) === '200 金币', `文案=${await label('ThemePick_bedroom')}`);
-  judge('W23', '买得起时按钮可点', (await interactable('ThemePick_bedroom')) === true, `interactable=${await interactable('ThemePick_bedroom')}`);
-  judge('W24', '全档买得起时副标题归位（不硬塞指引）', (await has('ThemeSubtitle')) === true, `ThemeSubtitle=${await has('ThemeSubtitle')}`);
-  await shot(`${OUT}-4-theme-afford`);
+  judge('W27', '买得起时卡角回到「320 金币」', (await label('ThemeBadgeText_sakura')) === '320 金币', `文案=${await label('ThemeBadgeText_sakura')}`);
+  judge('W28', '全档买得起时副标题归位（不硬塞指引）', (await has('ThemeSubtitle')) === true, `ThemeSubtitle=${await has('ThemeSubtitle')}`);
+  await shot(`${OUT}-5-theme-afford-grid`);
+  await click('ThemePick_sakura');
+  if (!(await waitFor('ThemePreview', 12000))) throw new Error('双联预览没打开（有钱档）');
+  await sleep(600);
+  judge('W29', '买得起时主按钮可点', (await interactable('ThemeBuy')) === true, `interactable=${await interactable('ThemeBuy')}`);
+  judge('W30', '买得起时不再出现差额指引', (await has('ThemeBuyGuide')) === false, `ThemeBuyGuide=${await has('ThemeBuyGuide')}`);
+  await shot(`${OUT}-6-theme-preview-afford`);
+  await click('ThemeBuy');
+  await sleep(500);
+  judge('W31', '可购买时先弹二次确认（320 不是小数目）', (await has('ChoicePanel')) === true, `ChoicePanel=${await has('ChoicePanel')}`);
+  // 确认层盖在预览上：先「再想想」收回，再退回网格、关掉小店。
+  await click('ChoiceAction1');
+  await sleep(400);
+  judge('W32', '取消后确认层收起且预览还在', (await has('ChoicePanel')) === false && (await has('ThemePreview')) === true, `ChoicePanel=${await has('ChoicePanel')} ThemePreview=${await has('ThemePreview')}`);
+  await click('ThemePreviewBack');
+  await sleep(500);
   await click('ThemeClose');
   await sleep(600);
+
+  console.log('\n=== 7. B5：真买下樱花 → 存档切主题 → 大厅底板同步 ===');
+  await boot({ coins: 4000 });
+  await openHabitat();
+  await click('HabitatThemeEntry');
+  if (!(await waitFor('ThemePanel', 12000))) throw new Error('装修弹窗没打开（买下档）');
+  await sleep(700);
+  await click('ThemePick_sakura');
+  if (!(await waitFor('ThemePreview', 12000))) throw new Error('双联预览没打开（买下档）');
+  await sleep(600);
+  await click('ThemeBuy');
+  await sleep(500);
+  if (!(await has('ChoicePanel'))) throw new Error('购买确认层没出现（买下档）');
+  await click('ChoiceAction0');
+  await sleep(900);
+  const saved = await ev(`(() => {
+    try {
+      const s = JSON.parse(localStorage.getItem('pet_save_v1') || '{}');
+      return JSON.stringify({ theme: s.habitatTheme, coins: s.coins, owned: s.habitatThemes || [] });
+    } catch (e) { return 'ERR'; }
+  })()`);
+  const applied = JSON.parse(saved);
+  judge('W34', '确认买下后存档切成樱花（habitatTheme=sakura）', applied.theme === 'sakura', `存档=${saved}`);
+  judge('W35', '金币 4000→3680 且樱花进入已购列表', applied.coins === 3680 && applied.owned.includes('sakura'), `coins=${applied.coins} owned=${applied.owned.join(',')}`);
+  await click('HabitatClose');
+  await sleep(1000);
+  judge('W36', '退出小屋回到大厅（面板已收起）', (await live('HabitatPanel')) !== true && (await ev(SCENE)) === 'Lobby', `面板=${await live('HabitatPanel')} 场景=${await ev(SCENE)}`);
+  await shot(`${OUT}-7-theme-applied-lobby`);
 
   const noisy = errors.filter((e) => !e.includes('apple-mobile-web-app-capable'));
   console.log('=== console errors (' + errors.length + ') ===');
   noisy.slice(0, 25).forEach((e) => console.log(e));
-  judge('W25', '全流程无红色报错（忽略 Cocos meta 弃用警告）', noisy.length === 0, `collected=${errors.length}`);
+  judge('W33', '全流程无红色报错（忽略 Cocos meta 弃用警告）', noisy.length === 0, `collected=${errors.length}`);
 
   report();
   cdp.close();

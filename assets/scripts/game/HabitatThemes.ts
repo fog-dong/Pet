@@ -1,10 +1,11 @@
 // STATUS: implemented, W25 P1-C 小屋装修主题表（纯数据 + 本地购买/切换；偏差 D19 只落本地存档）；W25 P2-B1 购买计数
+// W31：主题表对齐 flow-mobile 设计稿 B2——四套（奶油诊室 / 樱花小筑 / 海盐午后 / 森林晨光），价格 0/320/480/640。
 // 色值只存十六进制字符串，UI 侧统一走 Tokens.tint()，本文件不引用 cc，便于后续换成配置表。
 import { Save } from '../cache/Save';
 import { COPY, fillCopy } from '../config/CopyText';
 import { bumpCounter } from './Counters';
 
-export type HabitatThemeId = 'clinic' | 'bedroom' | 'balcony';
+export type HabitatThemeId = 'clinic' | 'sakura' | 'sea' | 'forest';
 
 export interface HabitatTheme {
   id: HabitatThemeId;
@@ -22,16 +23,20 @@ export interface HabitatTheme {
 
 export const HABITAT_THEMES: readonly HabitatTheme[] = [
   {
-    id: 'clinic', name: '默认诊所', blurb: '干净的诊室，薄荷色的墙', cost: 0,
-    panel: '#FFFCF5', card: '#F9EFE2', wall: '#E8F1E9', accent: '#A8C3A0', sky: '#D9EDE4', floor: '#DCE7DD',
+    id: 'clinic', name: '奶油诊室', blurb: '默认 · 暖木与米白', cost: 0,
+    panel: '#FFFCF5', card: '#F9EFE2', wall: '#F3E8DA', accent: '#E4D3BE', sky: '#D9EDE4', floor: '#EFE2D2',
   },
   {
-    id: 'bedroom', name: '温馨卧室', blurb: '暖橘夜灯，适合赖床的午后', cost: 200,
-    panel: '#FFF7F2', card: '#FBEDE8', wall: '#F5DED5', accent: '#D98E73', sky: '#46506B', floor: '#EBD5C8',
+    id: 'sakura', name: '樱花小筑', blurb: '粉墙 · 樱色窗帘', cost: 320,
+    panel: '#FFF6F5', card: '#FBECEA', wall: '#F7E3E2', accent: '#E9A7B8', sky: '#FBE3E8', floor: '#F3DED9',
   },
   {
-    id: 'balcony', name: '阳光阳台', blurb: '晒太阳专用，风里有青草味', cost: 500,
-    panel: '#FFFDF3', card: '#EFF7E9', wall: '#E4F2F7', accent: '#E3B23C', sky: '#BEE4F3', floor: '#E8E3C8',
+    id: 'sea', name: '海盐午后', blurb: '灰蓝 · 海风窗景', cost: 480,
+    panel: '#F4F9FB', card: '#E9F1F5', wall: '#E1EDF1', accent: '#7FB3C8', sky: '#CFE3EC', floor: '#DCE9EE',
+  },
+  {
+    id: 'forest', name: '森林晨光', blurb: '浅绿 · 木质与藤', cost: 640,
+    panel: '#F6F9F2', card: '#EDF2E7', wall: '#E6EDDF', accent: '#8FAE79', sky: '#DCEBCF', floor: '#DDE7D2',
   },
 ];
 
@@ -39,7 +44,7 @@ export type ThemeOutcome =
   | { kind: 'done'; theme: HabitatTheme; text: string }
   | { kind: 'blocked'; text: string };
 
-/** 存档里的主题 id 可能来自旧版本或被改坏，一律回落到默认诊所。 */
+/** 存档里的主题 id 可能来自旧版本或被改坏（旧档还有已下线的 bedroom/balcony），一律回落奶油诊室。 */
 export function themeById(id: string | undefined): HabitatTheme {
   return HABITAT_THEMES.find((item) => item.id === id) ?? HABITAT_THEMES[0];
 }

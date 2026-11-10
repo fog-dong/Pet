@@ -1,5 +1,6 @@
 // STATUS: implemented, W16 P0 L0/L1 环境底板（墙 / 地 / 踢脚线零贴图 + 装饰占位，ui 分包就绪后换贴图）
 import { Color, Graphics, Node, UITransform } from 'cc';
+import { currentHabitatTheme } from '../game/HabitatThemes';
 import { applySprite } from './PanelSprite';
 import { screenHeight, screenWidth } from './ScreenMetrics';
 import { COLORS, HEX, tint } from './Tokens';
@@ -28,6 +29,9 @@ export function floorLineY(variant: BackdropVariant): number {
   return -h / 2 + h * (variant === 'lobby' ? 0.3 : 0.26);
 }
 
+/** 大厅底板随装修主题换色：墙 / 地 / 踢脚线三块常驻，换主题时原地重绘，不重建场景。 */
+const themedLobbyRoots: Node[] = [];
+
 /** 每页进场景先 mountBackdrop，再把自己的卡片/按钮挂上去。 */
 export function mountBackdrop(parent: Node, variant: BackdropVariant): Node {
   const root = new Node('Backdrop');
@@ -36,11 +40,16 @@ export function mountBackdrop(parent: Node, variant: BackdropVariant): Node {
   const h = screenHeight();
   const top = h / 2;
   const floorY = floorLineY(variant);
-  const wallColor = variant === 'lab' ? tint('#EDF1F0') : COLORS.wall;
-  const floorColor = variant === 'lab' ? tint('#DCE3E1') : COLORS.floor;
+  const theme = variant === 'lobby' ? currentHabitatTheme() : null;
+  const wallColor = variant === 'lab' ? tint('#EDF1F0') : theme ? tint(theme.wall) : COLORS.wall;
+  const floorColor = variant === 'lab' ? tint('#DCE3E1') : theme ? tint(theme.floor) : COLORS.floor;
+  const skirtColor = theme ? tint(theme.accent, 230) : COLORS.skirt;
   addBand(root, 'Wall', (top + floorY) / 2, w, top - floorY, wallColor);
   addBand(root, 'Floor', (floorY - h / 2) / 2, w, floorY + h / 2, floorColor);
-  addBand(root, 'Skirting', floorY + 7, w, 14, COLORS.skirt);
+  addBand(root, 'Skirting', floorY + 7, w, 14, skirtColor);
+  if (theme) {
+    themedLobbyRoots.push(root);
+  }
   if (variant === 'lobby' || variant === 'clinic') {
     addBand(root, 'WallTrim', top - 96, w, 8, new Color(255, 255, 255, 90));
   }
@@ -48,6 +57,33 @@ export function mountBackdrop(parent: Node, variant: BackdropVariant): Node {
     addBand(root, 'Glow', 40, w, 300, new Color(255, 246, 226, 70));
   }
   return root;
+}
+
+/** 装修生效后调用：大厅还在遮罩底下，先把墙地换掉，关面板时已经是新主题。 */
+export function refreshLobbyBackdrop(): void {
+  const theme = currentHabitatTheme();
+  for (let i = themedLobbyRoots.length - 1; i >= 0; i -= 1) {
+    const root = themedLobbyRoots[i];
+    if (!root.isValid) {
+      themedLobbyRoots.splice(i, 1);
+      continue;
+    }
+    repaintBand(root.getChildByName('Wall'), tint(theme.wall));
+    repaintBand(root.getChildByName('Floor'), tint(theme.floor));
+    repaintBand(root.getChildByName('Skirting'), tint(theme.accent, 230));
+  }
+}
+
+function repaintBand(node: Node | null, color: Color): void {
+  const graphics = node?.getComponent(Graphics);
+  const ui = node?.getComponent(UITransform);
+  if (!node || !graphics || !ui) {
+    return;
+  }
+  graphics.clear();
+  graphics.fillColor = color;
+  graphics.rect(-ui.width / 2, -ui.height / 2, ui.width, ui.height);
+  graphics.fill();
 }
 
 function addBand(parent: Node, name: string, y: number, width: number, height: number, color: Color): Node {

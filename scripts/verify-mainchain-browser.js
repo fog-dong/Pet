@@ -759,13 +759,22 @@ function connect(url) {
   await sleep(300);
   const selExtra = want && want.extraIndex >= 0 ? await tapNode(`Medicine${want.extraIndex}`) : 0;
   await sleep(300);
-  const multiPlan = await label('Status');
+  // 当前方案在 PlanStrip 三格里（P3-UI 起取代了 Status 一行字）；Status 只在校验失败时才有文案。
+  const planState = async () => {
+    const read = async (nm) => {
+      const value = await label(nm);
+      return value === null ? '∅' : String(value);
+    };
+    return { med: await read('PlanSeg0Value'), bed: await read('PlanSeg1Value'), time: await read('PlanSeg2Value') };
+  };
+  const planText = (p) => `${p.med}｜${p.bed}｜${p.time}`;
+  const multiPlan = await planState();
   // 多选第二味会清零药分（CaseScore.ts:34 只认「恰好一味对症药」），所以验完加减切换再取消，保留 3/3 的正确方案。
   const deselectExtra = want && want.extraIndex >= 0 ? await tapNode(`Medicine${want.extraIndex}`) : 0;
   const selBed = await tapNode(`Bed${want ? want.bedIndex : 0}`);
   const selTime = await tapNode(`Time${want ? want.timeIndex : 1}`);
   await sleep(350);
-  const plan = await label('Status');
+  const plan = await planState();
   judge(
     'C05',
     '治疗：药品多选可加可减 + 床位 + 时间写入，最终只留对症药',
@@ -775,12 +784,14 @@ function connect(url) {
       deselectExtra === 1 &&
       selBed === 1 &&
       selTime === 1 &&
-      String(multiPlan).includes(want.medicine) &&
-      String(multiPlan).includes(want.extraName) &&
-      String(plan).includes(want.medicine) &&
-      !String(plan).includes(want.extraName),
+      multiPlan.med.includes(want.medicine) &&
+      multiPlan.med.includes(want.extraName) &&
+      plan.med.includes(want.medicine) &&
+      !plan.med.includes(want.extraName) &&
+      plan.bed === want.bed &&
+      plan.time === want.time,
     `severity=${want ? want.severity : '?'} 选项命中=药${selMedicine}/加${selExtra}/减${deselectExtra}/床${selBed}/时${selTime}` +
-      ` 期望=${want ? `${want.medicine}·${want.bed}·${want.time}` : '?'}　多选态：${multiPlan}　最终：${plan}`,
+      ` 期望=${want ? `${want.medicine}·${want.bed}·${want.time}` : '?'}　多选态：${planText(multiPlan)}　最终：${planText(plan)}`,
   );
   await shot('w19-treatment.png');
   if (ONETAKE) await shot('flow-10-treatment.png');

@@ -5,6 +5,7 @@ import { achievementViews } from '../game/Achievements';
 import { claimableCount, completedGroups } from '../game/AchievementRules';
 import { titleFor } from '../game/AchievementText';
 import { COPY, fillCopy } from '../config/CopyText';
+import { LEADERBOARD_ENTRY_VISIBLE } from '../net/Leaderboard';
 import { addDockEntry, addDockPills, addDockSubs, DockBody, DockContext } from './DockKit';
 import { openAchievementPanel } from './AchievementPanel';
 
@@ -13,15 +14,11 @@ const ENTRY_TEXT = '成 就 谱';
 export function buildAchieveBody(parent: Node, ctx: DockContext): DockBody {
   const pills = addDockPills(parent, ['', '', ''], 0, ctx.width);
   addDockEntry(parent, 'AchievementButton', ENTRY_TEXT, () => openAchievementPanel(ctx.host, ctx.changed), 1, ctx.width);
-  addDockSubs(
-    parent,
-    [
-      { name: 'LeaderboardButton', text: '排行榜', onClick: () => ctx.menu('LeaderboardButton') },
-      { name: 'CodexButton', text: '图 鉴', onClick: () => ctx.menu('CodexButton') },
-    ],
-    2,
-    ctx.width,
-  );
+  const subs = [{ name: 'CodexButton', text: '图 鉴', onClick: () => ctx.menu('CodexButton') }];
+  if (LEADERBOARD_ENTRY_VISIBLE) {
+    subs.unshift({ name: 'LeaderboardButton', text: '排行榜', onClick: () => ctx.menu('LeaderboardButton') });
+  }
+  addDockSubs(parent, subs, 2, ctx.width);
   return { node: parent, refresh: () => paintPills(pills) };
 }
 

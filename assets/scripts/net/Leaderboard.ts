@@ -29,6 +29,12 @@ interface LeaderboardPayload {
 
 const DEFAULT_PAGE_SIZE = 5;
 
+/**
+ * W33 P0-4：后端排行榜集合还没有任何写入，入口开着只会给一个恒空页。
+ * 先下架（成就 TAB 不渲染按钮）；服务端接好写入并验证有数后改回 true 即恢复。
+ */
+export const LEADERBOARD_ENTRY_VISIBLE = false;
+
 function toEntry(value: unknown): LeaderboardEntry | null {
   if (!value || typeof value !== 'object') {
     return null;

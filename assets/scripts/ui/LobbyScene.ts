@@ -8,6 +8,7 @@ import { lobbyDeskY, lobbyDeskW, lobbyPlantY } from './LobbyDockLayout';
 import { lobbyLogoW, lobbyLogoY, lobbyTitleY } from './LobbyLayout';
 import { mountLobbyPetRow, PetBandHandle } from './LobbyPetRow';
 import { mountLobbyRoom } from './LobbyRoom';
+import { mountBgmToggle } from './LobbySound';
 import { addLabel, createNode } from './SceneUI';
 
 const PLANT_W = 170;
@@ -39,5 +40,6 @@ export function mountLobbyScene(parent: Node, onPickPet: (petId: string) => void
   const cover = mountCoverPet(coverSlot, onPickPet);
   const band = mountLobbyPetRow(parent, onPickPet);
   const hud = mountHud(parent);
+  mountBgmToggle(parent);
   return { doctorSlot, hud, band, cover };
 }

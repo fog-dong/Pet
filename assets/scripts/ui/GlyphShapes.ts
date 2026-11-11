@@ -1,5 +1,6 @@
 // STATUS: implemented, W27 P3-UI Graphics 图标形状库（治疗胶囊 / 方案纸卡 / 成就徽章 / 后院槽位共用，禁止第二套画法）
 import { Color, Graphics } from 'cc';
+import { speaker, speakerOff } from './GlyphShapesAudio';
 
 /** 图标名一律语义化；新增档位必须在这里补一段画法，UI 侧只认名字不认形状。 */
 export type GlyphKind =
@@ -13,7 +14,9 @@ export type GlyphKind =
   | 'lock'
   | 'coin'
   | 'heart'
-  | 'sparkle';
+  | 'sparkle'
+  | 'speaker'
+  | 'speakerOff';
 
 /** 画法只拿到半宽 r 与已设好线宽/颜色的画布，坐标一律相对 (x, y) 中心。 */
 export type GlyphPainter = (g: Graphics, x: number, y: number, r: number, color: Color) => void;
@@ -141,4 +144,6 @@ export const GLYPH_SHAPES: Record<GlyphKind, GlyphPainter> = {
   coin,
   heart,
   sparkle,
+  speaker,
+  speakerOff,
 };

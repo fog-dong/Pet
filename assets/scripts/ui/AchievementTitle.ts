@@ -1,11 +1,12 @@
 // STATUS: implemented, W27 P3-UI 大厅称号条（深色玻璃底板 + 奖杯圆徽 + 可领金环与右侧星芒，带按压反馈）
-import { Color, Graphics, Label, Node, UITransform, Widget } from 'cc';
+import { Color, Graphics, Label, Node, UITransform } from 'cc';
 import { COPY, fillCopy } from '../config/CopyText';
 import { achievementViews } from '../game/Achievements';
 import { claimableCount } from '../game/AchievementRules';
 import { titleFor } from '../game/AchievementText';
 import { makeLabel } from './FontKit';
 import { lobbyHudTop } from './LobbyLayout';
+import { pinTopRightAt } from './SafeLayout';
 import { addPill, paintRound } from './PanelKit';
 import { COLORS, tint } from './Tokens';
 import { addGlyphBadge, paintGlyphBadge } from './GlyphKit';
@@ -101,14 +102,4 @@ function paintSparkle(graphics: Graphics, x: number, y: number, r: number): void
   graphics.lineTo(x - r, y);
   graphics.lineTo(x - arm, y - arm);
   graphics.close();
-}
-
-/** 与资源胶囊同一套贴边口径：贴安全区右上，右侧留 32。 */
-function pinTopRightAt(node: Node, right: number, top: number): void {
-  const widget = node.getComponent(Widget) ?? node.addComponent(Widget);
-  widget.isAlignRight = true;
-  widget.right = right;
-  widget.isAlignTop = true;
-  widget.top = top;
-  widget.alignMode = Widget.AlignMode.ALWAYS;
 }

@@ -64,3 +64,13 @@ export function pinTopLeftAt(node: Node, left: number, top: number): void {
   widget.top = top;
   widget.alignMode = Widget.AlignMode.ALWAYS;
 }
+
+/** 单个节点贴安全区右上角；称号条与音乐开关共用这套贴边口径。 */
+export function pinTopRightAt(node: Node, right: number, top: number): void {
+  const widget = node.getComponent(Widget) ?? node.addComponent(Widget);
+  widget.isAlignRight = true;
+  widget.right = right;
+  widget.isAlignTop = true;
+  widget.top = top;
+  widget.alignMode = Widget.AlignMode.ALWAYS;
+}

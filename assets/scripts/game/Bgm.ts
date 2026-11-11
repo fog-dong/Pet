@@ -1,5 +1,7 @@
 // STATUS: implemented, W33 大厅 BGM 单曲循环（art 分包 bgm_lobby；低画质档与加载失败都静音，不阻断玩法）
+// W33+ 玩家可一键关闭：偏好落 cache/BgmPrefs，关着时连 BGM 都不下载。
 import { AudioClip, AudioSource, director, input, Input, Node } from 'cc';
+import { bgmMuted, setBgmMuted } from '../cache/BgmPrefs';
 import { BGM_LOBBY } from '../config/AudioConfig';
 import { Quality } from '../config/Quality';
 import { Track } from '../track/Track';
@@ -11,6 +13,7 @@ let clip: AudioClip | null = null;
 let loading = false;
 let started = false;
 let gestureBound = false;
+let muted = bgmMuted();
 
 /** 常驻节点：引擎切场景时会把它带过去，大厅音乐不会每次转场都从头断一次。 */
 function ensureSource(): AudioSource | null {
@@ -33,7 +36,7 @@ function ensureSource(): AudioSource | null {
 
 /** iOS 与浏览器首次自动播放会被拦：等第一次触摸再补播，播起来就解绑。 */
 function watchGesture(): void {
-  if (gestureBound) {
+  if (gestureBound || muted) {
     return;
   }
   gestureBound = true;
@@ -49,7 +52,7 @@ function watchGesture(): void {
 }
 
 function play(): void {
-  if (!source || !clip || Quality.low) {
+  if (muted || !source || !clip || Quality.low) {
     return;
   }
   if (!audioAllowed()) {
@@ -63,7 +66,7 @@ function play(): void {
 }
 
 function load(): void {
-  if (loading || clip || Quality.low) {
+  if (muted || loading || clip || Quality.low) {
     return;
   }
   loading = true;
@@ -95,9 +98,30 @@ export const Bgm = {
         source?.stop();
         return;
       }
+      if (!muted) {
+        load();
+        play();
+      }
+    });
+    if (!muted) {
+      load();
+    }
+  },
+
+  muted(): boolean {
+    return muted;
+  },
+
+  /** 大厅开关点一次切一档：关掉立刻停声，打开复用已加载的 clip（没加载过就现取）。 */
+  toggle(): boolean {
+    muted = !muted;
+    setBgmMuted(muted);
+    if (muted) {
+      source?.stop();
+    } else {
       load();
       play();
-    });
-    load();
+    }
+    return muted;
   },
 };

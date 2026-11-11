@@ -5,14 +5,14 @@ import { achievementViews } from '../game/Achievements';
 import { claimableCount } from '../game/AchievementRules';
 import { titleFor } from '../game/AchievementText';
 import { makeLabel } from './FontKit';
-import { lobbyHudTop } from './LobbyLayout';
-import { pinTopRightAt } from './SafeLayout';
+import { lobbyHudLeft, lobbyHudRows, lobbyHudSecondTop, lobbyHudTop, TITLE_PILL_W } from './LobbyLayout';
+import { pinTopLeftAt, pinTopRightAt } from './SafeLayout';
 import { addPill, paintRound } from './PanelKit';
 import { COLORS, tint } from './Tokens';
 import { addGlyphBadge, paintGlyphBadge } from './GlyphKit';
 import { bindPressEffect } from './UIButton';
 
-const PILL_W = 256;
+const PILL_W = TITLE_PILL_W;
 const PILL_H = 56;
 const MARGIN = 32;
 const BADGE = 30;
@@ -32,7 +32,11 @@ export interface AchievementTitleHandle {
 
 export function mountAchievementTitle(parent: Node, onOpen: () => void): AchievementTitleHandle {
   const pill = addPill(parent, 'AchievementTitle', 0, PILL_W, PILL_H, IDLE_BG);
-  pinTopRightAt(pill, MARGIN, lobbyHudTop());
+  if (lobbyHudRows() > 1) {
+    pinTopLeftAt(pill, lobbyHudLeft(), lobbyHudSecondTop());
+  } else {
+    pinTopRightAt(pill, MARGIN, lobbyHudTop());
+  }
   const ring = new Node('AchievementTitleRing');
   ring.parent = pill;
   ring.addComponent(UITransform).setContentSize(PILL_W, PILL_H);

@@ -9,16 +9,21 @@ const LOGO_W = 364;
 const LOGO_ASPECT = 1.716;
 const HUD_MARGIN = 32;
 const HUD_H = 56;
+const HUD_ROW_GAP = 8;
+/** 称号胶囊宽度：第二行与音乐开关并排，两个模块共用这一个宽度口径。 */
+export const TITLE_PILL_W = 256;
 const LINKS_H = 22;
 const HINT_H = 24;
 const BADGE_H = 56;
 const LINKS_MARGIN = 18;
-/** 木牌是悬挂式，牌面视觉中心比整图中心低 37，标题文字跟着牌面走。 */
-const TITLE_DROP = 37;
+/** 木牌是悬挂式：ui_logo 里牌面（绿框内沿）中心在整图中心下方 48，标题文字跟牌面走。 */
+const TITLE_DROP = 48;
 const LOGO_GAP = 12;
 const HINT_GAP = 8;
 /** 角标下沿再让出的呼吸；底部所有内容区的天花板由它决定。 */
 const HEAD_GAP = 14;
+/** 微信胶囊与游戏圈常驻右上角（约占屏宽右侧 40%），够高时把称号与音乐整体挪到左上第二行。 */
+const TWO_ROW_MIN_H = 1200;
 
 function topEdge(): number {
   return screenHeight() / 2 - safeAreaTop();
@@ -46,9 +51,21 @@ export function lobbyLogoW(): number {
   return LOGO_W;
 }
 
+/** 微信胶囊与游戏圈压住右上角：手机取 2 行把称号与音乐挪到左侧，平板高度不够就退回 1 行。 */
+export function lobbyHudRows(): number {
+  return screenHeight() >= TWO_ROW_MIN_H ? 2 : 1;
+}
+
+/** 第二行顶边：与 lobbyHudTop 同一套 Widget 锚点语义，称号与音乐都钉在这里。 */
+export function lobbyHudSecondTop(): number {
+  return lobbyHudTop() + HUD_H + HUD_ROW_GAP;
+}
+
 export function lobbyLogoY(): number {
   const height = boxHeight(LOGO_W, LOGO_ASPECT);
-  const visibleTop = topEdge() - HUD_MARGIN - HUD_H - 8;
+  const rows = lobbyHudRows();
+  const stack = HUD_H * rows + HUD_ROW_GAP * (rows - 1);
+  const visibleTop = topEdge() - HUD_MARGIN - stack - 8;
   return visibleTop - height / 2 + LOGO_INSET * height;
 }
 

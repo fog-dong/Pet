@@ -1,5 +1,5 @@
 // STATUS: implemented, W11-3 隐私弹窗控件（面板/正文/双按钮宽度全部按可视宽度派生，720 帧下 660/280）
-import { Button, Color, Graphics, Mask, Node, ScrollView, UITransform } from 'cc';
+import { Button, Color, Graphics, Label, Mask, Node, ScrollView, UITransform } from 'cc';
 import { LEGAL_DOCS } from '../config/LegalConfig';
 import { addLabel, addRect, createNode, PALETTE } from './SceneUI';
 import { fitWidth, safeAreaBottom, screenHeight } from './ScreenMetrics';
@@ -47,8 +47,16 @@ export function buttonX(): number {
 
 /** 正文滚动区：加高到 300 后首屏能多显示两行，避免刚打开就被裁断。 */
 const SCROLL_H = 300;
-const CHARS_PER_LINE = 36;
-const LINE_H = 32;
+
+/**
+ * 量一次真实排版：RESIZE_HEIGHT 下 updateRenderData 会同步改写 UITransform 高度，
+ * 比按字数估算可靠——中文标点与英文单词的折行长度差得很多，估算必然有块压块。
+ */
+function measureLabel(label: Label): number {
+  label.updateRenderData(true);
+  const height = label.node.getComponent(UITransform)?.height ?? 0;
+  return height > 0 ? height : label.fontSize * 1.4;
+}
 
 export function addDialogButton(
   parent: Node,
@@ -93,7 +101,7 @@ export function paintCheckBox(node: Node, active: boolean): void {
   graphics.stroke();
 }
 
-/** 三份协议正文按估算行高堆进滚动区，长度不足时靠 ScrollView 回弹，不做硬裁剪。 */
+/** 三份协议正文按实测行高堆进滚动区，长度不足时靠 ScrollView 回弹，不做硬裁剪。 */
 export function buildDocScroll(parent: Node, y: number): void {
   const width = panelW() - 100;
   const textWidth = width - 40;
@@ -108,20 +116,23 @@ export function buildDocScroll(parent: Node, y: number): void {
   LEGAL_DOCS.forEach((doc) => {
     const docNode = new Node(`Doc_${doc.id}`);
     docNode.parent = content;
-    docNode.addComponent(UITransform).setContentSize(textWidth, LINE_H);
-    docNode.setPosition(0, -offset - LINE_H / 2, 0);
-    addLabel(docNode, 'Name', `《${doc.title}》`, 0, { size: 26, width: textWidth });
-    offset += LINE_H + 6;
+    const docTransform = docNode.addComponent(UITransform);
+    const title = addLabel(docNode, 'Name', `《${doc.title}》`, 0, { size: 26, width: textWidth });
+    const titleH = measureLabel(title);
+    docTransform.setContentSize(textWidth, titleH);
+    docNode.setPosition(0, -offset - titleH / 2, 0);
+    offset += titleH + 10;
     doc.points.forEach((point) => {
-      const height = Math.max(1, Math.ceil(point.length / CHARS_PER_LINE)) * LINE_H;
       const block = new Node('Point');
       block.parent = content;
-      block.addComponent(UITransform).setContentSize(textWidth, height);
+      const blockTransform = block.addComponent(UITransform);
+      const text = addLabel(block, 'Text', point, 0, { size: 22, color: PALETTE.sub, width: textWidth });
+      const height = measureLabel(text);
+      blockTransform.setContentSize(textWidth, height);
       block.setPosition(0, -offset - height / 2, 0);
-      addLabel(block, 'Text', point, 0, { size: 22, color: PALETTE.sub, width: textWidth });
-      offset += height + 10;
+      offset += height + 12;
     });
-    offset += 10;
+    offset += 12;
   });
   transform.setContentSize(textWidth, Math.max(SCROLL_H, offset));
   transform.setAnchorPoint(0.5, 1);

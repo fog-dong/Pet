@@ -4,10 +4,10 @@ import { PRIVACY_CHECK_TEXT, PRIVACY_DECLINE_TEXT, PRIVACY_DECLINE_TITLE, PRIVAC
 import { PrivacyState } from '../cache/PrivacyState';
 import { agreePrivacy, startCloudSync } from '../core/BootCloud';
 import type { CloudSyncStart } from '../core/BootCloud';
-import { WxPrivacy } from '../net/Privacy';
 import { Track } from '../track/Track';
 import { addLabel, addRect, createNode, PALETTE, setButtonState } from './SceneUI';
 import { addDialogButton, buildDocScroll, buttonX, paintCheckBox, panelCenterY, panelH, panelW } from './PrivacyDialogKit';
+import { buildPrivacyReadBody } from './PrivacyReadBody';
 import { screenHeight, screenWidth } from './ScreenMetrics';
 import { bindPressEffect } from './UIButton';
 
@@ -85,19 +85,7 @@ function renderDeclined(panel: Node): void {
 }
 
 function renderRead(panel: Node): void {
-  body = createNode(panel, 'PrivacyReadBody', 0, panelW(), panelH());
-  buildDocScroll(body, 60);
-  addLabel(body, 'PrivacyScrollHint', '上下滑动可查看完整协议', -108, {
-    size: 19,
-    color: PALETTE.sub,
-  });
-  const hint = addLabel(body, 'ContractHint', '', -150, { size: 20, color: PALETTE.sub, width: panelW() - 160 });
-  addDialogButton(body, 'PrivacyContract', '平台隐私指引', -buttonX(), PALETTE.secondary, () => {
-    if (!WxPrivacy.openContract()) {
-      hint.string = '当前环境不支持平台隐私指引，请以上方正文为准。';
-    }
-  });
-  addDialogButton(body, 'PrivacyClose', '关 闭', buttonX(), PALETTE.primary, () => {
+  body = buildPrivacyReadBody(panel, (): void => {
     const onClose = settings.onClose;
     closePrivacyDialog();
     onClose?.();

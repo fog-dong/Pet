@@ -3,9 +3,12 @@
 import { PrivacyState } from '../cache/PrivacyState';
 
 export type PrivacyRequestResult = 'granted' | 'denied' | 'unsupported';
+/** 打开平台指引的结果：成功/失败都要回报，弹窗才有东西可提示。 */
+export type PrivacyContractResult = 'opened' | 'failed' | 'unsupported';
 
 /** 平台回调可能因用户停留在系统弹窗而不返回；超时后放行进厅，本地同意状态已经落盘。 */
 const REQUEST_TIMEOUT_MS = 8000;
+const CONTRACT_TIMEOUT_MS = 4000;
 
 function platform(): WxApi | null {
   return typeof wx === 'undefined' ? null : wx;
@@ -53,18 +56,37 @@ export class PrivacyClient {
     });
   }
 
-  /** 优先看平台侧正式《隐私保护指引》；返回 false 表示要回退到内置文本。 */
-  openContract(): boolean {
+  /**
+   * 平台侧正式《隐私保护指引》：openPrivacyContract 没有回调就等于点了没反应，
+   * 这里把 success / fail / 超时都收成一个结果交给弹窗，由弹窗给用户可见的反馈。
+   * 返回 false 表示当前环境没有这个 API，调用方应立即换成内置文本的提示。
+   */
+  openContract(onDone?: (result: PrivacyContractResult) => void): boolean {
     const api = platform();
-    if (!api || typeof api.openPrivacyContract !== 'function') {
+    const open = api?.openPrivacyContract;
+    if (!api || typeof open !== 'function') {
+      onDone?.('unsupported');
       return false;
     }
+    let settled = false;
+    const settle = (result: PrivacyContractResult): void => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      clearTimeout(timer);
+      onDone?.(result);
+    };
+    const timer = setTimeout(() => settle('failed'), CONTRACT_TIMEOUT_MS);
     try {
-      api.openPrivacyContract?.({});
-      return true;
+      open.call(api, {
+        success: () => settle('opened'),
+        fail: () => settle('failed'),
+      });
     } catch {
-      return false;
+      settle('failed');
     }
+    return true;
   }
 }
 
